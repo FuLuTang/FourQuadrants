@@ -1,18 +1,5 @@
  ai自用文档，按条目记录行动进度（甚至拆分小任务，以及记录小任务进度）
 
-## 🧠 AI Agent 协作白板 (The Blackboard)
-
-### 🏗️ Architect Status (主手)
-- **当前分支**: `main`
-- **正在进行**: 暂无任务
-
-### 🛠️ Integrator Status (副手)
-- **当前分支**: N/A
-- **正在进行**: 暂无任务
-
-### 📣 跨角色变更公告 (Schema Changes Log)
-- *2026-01-28 - Sync Engineer - Added `msTodoId` (String?) and `msLastModified` (Date?) compatible with Microsoft Graph API.*
-
 ## Microsoft To Do Sync (Planned)
 - **Library**: MSAL (Microsoft Authentication Library) for iOS.
 - **API**: Microsoft Graph API (`/me/todo/lists`).
