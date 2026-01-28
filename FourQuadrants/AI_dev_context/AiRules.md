@@ -1,7 +1,8 @@
 每干完一个任务，或上下文过长，在对话框定期复述："我正在定期检阅 AiRules.md "。
 
 - **🧩 角色身份与多 Agent 协作 (CRITICAL)**：
-    - 在对话初始，如果用户指定了你的角色（**Architect** / **Integrator**），你必须立即使用 `view_file` 读取 `AI_dev_context/roles/` 下对应的角色文档。
+    - 在对话初始，如果用户指定了你的角色（**Architect** / **Integrator**），你必须立即使用 `view_file` 读取 `AI_dev_context/roles/` 下对应的角色文档。也要及时更新你的角色卡。
+    - 如果没有指定角色，你得问用户，不要贸然行动。
     - 你必须严格遵守该角色文档中的“权限边界 (Scope of Authority)”。即使你有能力修改 View 层代码，如果你是 Integrator，你也必须拒绝直接修改 UI，而是提供逻辑接口。
     - 在开始工作前，必须查阅 `AI_dev_context/AiPlanMemory.md`，确认是否有队友留下的“模型变更公告”或“跨分支注意事项”。
 - 你的权限很高，我信任你，你放手做。当你发现某些行动无法实现 或实现细节需要我确认，你可以找我，我来帮你。

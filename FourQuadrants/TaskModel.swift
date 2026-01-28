@@ -51,8 +51,12 @@ final class Task {
         return targetDate.advanced(by: 86400) < Date()
     }
     
+    // Sync metadata
+    var msTodoId: String? = nil
+    var msLastModified: Date? = nil
+    
     // Custom initializer to match existing calls that use 'isUrgent'
-    init(id: UUID = UUID(), title: String, date: Date, dateLatestModified: Date = Date(), targetDate: Date? = nil, isCompleted: Bool = false, importance: ImportanceLevel = ImportanceLevel.normal, isUrgent: Bool = false, urgentThresholdDays: Int? = nil, completionDate: Date? = nil, isTop: Bool = false) {
+    init(id: UUID = UUID(), title: String, date: Date, dateLatestModified: Date = Date(), targetDate: Date? = nil, isCompleted: Bool = false, importance: ImportanceLevel = ImportanceLevel.normal, isUrgent: Bool = false, urgentThresholdDays: Int? = nil, completionDate: Date? = nil, isTop: Bool = false, msTodoId: String? = nil, msLastModified: Date? = nil) {
         self.id = id
         self.title = title
         self.date = date
@@ -64,6 +68,8 @@ final class Task {
         self.urgentThresholdDays = urgentThresholdDays
         self.completionDate = completionDate
         self.isTop = isTop
+        self.msTodoId = msTodoId
+        self.msLastModified = msLastModified
     }
 }
 

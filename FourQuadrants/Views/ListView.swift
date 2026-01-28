@@ -72,78 +72,17 @@ struct TaskListView: View {
     var body: some View {
         List {
             ForEach(taskManager.filteredTasks(in: category)) { task in
-                HStack {
-                    // 左侧区域（用于切换任务完成状态）
-                    HStack {
-                        if task.isCompleted {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                        } else {
-                            Image(systemName: "circle")
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    .padding(5)
-                    .contentShape(Rectangle()) // 确保整个 HStack 可点击
-                    .onTapGesture {
-                        taskManager.toggleTask(task)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            if task.isTop {
-                                Image(systemName: "chevron.up.2")
-                                    .foregroundColor(.blue)
-                            }
-                            Text(task.title)
-                        }
-                        .padding(.bottom, 2)
-                        if let targetDate = task.targetDate {
-                            Text("目标日期: \(formattedDate(targetDate))")
-                                .font(.caption)
-                                .foregroundColor(task.isOverdue ? .red : .gray)
-                        }
-                    }
-                    
-                    Spacer()
-
-                    // 右侧“圈 i”菜单按钮（不会触发 onTapGesture）
-                    Menu {
-                        Button {
-                            selectedTaskForEditing = task
-                            showingEditTaskView = true
-                        } label: {
-                            Label("修改", systemImage: "pencil")
-                        }
-                        
-                        Button(role: .destructive) {
-                            taskManager.removeTask(by: task.id)
-                        } label: {
-                            Label("删除", systemImage: "trash")
-                        }
-
-                        Button {
-                            taskDetails = """
-                            标题: \(task.title)
-                            创建日期: \(formattedDate(task.date))
-                            目标日期: \(task.targetDate.map { formattedDate($0) } ?? "无")
-                            是否完成: \(task.isCompleted ? "是" : "否")
-                            重要性: \(task.importance.rawValue)
-                            是否紧急: \(task.isUrgent ? "是" : "否")
-                            是否置顶: \(task.isTop ? "是" : "否")   
-                            完成日期: \(task.completionDate.map { formattedDate($0) } ?? "无")
-                            """
-                            showingTaskDetailsAlert = true
-                        } label: {
-                            Label("查看task数据", systemImage: "info.circle")
-                        }
-                    } label: {
-                        Image(systemName: "info.circle")
-                            .foregroundColor(.blue)
-                    }
-                    .buttonStyle(BorderlessButtonStyle())
+                TaskRow(task: task) {
+                    taskManager.toggleTask(task)
                 }
-                .swipeActions(edge: .trailing) {
+                .listRowBackground(Color.white.opacity(0.5)) // 配合全局背景
+                .listRowSeparator(.visible)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    // 点击行中间也可以编辑
+                    selectedTaskForEditing = task
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button(role: .destructive) {
                         taskManager.removeTask(by: task.id)
                     } label: {
@@ -156,11 +95,14 @@ struct TaskListView: View {
                     } label: {
                         Label("编辑", systemImage: "pencil")
                     }
-                    .tint(.blue)
+                    .tint(category.themeColor)
                 }
             }
         }
+        .listStyle(.insetGrouped)
         .navigationTitle(category.displayName)
+        .scrollContentBackground(.hidden)
+        .background(AppTheme.Colors.backgroundGradient.ignoresSafeArea())
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {

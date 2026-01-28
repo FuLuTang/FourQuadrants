@@ -1,72 +1,94 @@
 import SwiftUI
 
 struct OverviewView: View {
-    let title: String
-    let color: Color
     let category: TaskCategory
     @ObservedObject var taskManager: TaskManager
-    var onZoom: ((TaskCategory) -> Void)? = nil  // **闭包传递**
-    @State private var isTargeted: Bool = false  // **拖拽视觉反馈**
+    var onZoom: ((TaskCategory) -> Void)? = nil
+    @State private var isTargeted: Bool = false
 
     var body: some View {
-        ZStack {
-            color.opacity(isTargeted ? 0.5 : 0.2) // 拖拽时颜色加深
-                .cornerRadius(18)
-            VStack {
-                HStack {
-                    Text(title)
-                        .font(.title3)
-                        .padding(.leading, 10)
-                    Spacer()
-                    Button {
-                        onZoom?(category)
-                    } label: {
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            .padding(8)
-                            .bold()
-                            .background(Color.gray.opacity(0.45))
-                            .foregroundColor(.white.opacity(0.9))
-                            .cornerRadius(12)
-                    }
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Label {
+                    Text(category.displayName)
+                        .font(.system(.subheadline, design: .rounded))
+                        .fontWeight(.bold)
+                } icon: {
+                    Image(systemName: category.icon)
                 }
-                .padding(10)
-                Divider()
-                GeometryReader { geometry in
-                    ScrollView {
-                        ForEach(filteredTasks) { task in
-                            HStack {
-                                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                                    .foregroundColor(task.isCompleted ? .green : .gray)
-                                    .padding(5)
-                                Text(task.title)
-                                    .padding(5)
-                                Spacer()
-                                if task.isTop {
-                                    Image(systemName: "chevron.up.2")
-                                        .foregroundColor(.blue)
-                                        .padding(.trailing, 16)
+                .foregroundColor(category.themeColor)
+                
+                Spacer()
+                
+                Button {
+                    onZoom?(category)
+                } label: {
+                    Image(systemName: "plus.screen.fill")
+                        .font(.system(size: 14))
+                        .padding(8)
+                        .background(category.themeColor.opacity(0.15))
+                        .foregroundColor(category.themeColor)
+                        .clipShape(Circle())
+                }
+            }
+            .padding(.horizontal, AppTheme.Padding.standard)
+            .padding(.vertical, 12)
+            
+            // Task List Snippet
+            GeometryReader { geometry in
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        if filteredTasks.isEmpty {
+                            VStack(spacing: 8) {
+                                Image(systemName: "checklist")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.secondary.opacity(0.3))
+                                Text("暂无任务")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary.opacity(0.5))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 20)
+                        } else {
+                            ForEach(filteredTasks) { task in
+                                TaskRow(task: task) {
+                                    taskManager.toggleTask(task)
+                                }
+                                .onDrag {
+                                    NSItemProvider(object: task.id.uuidString as NSString)
+                                }
+                                
+                                if task.id != filteredTasks.last?.id {
+                                    Divider()
+                                        .padding(.horizontal, 12)
+                                        .opacity(0.3)
                                 }
                             }
-                            .onTapGesture {
-                                taskManager.toggleTask(task)
-                            }
-                            .padding(.horizontal, 8)
-                            .onDrag {
-                                NSItemProvider(object: task.id.uuidString as NSString) // **拖拽 ID**
-                            }
-                            Divider()
-                                .background(Color.gray.opacity(0.2))
-                                .padding(.leading, 20)
-                                .padding(.trailing, 20)
-                                .transition(.opacity)
                         }
                     }
-                    .frame(height: geometry.size.height)
+                    .padding(.bottom, 12)
                 }
-                Spacer()
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            ZStack {
+                // 微光效果 - iOS 26 Dynamic Glow
+                Circle()
+                    .fill(category.themeColor.opacity(0.2))
+                    .blur(radius: 50)
+                    .offset(x: -40, y: -40)
+                    .scaleEffect(isTargeted ? 1.2 : 1.0) // Pulse when targeted
+            }
+        )
+        .holographicCard()
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                .stroke(isTargeted ? category.themeColor : Color.clear, lineWidth: 2)
+                .shadow(color: isTargeted ? category.themeColor.opacity(0.5) : .clear, radius: 8)
+        )
+        .scaleEffect(isTargeted ? 1.02 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isTargeted)
         .onDrop(of: ["public.text"], isTargeted: $isTargeted, perform: { providers -> Bool in
             if let provider = providers.first {
                 provider.loadObject(ofClass: NSString.self) { (nsString, error) in

@@ -1,8 +1,5 @@
 import SwiftUI
 import Combine
-
-import SwiftUI
-import Combine
 import SwiftData
 
 @MainActor
@@ -45,6 +42,19 @@ class TaskManager: ObservableObject {
                 modelContext.insert(task)
             }
             saveContext()
+            fetchTasks()
+        }
+        
+        // Auto-sync on launch
+        triggerSync()
+    }
+    
+    // MARK: - Sync
+    
+    func triggerSync() {
+        Swift.Task { @MainActor in
+            await SyncService.shared.startSync(context: modelContext)
+            // Refresh UI after sync
             fetchTasks()
         }
     }
