@@ -2,19 +2,20 @@
 
 # 🚀 待办开发内容 (Active Backlog)
 
-## 第二部分：外部集成 (External Integration)
+## 第一部分：核心 P0 (Top Priority)
 - **Microsoft To Do 同步**：通过 Microsoft Graph API 实现与微软待办的双向同步。
-  - 集成 MSAL 认证。
-  - 处理任务 ID 映射与冲突解决。
-  - 支持后台增量更新。
+  - 集成 MSAL 认证，处理 OAuth 流程。
+  - 同步逻辑开发：处理 `Task` 的 ID 映射与冲突。
+- **iOS 桌面小组件 (WidgetKit)**：支持主屏幕 2x2, 4x4 小组件展示各象限任务。
+- **灵动岛支持 (Live Activities)**：在任务处理时提供实时状态展示。
 
-## 第三部分：发展规划 (Future Development)
-- **异步处理 (Concurrency)**：使用 `async/await` 处理网络请求与重型数据库操作。
+## 第二部分：质感提升 (Premium UX)
+- **触感反馈 (Haptic Feedback)**：在勾选、拖拽、删除时加入精细震动反馈。
+- **异步基建优化**：使用 `async/await` 重构数据读写逻辑，避免主线程阻塞。
 
-## 第三部分：商业功能扩展
-- **搜索与筛选**：增加基于关键字的实时搜索功能。
-- **数据可视化**：增加“周报/月报”统计图表。
-- **交互细节**：增加 Haptic Feedback 反馈和精细转场动画。
+## 第三部分：Icebox (冷宫/延后)
+- **搜索与筛选**：关键字搜索。由于四象限提倡精简任务，此功能优先级下调。
+- **数据可视化**：周报图表。
 
 ---
 
