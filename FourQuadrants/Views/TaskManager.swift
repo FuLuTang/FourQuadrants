@@ -1,13 +1,10 @@
 import SwiftUI
 import Combine
-
-import SwiftUI
-import Combine
 import SwiftData
 
 @MainActor
 class TaskManager: ObservableObject {
-    @Published var tasks: [Task] = []
+    @Published var tasks: [QuadrantTask] = []
     
     private let modelContext: ModelContext
     private let modelContainer: ModelContainer
@@ -15,7 +12,7 @@ class TaskManager: ObservableObject {
     init() {
         // Initialize SwiftData container and context
         do {
-            let container = try ModelContainer(for: Task.self)
+            let container = try ModelContainer(for: QuadrantTask.self)
             self.modelContainer = container
             self.modelContext = container.mainContext
         } catch {
@@ -30,14 +27,14 @@ class TaskManager: ObservableObject {
             dateFormatter.dateFormat = "yyyy.MM.dd"
             
             let demoTasks = [
-                Task(title: "重要且紧急任务", date: dateFormatter.date(from: "2023.01.01")!, isCompleted: false, importance: .high, isUrgent: true),
-                Task(title: "重要不紧急任务", date: dateFormatter.date(from: "2023.06.01")!, targetDate: dateFormatter.date(from: "2025.01.02")!, isCompleted: false, importance: .high, isUrgent: false),
-                Task(title: "紧急不重要任务", date: dateFormatter.date(from: "2024.01.01")!, targetDate: dateFormatter.date(from: "2025.03.02")!, isCompleted: false, importance: .normal, isUrgent: true),
-                Task(title: "不重要不紧急任务", date: dateFormatter.date(from: "2024.06.01")!, isCompleted: false, isUrgent: false),
-                Task(title: "额外任务", date: dateFormatter.date(from: "2025.01.01")!, isCompleted: false, isUrgent: false),
-                Task(title: "安装日期+1", date: Date(), targetDate: Date().addingTimeInterval(86400), isCompleted: false, isUrgent: false),
-                Task(title: "安装日期-1", date: Date(), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: false),
-                Task(title: "置顶", date: Date(), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: false, isTop: true)
+                QuadrantTask(title: "重要且紧急任务", date: dateFormatter.date(from: "2023.01.01")!, isCompleted: false, importance: .high, isUrgent: true),
+                QuadrantTask(title: "重要不紧急任务", date: dateFormatter.date(from: "2023.06.01")!, targetDate: dateFormatter.date(from: "2025.01.02")!, isCompleted: false, importance: .high, isUrgent: false),
+                QuadrantTask(title: "紧急不重要任务", date: dateFormatter.date(from: "2024.01.01")!, targetDate: dateFormatter.date(from: "2025.03.02")!, isCompleted: false, importance: .normal, isUrgent: true),
+                QuadrantTask(title: "不重要不紧急任务", date: dateFormatter.date(from: "2024.06.01")!, isCompleted: false, isUrgent: false),
+                QuadrantTask(title: "额外任务", date: dateFormatter.date(from: "2025.01.01")!, isCompleted: false, isUrgent: false),
+                QuadrantTask(title: "安装日期+1", date: Date(), targetDate: Date().addingTimeInterval(86400), isCompleted: false, isUrgent: false),
+                QuadrantTask(title: "安装日期-1", date: Date(), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: false),
+                QuadrantTask(title: "置顶", date: Date(), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: false, isTop: true)
             ]
             
             // Batch insert
@@ -66,7 +63,7 @@ class TaskManager: ObservableObject {
     
     func fetchTasks() {
         do {
-            let descriptor = FetchDescriptor<Task>(sortBy: [SortDescriptor(\.dateLatestModified, order: .reverse)])
+            let descriptor = FetchDescriptor<QuadrantTask>(sortBy: [SortDescriptor(\.dateLatestModified, order: .reverse)])
             tasks = try modelContext.fetch(descriptor)
         } catch {
             print("Fetch failed: \(error)")
@@ -83,7 +80,7 @@ class TaskManager: ObservableObject {
     }
 
     func addTask(title: String, importance: ImportanceLevel, isUrgent: Bool, isTop: Bool, targetDate: Date? = nil, urgentThresholdDays: Int? = nil, dateLatestModified: Date) {
-        let newTask = Task(
+        let newTask = QuadrantTask(
             title: title,
             date: Date(), // Creation date
             dateLatestModified: Date(),
@@ -98,7 +95,7 @@ class TaskManager: ObservableObject {
         saveContext()
     }
 
-    func updateTask(_ task: Task, title: String, importance: ImportanceLevel, isUrgent: Bool, isTop: Bool, targetDate: Date?, urgentThresholdDays: Int? = nil, dateLatestModified: Date) {
+    func updateTask(_ task: QuadrantTask, title: String, importance: ImportanceLevel, isUrgent: Bool, isTop: Bool, targetDate: Date?, urgentThresholdDays: Int? = nil, dateLatestModified: Date) {
         // SwiftData objects are reference types (classes). We can modify them directly.
         task.title = title
         task.importance = importance
@@ -112,7 +109,7 @@ class TaskManager: ObservableObject {
         objectWillChange.send()
     }
     
-    func toggleTask(_ task: Task) {
+    func toggleTask(_ task: QuadrantTask) {
         withAnimation(.easeInOut) {
             task.isCompleted.toggle()
             task.completionDate = task.isCompleted ? Date() : nil
@@ -142,7 +139,7 @@ class TaskManager: ObservableObject {
         case byName
     }
     
-    func sortTasks(_ tasks: [Task], by method: TaskSortMethod) -> [Task] {
+    func sortTasks(_ tasks: [QuadrantTask], by method: TaskSortMethod) -> [QuadrantTask] {
         return tasks.sorted { task1, task2 in
             switch method {
             case .intelligence:
@@ -179,7 +176,7 @@ class TaskManager: ObservableObject {
         }
     }
 
-    func dragTaskChangeCategory(task: Task, targetCategory: TaskCategory) {
+    func dragTaskChangeCategory(task: QuadrantTask, targetCategory: TaskCategory) {
         // **更新重要性**
         switch targetCategory {
         case .importantAndUrgent, .importantButNotUrgent:
@@ -229,7 +226,7 @@ class TaskManager: ObservableObject {
         objectWillChange.send()
     }
 
-    func filteredTasks(in category: TaskCategory) -> [Task] {
+    func filteredTasks(in category: TaskCategory) -> [QuadrantTask] {
         let now = Date()
         let filtered = tasks.filter { task in
             let isImportant = task.isImportantQuadrant

@@ -3,7 +3,7 @@ import SwiftUI
 struct TaskFormView: View {
     @Environment(\.dismiss) var dismiss
     @ObservedObject var taskManager: TaskManager
-    var existingTask: Task?
+    var existingTask: QuadrantTask?
     
     // 状态变量
     @State private var title: String
@@ -16,7 +16,7 @@ struct TaskFormView: View {
     @State private var urgentThresholdDays: Int
     @State private var isTop: Bool = false
     
-    init(taskManager: TaskManager, existingTask: Task? = nil) {
+    init(taskManager: TaskManager, existingTask: QuadrantTask? = nil) {
         self.taskManager = taskManager
         self.existingTask = existingTask
         _title = State(initialValue: existingTask?.title ?? "")

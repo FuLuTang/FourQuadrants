@@ -25,15 +25,15 @@ struct OverviewView: View {
                     onZoom?(category)
                 } label: {
                     Image(systemName: "plus.screen.fill")
-                        .font(.system(size: 14))
-                        .padding(8)
+                        .font(.system(size: 12))
+                        .padding(6)
                         .background(category.themeColor.opacity(0.15))
                         .foregroundColor(category.themeColor)
                         .clipShape(Circle())
                 }
             }
             .padding(.horizontal, AppTheme.Padding.standard)
-            .padding(.vertical, 12)
+            .padding(.vertical, 8)
             
             // Task List Snippet
             GeometryReader { geometry in
@@ -93,10 +93,11 @@ struct OverviewView: View {
             if let provider = providers.first {
                 provider.loadObject(ofClass: NSString.self) { (nsString, error) in
                     if let idString = nsString as? String,
-                       let uuid = UUID(uuidString: idString),
-                       let draggedTask = taskManager.tasks.first(where: { $0.id == uuid }) {
+                       let uuid = UUID(uuidString: idString) {
                         DispatchQueue.main.async {
-                            taskManager.dragTaskChangeCategory(task: draggedTask, targetCategory: self.category)
+                            if let draggedTask = taskManager.tasks.first(where: { $0.id == uuid }) {
+                                taskManager.dragTaskChangeCategory(task: draggedTask, targetCategory: self.category)
+                            }
                         }
                     }
                 }
@@ -106,7 +107,7 @@ struct OverviewView: View {
         })
     }
     
-    var filteredTasks: [Task] {
+    var filteredTasks: [QuadrantTask] {
         return taskManager.filteredTasks(in: category)
     }
 }

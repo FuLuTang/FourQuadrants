@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TaskRow: View {
-    let task: Task
+    let task: QuadrantTask
     var onToggle: () -> Void
     
     var body: some View {
@@ -32,33 +32,33 @@ struct TaskRow: View {
                     }
                 }
             }
-            .buttonStyle(.plain) // Use plain style to avoid inheriting parent list styling but keep tap interaction
+            .buttonStyle(.plain)
 
-            
             // MARK: - Task Content
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
                     if task.isTop {
                         Image(systemName: "pin.fill")
-                            .font(.system(size: 12))
+                            .font(.system(size: 10))
                             .foregroundStyle(LinearGradient(colors: [.orange, .yellow], startPoint: .top, endPoint: .bottom))
                     }
                     Text(task.title)
-                        .font(.system(.body, design: .rounded))
+                        .font(.system(.subheadline, design: .rounded)) // Reduce to subheadline
                         .fontWeight(task.isCompleted ? .regular : .medium)
                         .strikethrough(task.isCompleted, color: .secondary.opacity(0.5))
                         .foregroundColor(task.isCompleted ? .secondary : .primary)
+                        .lineLimit(1) // Avoid multiline sprawl
                 }
                 
                 if let targetDate = task.targetDate {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 2) {
                         Image(systemName: "calendar")
-                            .font(.system(size: 10))
+                            .font(.system(size: 8))
                         Text(formattedDate(targetDate))
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 9, weight: .semibold))
                     }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
                     .background(
                         Capsule()
                             .fill(task.isOverdue ? Color.red.opacity(0.1) : Color.blue.opacity(0.05))
@@ -73,12 +73,12 @@ struct TaskRow: View {
             if task.importance == .high && !task.isCompleted {
                 Circle()
                     .fill(AppTheme.Colors.urgentImportant)
-                    .frame(width: 8, height: 8)
-                    .shadow(color: AppTheme.Colors.urgentImportant.opacity(0.6), radius: 4, x: 0, y: 0)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: AppTheme.Colors.urgentImportant.opacity(0.6), radius: 3, x: 0, y: 0)
             }
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
         .contentShape(Rectangle()) // Ensure tap area covers the whole row
     }
     

@@ -65,7 +65,7 @@ struct TaskListView: View {
     @Binding var selectedCategory: TaskCategory?
     @State private var showingTaskFormView = false
     @State private var showingEditTaskView = false
-    @State private var selectedTaskForEditing: Task?
+    @State private var selectedTaskForEditing: QuadrantTask?
     @State private var showingTaskDetailsAlert = false
     @State private var taskDetails: String = ""
 

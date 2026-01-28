@@ -34,15 +34,15 @@ struct AppTheme {
     
     // MARK: - Dimensions & Physics
     struct Radius {
-        static let card: CGFloat = 28 // 更大的圆角，更有机
-        static let button: CGFloat = 16
-        static let bubble: CGFloat = 20
+        static let card: CGFloat = 16 // 恢复较小的圆角，增加内容显示面积
+        static let button: CGFloat = 12
+        static let bubble: CGFloat = 12
     }
     
     struct Padding {
-        static let standard: CGFloat = 20
-        static let loose: CGFloat = 32
-        static let compact: CGFloat = 12
+        static let standard: CGFloat = 12 // 减少内边距 (20 -> 12)
+        static let loose: CGFloat = 20
+        static let compact: CGFloat = 8
     }
     
     struct Shadows {
@@ -64,7 +64,7 @@ extension View {
     /// 现代化玻璃卡片：利用原生 Material 和 Shape API
     func holographicCard() -> some View {
         self
-            .padding(AppTheme.Padding.standard)
+            .padding(AppTheme.Padding.compact) // 使用更紧凑的内边距 (8)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)

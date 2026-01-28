@@ -7,7 +7,7 @@ enum ImportanceLevel: String, Codable {
 import SwiftData
 
 @Model
-final class Task {
+final class QuadrantTask {
     var id: UUID = UUID()
     var title: String = ""
     var date: Date = Date()

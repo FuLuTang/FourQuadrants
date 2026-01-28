@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import Combine
 
 /// 负责与 Microsoft To Do 进行同步的服务中心
 /// 职责: 处理认证、拉取远程数据、解决冲突、推送本地数据
@@ -37,7 +38,9 @@ class SyncService: ObservableObject {
             // 2. Resolve Conflicts (Compare dates)
             // 3. Push Local Changes
             
-            try await Task.sleep(nanoseconds: 1 * 1_000_000_000) // Mock work 1s
+            try await Task.sleep(for: .seconds(1))
+
+
             
             lastSyncTime = Date()
             print("SyncService: Sync completed at \(lastSyncTime!)")
