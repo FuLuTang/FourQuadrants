@@ -34,6 +34,7 @@
 
 关于项目的详细实现逻辑，请参阅：
 
+- [✨ 功能清单](./docs/Features.md) - 查看已实现的商用级功能与交互细节。
 - [🏗 工程架构](./docs/Architecture.md) - 详解 MVVM 模式与四象限逻辑映射。
 - [💾 数据持久化](./docs/Persistence.md) - 了解如何利用 App Group 实现数据存储。
 - [🧪 质量保障](./docs/Testing.md) - 查看单元测试覆盖范围与验证逻辑。
