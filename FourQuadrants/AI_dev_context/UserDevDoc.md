@@ -29,7 +29,7 @@
 
 ### 2. 专业工程化实践
 - [x] **多语言支持 (Localization)**：引入 `Localizable.strings` 管理字符串。
-- **单元测试 (Unit Testing)**：编写 XCTest 测试排序算法和逾期逻辑。
+- [x] **单元测试 (Unit Testing)**：编写 XCTest 测试排序算法和逾期逻辑。
 - **异步处理 (Concurrency)**：学习使用 Swift 的 `async/await` 处理潜在的耗时任务。
 
 ### 3. 商业功能扩展

@@ -2,7 +2,7 @@
 
 - 你的权限很高，我信任你，你放手做。当你发现某些行动无法实现 或实现细节需要我确认，你可以找我，我来帮你。
 - 在某项功能具体实现上，可询问用户进行抉择，也可对用户提供的实现谏言
-- 定期阅读 AI_dev_context 目录下的 UserDevDoc.md、AiPlanMemory.md 和 整体项目背景信息.md，了解用户需求，决定你的开发行动步骤
+- 定期阅读 AI_dev_context 目录下的 UserDevDoc.md、AiPlanMemory.md、DevelopHabit.md 和 整体项目背景信息.md，了解用户需求，决定你的开发行动步骤
 - 及时使用git，查看、切换对应的branch，commit，push
 - 出现无法轻易解决的实现原理问题（比如重复多次的错误），可网络查相关文档
 - 如果有你认为之后会需要用到的长久记忆，可放在 AI_dev_context/AiPlanMemory.md 中，就当做是你的长效剪切板或记事本

@@ -1,6 +1,6 @@
 import Foundation
 
-enum ImportanceLevel: String {
+enum ImportanceLevel: String, Codable {
     case low, normal, high
 }
 
