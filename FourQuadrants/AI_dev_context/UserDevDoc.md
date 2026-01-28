@@ -38,5 +38,17 @@
 - **交互细节**：增加 Haptic Feedback 反馈和精细转场动画。
 
 
+开发者层面的“长期展望”建议
+虽然一个 Target 够用，但为了让你作为 INTP 的代码逻辑更严谨，建议在项目文件夹里这样组织：
+
+FourQuadrantsWidget.swift：放最基础的 2x2 或 4x4 矩阵小组件。
+
+LiveActivityManager.swift：专门写启动、更新、关闭灵动岛的逻辑。
+
+LiveActivityView.swift：专门写灵动岛在那四种状态（紧凑型、扩展型、最小型）下的 UI 代码。
+
+
+
+
 # 废弃信息（已记入Readme）
 ~~以下~~

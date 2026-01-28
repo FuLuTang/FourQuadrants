@@ -18,7 +18,7 @@ struct ListView: View {
                 Section(header: Text("四象限")) {
                     ForEach([TaskCategory.importantAndUrgent, TaskCategory.urgentButNotImportant, TaskCategory.importantButNotUrgent, TaskCategory.notImportantAndNotUrgent], id: \.self) { category in
                         NavigationLink(value: category) {
-                            Text(category.rawValue)
+                            Text(category.displayName)
                         }
                         .listRowBackground(Color(.secondarySystemBackground))
                     }
@@ -27,7 +27,7 @@ struct ListView: View {
                 // 已完成分组
                 Section(header: Text("已完成")) {
                     NavigationLink(value: TaskCategory.completed) {
-                        Text(TaskCategory.completed.rawValue)
+                        Text(TaskCategory.completed.displayName)
                     }
                     .listRowBackground(Color(.secondarySystemBackground))
                 }
@@ -71,7 +71,7 @@ struct TaskListView: View {
 
     var body: some View {
         List {
-            ForEach(filteredTasks) { task in
+            ForEach(taskManager.filteredTasks(in: category)) { task in
                 HStack {
                     // 左侧区域（用于切换任务完成状态）
                     HStack {
@@ -160,7 +160,7 @@ struct TaskListView: View {
                 }
             }
         }
-        .navigationTitle(category.rawValue)
+        .navigationTitle(category.displayName)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -187,25 +187,5 @@ struct TaskListView: View {
         return formatter.string(from: date)
     }
 
-    var filteredTasks: [Task] {
-        let now = Date()
-        let filtered = taskManager.tasks.filter { task in
-            let isImportant = task.importance == .high  // 判断是否重要
-            switch category {
-            case .all:
-                return !task.isCompleted || now.timeIntervalSince(task.completionDate ?? now) <= 3
-            case .importantAndUrgent:
-                return isImportant && task.isUrgent && (!task.isCompleted || now.timeIntervalSince(task.completionDate ?? now) <= 3)
-            case .importantButNotUrgent:
-                return isImportant && !task.isUrgent && (!task.isCompleted || now.timeIntervalSince(task.completionDate ?? now) <= 3)
-            case .urgentButNotImportant:
-                return !isImportant && task.isUrgent && (!task.isCompleted || now.timeIntervalSince(task.completionDate ?? now) <= 3)
-            case .notImportantAndNotUrgent:
-                return !isImportant && !task.isUrgent && (!task.isCompleted || now.timeIntervalSince(task.completionDate ?? now) <= 3)
-            case .completed:
-                return task.isCompleted
-            }
-        }
-        return taskManager.sortTasks(filtered, by: .intelligence) // 选择排序方式
-    }
+
 }

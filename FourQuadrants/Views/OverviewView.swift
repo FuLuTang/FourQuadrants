@@ -85,21 +85,6 @@ struct OverviewView: View {
     }
     
     var filteredTasks: [Task] {
-        let now = Date()
-        let filtered = taskManager.tasks.filter { task in
-            let isImportant = task.importance == .high
-            switch category {
-            case .importantAndUrgent:
-                return isImportant && task.isUrgent && (!task.isCompleted || now.timeIntervalSince(task.completionDate ?? now) <= 3)
-            case .importantButNotUrgent:
-                return isImportant && !task.isUrgent && (!task.isCompleted || now.timeIntervalSince(task.completionDate ?? now) <= 3)
-            case .urgentButNotImportant:
-                return !isImportant && task.isUrgent && (!task.isCompleted || now.timeIntervalSince(task.completionDate ?? now) <= 3)
-            case .notImportantAndNotUrgent:
-                return !isImportant && !task.isUrgent && (!task.isCompleted || now.timeIntervalSince(task.completionDate ?? now) <= 3)
-            default : return false
-            }
-        }
-        return taskManager.sortTasks(filtered, by: .intelligence)
+        return taskManager.filteredTasks(in: category)
     }
 }

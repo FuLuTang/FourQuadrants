@@ -1,0 +1,19 @@
+/* Task Form */
+"task_details" = "Task Details";
+"task_name" = "Task Name";
+"importance" = "Importance";
+"low" = "Low";
+"normal" = "Normal";
+"high" = "High";
+"urgent" = "Urgent";
+"top" = "Pin to Top";
+"target_date" = "Target Date";
+"set_target_date" = "Set Target Date";
+"select_date" = "Select Date";
+"set_urgent_threshold" = "Set Urgent Threshold";
+"urgent_threshold_days" = "Urgent Threshold: %d days";
+"add_task" = "Add Task";
+"edit_task" = "Edit Task";
+"cancel" = "Cancel";
+"add" = "Add";
+"save" = "Save";

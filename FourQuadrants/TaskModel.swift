@@ -4,32 +4,63 @@ enum ImportanceLevel: String {
     case low, normal, high
 }
 
-struct Task: Identifiable {
+struct Task: Identifiable, Codable {
     var id = UUID()
     var title: String
     var date: Date
     var dateLatestModified: Date = Date()
     var targetDate: Date? = nil
     var isCompleted: Bool = false
-    var importance: ImportanceLevel = .normal  // 替换 isImportant
-    var isUrgent: Bool = false
+    var importance: ImportanceLevel = .normal
+    
+    // Mapping: High -> Important; Normal/Low -> Not Important
+    var isImportantQuadrant: Bool {
+        return importance == .high
+    }
+    
+    // Renamed backing storage for manual urgency
+    var manualIsUrgent: Bool = false
+    
     var urgentThresholdDays: Int? = nil
     var completionDate: Date?
     var isTop: Bool = false
     
-    var isOverdue: Bool {// 有目标日期：用 date的后一天 和 targetDate 判断。无目标日期：默认不逾期
-        guard !isCompleted else { return false }
-        return targetDate.map { $0.advanced(by: 86400) } ?? date < Date()
+    // Computed property for auto-urgency
+    var isUrgent: Bool {
+        get {
+            if let threshold = urgentThresholdDays, let target = targetDate {
+                let now = Calendar.current.startOfDay(for: Date())
+                let targetDay = Calendar.current.startOfDay(for: target)
+                let daysRemaining = Calendar.current.dateComponents([.day], from: now, to: targetDay).day ?? Int.max
+                return daysRemaining <= threshold
+            } else {
+                return manualIsUrgent
+            }
+        }
+        set {
+            manualIsUrgent = newValue
+        }
     }
     
-    // **自动更新紧急状态函数**
-    mutating func updateUrgency() {
-        if let threshold = urgentThresholdDays, let target = targetDate {
-            let now = Calendar.current.startOfDay(for: Date())
-            let targetDay = Calendar.current.startOfDay(for: target)
-            let daysRemaining = Calendar.current.dateComponents([.day], from: now, to: targetDay).day ?? Int.max
-            isUrgent = daysRemaining <= threshold
-        }
+    var isOverdue: Bool {
+        guard !isCompleted, let targetDate = targetDate else { return false }
+        // Use targetDate + 1 day as the deadline
+        return targetDate.advanced(by: 86400) < Date()
+    }
+    
+    // Custom initializer to match existing calls that use 'isUrgent'
+    init(id: UUID = UUID(), title: String, date: Date, dateLatestModified: Date = Date(), targetDate: Date? = nil, isCompleted: Bool = false, importance: ImportanceLevel = .normal, isUrgent: Bool = false, urgentThresholdDays: Int? = nil, completionDate: Date? = nil, isTop: Bool = false) {
+        self.id = id
+        self.title = title
+        self.date = date
+        self.dateLatestModified = dateLatestModified
+        self.targetDate = targetDate
+        self.isCompleted = isCompleted
+        self.importance = importance
+        self.manualIsUrgent = isUrgent
+        self.urgentThresholdDays = urgentThresholdDays
+        self.completionDate = completionDate
+        self.isTop = isTop
     }
 }
 

@@ -1,0 +1,19 @@
+/* Task Form */
+"task_details" = "任务详情";
+"task_name" = "任务名称";
+"importance" = "重要性";
+"low" = "低";
+"normal" = "普通";
+"high" = "高";
+"urgent" = "紧急";
+"top" = "置顶";
+"target_date" = "目标日期";
+"set_target_date" = "设置目标日期";
+"select_date" = "选择日期";
+"set_urgent_threshold" = "设置紧急阈值";
+"urgent_threshold_days" = "紧急阈值天数: %d 天";
+"add_task" = "添加任务";
+"edit_task" = "编辑任务";
+"cancel" = "取消";
+"add" = "添加";
+"save" = "保存";

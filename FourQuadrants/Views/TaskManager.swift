@@ -5,33 +5,42 @@ class TaskManager: ObservableObject {
     @Published var tasks: [Task] = []
     
     init() {
-        // 添加默认任务
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy.MM.dd"
-        
-        tasks.append(Task(title: "重要且紧急任务", date: dateFormatter.date(from: "2023.01.01")!, isCompleted: false, importance: .high, isUrgent: true))
-        tasks.append(Task(title: "重要不紧急任务", date: dateFormatter.date(from: "2023.06.01")!, targetDate: dateFormatter.date(from: "2025.01.02")!, isCompleted: false, importance: .high, isUrgent: false))
-        tasks.append(Task(title: "紧急不重要任务", date: dateFormatter.date(from: "2024.01.01")!, targetDate: dateFormatter.date(from: "2025.03.02")!, isCompleted: false, importance: .normal, isUrgent: true))
-        tasks.append(Task(title: "不重要不紧急任务", date: dateFormatter.date(from: "2024.06.01")!, isCompleted: false, isUrgent: false))
-        tasks.append(Task(title: "额外任务", date: dateFormatter.date(from: "2025.01.01")!, isCompleted: false, isUrgent: false))
-        //预设：目标日期为当天日期+1和-1的两个任务
-        tasks.append(Task(title: "安装日期+1", date: Date(), targetDate: Date().addingTimeInterval(86400), isCompleted: false, isUrgent: false))    
-        tasks.append(Task(title: "安装日期-1", date: Date(), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: false))
-        //预设：置顶任务
-        tasks.append(Task(title: "置顶", date: Date(), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: false, isTop: true))
-        //预设：完成日期为当天日期和-1的两个任务
-        tasks.append(Task(title: "完成日期", date: Date(), isCompleted: true, importance: .high, isUrgent: true, completionDate: Date()))
-        tasks.append(Task(title: "完成日期-1", date: Date(), isCompleted: true, importance: .high, isUrgent: true, completionDate: Date().addingTimeInterval(-86400)))
-        //排序测试
-        tasks.append(Task(title: "排序测试5", date: Date().addingTimeInterval(-10000), targetDate: Date().addingTimeInterval(86400), isCompleted: false, isUrgent: true)) // 创建日期最早，目标日期最近
-        tasks.append(Task(title: "排序测试6", date: Date().addingTimeInterval(-5000), targetDate: Date().addingTimeInterval(172800), isCompleted: false, isUrgent: true)) // 创建日期较早，目标日期较晚
-        tasks.append(Task(title: "排序测试4", date: Date().addingTimeInterval(-3000), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: true)) // 创建日期较晚，目标日期较早
-        tasks.append(Task(title: "排序测试7", date: Date().addingTimeInterval(-8000), targetDate: Date().addingTimeInterval(432000), isCompleted: false, isUrgent: true)) // 创建日期较早，目标日期很远
-        tasks.append(Task(title: "排序测试8", date: Date().addingTimeInterval(2000), targetDate: Date().addingTimeInterval(864000), isCompleted: false, isUrgent: true)) // 创建日期最晚，目标日期最远
-        tasks.append(Task(title: "排序测试2（置顶）", date: Date().addingTimeInterval(-4000), targetDate: Date().addingTimeInterval(86400*5), isCompleted: false, isUrgent: true, isTop: true)) // 置顶任务，创建日期较早
-        tasks.append(Task(title: "排序测试3（置顶）", date: Date().addingTimeInterval(-1000), isCompleted: false, isUrgent: true, isTop: true)) // 置顶任务，创建日期较晚
-        tasks.append(Task(title: "排序测试1（置顶）", date: Date().addingTimeInterval(3000), targetDate: Date().addingTimeInterval(86400*2), isCompleted: false, isUrgent: true, isTop: true)) // 置顶任务，目标日期早
-
+        tasks = PersistenceManager.shared.load()
+        if tasks.isEmpty {
+            // 添加默认任务
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy.MM.dd"
+            
+            tasks.append(Task(title: "重要且紧急任务", date: dateFormatter.date(from: "2023.01.01")!, isCompleted: false, importance: .high, isUrgent: true))
+            tasks.append(Task(title: "重要不紧急任务", date: dateFormatter.date(from: "2023.06.01")!, targetDate: dateFormatter.date(from: "2025.01.02")!, isCompleted: false, importance: .high, isUrgent: false))
+            tasks.append(Task(title: "紧急不重要任务", date: dateFormatter.date(from: "2024.01.01")!, targetDate: dateFormatter.date(from: "2025.03.02")!, isCompleted: false, importance: .normal, isUrgent: true))
+            tasks.append(Task(title: "不重要不紧急任务", date: dateFormatter.date(from: "2024.06.01")!, isCompleted: false, isUrgent: false))
+            tasks.append(Task(title: "额外任务", date: dateFormatter.date(from: "2025.01.01")!, isCompleted: false, isUrgent: false))
+            //预设：目标日期为当天日期+1和-1的两个任务
+            tasks.append(Task(title: "安装日期+1", date: Date(), targetDate: Date().addingTimeInterval(86400), isCompleted: false, isUrgent: false))    
+            tasks.append(Task(title: "安装日期-1", date: Date(), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: false))
+            //预设：置顶任务
+            tasks.append(Task(title: "置顶", date: Date(), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: false, isTop: true))
+            //预设：完成日期为当天日期和-1的两个任务
+            tasks.append(Task(title: "完成日期", date: Date(), isCompleted: true, importance: .high, isUrgent: true, completionDate: Date()))
+            tasks.append(Task(title: "完成日期-1", date: Date(), isCompleted: true, importance: .high, isUrgent: true, completionDate: Date().addingTimeInterval(-86400)))
+            //排序测试
+            tasks.append(Task(title: "排序测试5", date: Date().addingTimeInterval(-10000), targetDate: Date().addingTimeInterval(86400), isCompleted: false, isUrgent: true)) // 创建日期最早，目标日期最近
+            tasks.append(Task(title: "排序测试6", date: Date().addingTimeInterval(-5000), targetDate: Date().addingTimeInterval(172800), isCompleted: false, isUrgent: true)) // 创建日期较早，目标日期较晚
+            tasks.append(Task(title: "排序测试4", date: Date().addingTimeInterval(-3000), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: true)) // 创建日期较晚，目标日期较早
+            tasks.append(Task(title: "排序测试7", date: Date().addingTimeInterval(-8000), targetDate: Date().addingTimeInterval(432000), isCompleted: false, isUrgent: true)) // 创建日期较早，目标日期很远
+            tasks.append(Task(title: "排序测试8", date: Date().addingTimeInterval(2000), targetDate: Date().addingTimeInterval(864000), isCompleted: false, isUrgent: true)) // 创建日期最晚，目标日期最远
+            tasks.append(Task(title: "排序测试2（置顶）", date: Date().addingTimeInterval(-4000), targetDate: Date().addingTimeInterval(86400*5), isCompleted: false, isUrgent: true, isTop: true)) // 置顶任务，创建日期较早
+            tasks.append(Task(title: "排序测试3（置顶）", date: Date().addingTimeInterval(-1000), isCompleted: false, isUrgent: true, isTop: true)) // 置顶任务，创建日期较晚
+            tasks.append(Task(title: "排序测试1（置顶）", date: Date().addingTimeInterval(3000), targetDate: Date().addingTimeInterval(86400*2), isCompleted: false, isUrgent: true, isTop: true)) // 置顶任务，目标日期早
+            
+            saveTasks()
+        }
+    }
+    
+    // Helper functionality
+    private func saveTasks() {
+        PersistenceManager.shared.save(tasks: tasks)
     }
 
     func addTask(title: String, importance: ImportanceLevel, isUrgent: Bool, isTop: Bool, targetDate: Date? = nil, urgentThresholdDays: Int? = nil, dateLatestModified: Date) {
@@ -46,8 +55,9 @@ class TaskManager: ObservableObject {
             urgentThresholdDays: urgentThresholdDays,
             isTop: isTop
         )
-        newTask.updateUrgency()
+        // newTask.updateUrgency() - Removed as isUrgent is computed
         tasks.append(newTask)
+        saveTasks()
     }
 
     func updateTask(_ task: Task, title: String, importance: ImportanceLevel, isUrgent: Bool, isTop: Bool, targetDate: Date?, urgentThresholdDays: Int? = nil, dateLatestModified: Date) {
@@ -58,8 +68,9 @@ class TaskManager: ObservableObject {
             tasks[index].targetDate = targetDate
             tasks[index].urgentThresholdDays = urgentThresholdDays
             tasks[index].isTop = isTop
-            tasks[index].updateUrgency()
+            // tasks[index].updateUrgency() - Removed as isUrgent is computed
             tasks[index].dateLatestModified = Date() // 更新最后修改时间
+            saveTasks()
             objectWillChange.send()
         }
     }
@@ -70,6 +81,7 @@ class TaskManager: ObservableObject {
         withAnimation(.easeInOut) {
             tasks[index].isCompleted.toggle()
             tasks[index].completionDate = tasks[index].isCompleted ? Date() : nil
+            saveTasks()
             objectWillChange.send()
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
@@ -81,6 +93,7 @@ class TaskManager: ObservableObject {
 
     func removeTask(by id: UUID) {
         tasks.removeAll { $0.id == id }
+        saveTasks()
     }
 
     // 任务排序法
@@ -134,7 +147,10 @@ class TaskManager: ObservableObject {
         case .importantAndUrgent, .importantButNotUrgent:
             tasks[index].importance = .high
         case .urgentButNotImportant, .notImportantAndNotUrgent:
-            tasks[index].importance = .normal
+            // Only downgrade to normal if it was high. Preserve .low if it was already not important.
+            if tasks[index].importance == .high {
+                tasks[index].importance = .normal
+            }
         default:
             break
         }
@@ -167,7 +183,34 @@ class TaskManager: ObservableObject {
         }
         // **更新最后编辑日期**
         tasks[index].dateLatestModified = Date()
+        saveTasks()
         objectWillChange.send()
+    }
+
+    func filteredTasks(in category: TaskCategory) -> [Task] {
+        let now = Date()
+        let filtered = tasks.filter { task in
+            let isImportant = task.isImportantQuadrant
+            
+            // Logic to keep completed tasks visible for 3 seconds
+            let isVisible = !task.isCompleted || now.timeIntervalSince(task.completionDate ?? now) <= 3.0
+            
+            switch category {
+            case .all:
+                return isVisible
+            case .importantAndUrgent:
+                return isImportant && task.isUrgent && isVisible
+            case .importantButNotUrgent:
+                return isImportant && !task.isUrgent && isVisible
+            case .urgentButNotImportant:
+                return !isImportant && task.isUrgent && isVisible
+            case .notImportantAndNotUrgent:
+                return !isImportant && !task.isUrgent && isVisible
+            case .completed:
+                return task.isCompleted
+            }
+        }
+        return sortTasks(filtered, by: .intelligence)
     }
 
 }

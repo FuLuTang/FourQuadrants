@@ -32,48 +32,48 @@ struct TaskFormView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("任务详情")) {
-                    TextField("任务名称", text: $title)
-                    Section(header: Text("重要性")) {
-                        Picker("重要性", selection: $importance) {
-                            Text("低").tag(ImportanceLevel.low)
-                            Text("普通").tag(ImportanceLevel.normal)
-                            Text("高").tag(ImportanceLevel.high)
+                Section(header: Text("task_details")) {
+                    TextField("task_name", text: $title)
+                    Section(header: Text("importance")) {
+                        Picker("importance", selection: $importance) {
+                            Text("low").tag(ImportanceLevel.low)
+                            Text("normal").tag(ImportanceLevel.normal)
+                            Text("high").tag(ImportanceLevel.high)
                         }
                         .pickerStyle(SegmentedPickerStyle())
                     }
-                    Toggle("紧急", isOn: $isUrgent)
+                    Toggle("urgent", isOn: $isUrgent)
                         .disabled(hasUrgentThreshold) // **紧急阈值开启时禁用紧急开关**
-                    Toggle("置顶", isOn: $isTop)
+                    Toggle("top", isOn: $isTop)
                 }
                 
                 // 新增：目标日期选择
-                Section(header: Text("目标日期")) {
-                    Toggle("设置目标日期", isOn: $hasTargetDate)
+                Section(header: Text("target_date")) {
+                    Toggle("set_target_date", isOn: $hasTargetDate)
                     
                     if hasTargetDate {
                         DatePicker(
-                            "选择日期",
+                            "select_date",
                             selection: $targetDate,
                             displayedComponents: .date
                         )
                         .datePickerStyle(.graphical)
                         
                         // **只有设置了目标日期才显示紧急阈值选项**
-                        Toggle("设置紧急阈值", isOn: $hasUrgentThreshold)
+                        Toggle("set_urgent_threshold", isOn: $hasUrgentThreshold)
                         if hasUrgentThreshold {
-                            Stepper("紧急阈值天数: \(urgentThresholdDays) 天", value: $urgentThresholdDays, in: 1...30)
+                            Stepper(String(format: NSLocalizedString("urgent_threshold_days", comment: ""), urgentThresholdDays), value: $urgentThresholdDays, in: 1...30)
                         }
                     }
                 }
             }
-            .navigationTitle(existingTask == nil ? "添加任务" : "编辑任务")
+            .navigationTitle(existingTask == nil ? "add_task" : "edit_task")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button("cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(existingTask == nil ? "添加" : "保存") {
+                    Button(existingTask == nil ? "add" : "save") {
                         saveTask()
                     }
                     .disabled(title.isEmpty)
