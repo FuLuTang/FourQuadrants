@@ -4,17 +4,20 @@ enum ImportanceLevel: String, Codable {
     case low, normal, high
 }
 
-struct Task: Identifiable, Codable {
-    var id = UUID()
-    var title: String
-    var date: Date
+import SwiftData
+
+@Model
+final class Task {
+    var id: UUID = UUID()
+    var title: String = ""
+    var date: Date = Date()
     var dateLatestModified: Date = Date()
     var targetDate: Date? = nil
     var isCompleted: Bool = false
-    var importance: ImportanceLevel = .normal
+    var importance: ImportanceLevel = ImportanceLevel.normal
     
     // Mapping: High -> Important; Normal/Low -> Not Important
-    var isImportantQuadrant: Bool {
+    @Transient var isImportantQuadrant: Bool {
         return importance == .high
     }
     
@@ -26,7 +29,7 @@ struct Task: Identifiable, Codable {
     var isTop: Bool = false
     
     // Computed property for auto-urgency
-    var isUrgent: Bool {
+    @Transient var isUrgent: Bool {
         get {
             if let threshold = urgentThresholdDays, let target = targetDate {
                 let now = Calendar.current.startOfDay(for: Date())
@@ -42,14 +45,14 @@ struct Task: Identifiable, Codable {
         }
     }
     
-    var isOverdue: Bool {
+    @Transient var isOverdue: Bool {
         guard !isCompleted, let targetDate = targetDate else { return false }
         // Use targetDate + 1 day as the deadline
         return targetDate.advanced(by: 86400) < Date()
     }
     
     // Custom initializer to match existing calls that use 'isUrgent'
-    init(id: UUID = UUID(), title: String, date: Date, dateLatestModified: Date = Date(), targetDate: Date? = nil, isCompleted: Bool = false, importance: ImportanceLevel = .normal, isUrgent: Bool = false, urgentThresholdDays: Int? = nil, completionDate: Date? = nil, isTop: Bool = false) {
+    init(id: UUID = UUID(), title: String, date: Date, dateLatestModified: Date = Date(), targetDate: Date? = nil, isCompleted: Bool = false, importance: ImportanceLevel = ImportanceLevel.normal, isUrgent: Bool = false, urgentThresholdDays: Int? = nil, completionDate: Date? = nil, isTop: Bool = false) {
         self.id = id
         self.title = title
         self.date = date

@@ -2,9 +2,14 @@
 
 # 🚀 待办开发内容 (Active Backlog)
 
-## 第二部分：发展规划 (Future Development)
-- **SwiftData 迁移**：从 JSON 持久化迁移到 Apple 官方的 SwiftData 框架，提升性能和数据管理能力。
-- **异步处理 (Concurrency)**：学习使用 Swift 的 `async/await` 处理潜在的耗时任务。
+## 第二部分：外部集成 (External Integration)
+- **Microsoft To Do 同步**：通过 Microsoft Graph API 实现与微软待办的双向同步。
+  - 集成 MSAL 认证。
+  - 处理任务 ID 映射与冲突解决。
+  - 支持后台增量更新。
+
+## 第三部分：发展规划 (Future Development)
+- **异步处理 (Concurrency)**：使用 `async/await` 处理网络请求与重型数据库操作。
 
 ## 第三部分：商业功能扩展
 - **搜索与筛选**：增加基于关键字的实时搜索功能。
@@ -37,7 +42,8 @@
 - [x] **重要性分级对齐**：明确 `ImportanceLevel`（三级）与四象限（两极）的映射逻辑。
 
 ### 4. 发展规划落地
-- [x] **数据持久化落地 (Persistence)**：从内存存储切换到 JSON 文件存储。（已实现 JSON AppGroup 存储）
-- [x] **架构解耦**：创建专门 `PersistenceManager` 或 Service 类，隔离读写逻辑。
+- [x] **数据持久化落地 (Persistence)**：成功实现从内存到 SwiftData 数据库的跨越。
+- [x] **架构解耦**：将所有数据库操作逻辑整合进 TaskManager，解耦了视图层。
 - [x] **多语言支持 (Localization)**：引入 `Localizable.strings` 管理字符串。
 - [x] **单元测试 (Unit Testing)**：编写 XCTest 测试排序算法和逾期逻辑。
+- [x] **SwiftData 迁移**：从 JSON 持久化迁移到 Apple 官方的 SwiftData 框架，提升性能和数据管理能力。

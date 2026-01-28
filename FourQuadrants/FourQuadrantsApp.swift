@@ -7,8 +7,14 @@
 
 import SwiftUI
 
+import SwiftData
+
 @main
 struct FourQuadrantsApp: App {
+    init() {
+        print("📁 数据库路径: \(URL.applicationSupportDirectory.path(percentEncoded: false))")
+    }
+    
     var body: some Scene {
         WindowGroup {
             MainView()

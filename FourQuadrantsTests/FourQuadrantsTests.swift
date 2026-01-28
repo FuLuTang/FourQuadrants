@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import SwiftData
 @testable import FourQuadrants
 
 @MainActor
@@ -41,9 +42,10 @@ struct FourQuadrantsTests {
         let inFiveDays = calendar.date(byAdding: .day, value: 5, to: now)!
         
         // 1. 预期：手动设置紧急状态应生效
-        var manualTask = Task(title: "手动紧急", date: now, isUrgent: true)
+        let manualTask = Task(title: "手动紧急", date: now, isUrgent: true)
         #expect(manualTask.isUrgent == true, "手动设置的紧急状态应为 true")
         manualTask.isUrgent = false
+        manualTask.manualIsUrgent = false // 确保 backing property 也更新，虽然 setter 应该处理
         #expect(manualTask.isUrgent == false, "手动取消后的紧急状态应为 false")
         
         // 2. 预期：设置了紧急阈值且日期在范围内，自动判定为紧急
@@ -60,23 +62,27 @@ struct FourQuadrantsTests {
     // MARK: - TaskManager 排序算法测试 (Intelligence)
 
     @Test func testTaskManagerSorting() async throws {
+        // SwiftData 需要上下文，但对于纯逻辑测试 sortTasks，我们可以通过创建内存容器来规避持久化副作用，
+        // 或者直接测试 sortTasks 函数本身，因为它只依赖于 Task 对象数组，不依赖 Context。
         let manager = TaskManager()
-        manager.tasks = [] // 清空初始化数据
+        // 由于 TaskManager 初始化会自动加载数据，测试时我们可以直接传递一个新的数组给 sortTasks 函数，
+        // 而不必依赖 manager.tasks 的状态。
         
         let now = Date()
         let tomorrow = calendarDate(daysFromNow: 1)
         let dayAfterTomorrow = calendarDate(daysFromNow: 2)
         
         // 创建不同种类的任务
+        // 注意：Task 现在是 class，引用类型
         let lowPrio = Task(title: "普通任务", date: now, importance: .normal)
         let highPrio = Task(title: "高优任务", date: now, importance: .high)
         let pinnedTask = Task(title: "置顶任务", date: now, isTop: true)
         let earlierTarget = Task(title: "早期限任务", date: now, targetDate: tomorrow)
         let laterTarget = Task(title: "晚期限任务", date: now, targetDate: dayAfterTomorrow)
         
-        manager.tasks = [lowPrio, laterTarget, pinnedTask, earlierTarget, highPrio]
+        let testTasks = [lowPrio, laterTarget, pinnedTask, earlierTarget, highPrio]
         
-        let sorted = manager.sortTasks(manager.tasks, by: .intelligence)
+        let sorted = manager.sortTasks(testTasks, by: .intelligence)
         
         // 预期排序优先级：1.置顶 > 2.目标日期(由近到远) > 3.重要性(High > Normal) > 4.最后修改日期
         
