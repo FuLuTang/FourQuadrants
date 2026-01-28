@@ -15,6 +15,11 @@ struct SettingsView: View {
                     Toggle("暗黑模式", isOn: .constant(false))
                 }
                 
+                // Sync Settings
+                Section(header: Text("同步")) {
+                    SyncSettingsView()
+                }
+                
                 // 修改后的关于区块
                 Section(header: Text("关于")) {
                     NavigationLink("详细信息", value: Route.about)
@@ -63,4 +68,58 @@ struct AboutDetailView: View {
 
 #Preview {
     SettingsView()
+}
+struct SyncSettingsView: View {
+    @ObservedObject var syncService = SyncService.shared
+    
+    var body: some View {
+        if syncService.isAuthenticated {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text("已连接 Microsoft To Do")
+                        .font(.headline)
+                }
+                
+                if let lastSync = syncService.lastSyncTime {
+                    Text("上次同步: \(lastSync.formatted())")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                     Text("尚未同步")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                if syncService.isSyncing {
+                    ProgressView()
+                }
+                
+                Button(role: .destructive) {
+                    syncService.signOut()
+                } label: {
+                    Text("断开连接")
+                }
+            }
+            .padding(.vertical, 4)
+        } else {
+            Button {
+                Task {
+                    await syncService.signIn()
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                    Text("连接 Microsoft To Do")
+                }
+            }
+        }
+        
+        if let error = syncService.errorMessage {
+            Text(error)
+                .font(.caption)
+                .foregroundStyle(.red)
+        }
+    }
 }

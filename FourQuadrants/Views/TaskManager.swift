@@ -47,6 +47,19 @@ class TaskManager: ObservableObject {
             saveContext()
             fetchTasks()
         }
+        
+        // Auto-sync on launch
+        triggerSync()
+    }
+    
+    // MARK: - Sync
+    
+    func triggerSync() {
+        Task {
+            await SyncService.shared.startSync(context: modelContext)
+            // Refresh UI after sync
+            fetchTasks()
+        }
     }
     
     // MARK: - Core Data Operations
