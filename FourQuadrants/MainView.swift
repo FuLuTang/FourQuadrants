@@ -26,11 +26,6 @@ struct MainView: View {
         // 🔥 关键修改点1：统一 TabBar 样式
         .toolbarBackground(.visible, for: .tabBar) // 强制显示背景
         .toolbarBackground(Color(.systemGray6), for: .tabBar) // 使用系统标准灰色
-        .overlay(alignment: .top) {
-            Divider()
-                .frame(height: 0.5)
-                .background(Color.gray.opacity(0.3))
-        }
         // 🔥 关键修改点2：安全区域适配
         .ignoresSafeArea(.container, edges: [.bottom]) // 允许内容延伸到 TabBar 下方
     }

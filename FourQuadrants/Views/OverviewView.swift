@@ -11,8 +11,13 @@ struct OverviewView: View {
     var body: some View {
         ZStack {
             // 背景使用老版本的低不透明度设计，确保清爽可读
-            color.opacity(isTargeted ? 0.4 : 0.15)
-                .cornerRadius(18)
+            // 背景优化：Solid Backing + Tint + Shadow
+            ZStack {
+                Color(UIColor.secondarySystemGroupedBackground) // 确保在深色模式下也有层级感
+                color.opacity(isTargeted ? 0.3 : 0.12) // 降低一点不透明度，因为有了实心底色
+            }
+            .cornerRadius(18)
+            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4) // 物理悬浮感
             
             VStack(spacing: 0) {
                 // Header - 仿照初始版本的黑字+简单布局

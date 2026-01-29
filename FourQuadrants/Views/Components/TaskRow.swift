@@ -34,9 +34,9 @@ struct TaskRow: View {
                     .padding(.vertical, 2)
                     .background(
                         Capsule()
-                            .fill(task.isOverdue ? Color.red.opacity(0.12) : Color.blue.opacity(0.08))
+                            .fill(task.isOverdue ? Color.red.opacity(0.12) : Color.blue.opacity(0.1))
                     )
-                    .foregroundColor(task.isOverdue ? .red : .blue.opacity(0.8))
+                    .foregroundColor(task.isOverdue ? .red : .blue)
                 }
             }
             .padding(.vertical, 6)

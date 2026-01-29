@@ -29,21 +29,37 @@ struct QuadrantViewContainer: View {
                 }
             }
             .padding(12)
-            .navigationTitle("四象限看板")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+            // 隐藏系统导航栏，消除分色块
+            .toolbar(.hidden, for: .navigationBar)
+            
+            // 自定义顶部 Header (以替代系统导航栏)
+            .safeAreaInset(edge: .top) {
+                HStack {
+                    Text("四象限看板")
+                        .font(.system(.largeTitle, design: .rounded))
+                        .fontWeight(.bold)
+                        .padding(.leading, 8)
+                    
+                    Spacer()
+                    
                     Button {
                         showingTaskFormView = true
                     } label: {
                         Image(systemName: "plus")
-                            .fontWeight(.bold)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(10)
+                            .background(Color.blue)
+                            .clipShape(Circle())
+                            .shadow(color: .blue.opacity(0.3), radius: 4, x: 0, y: 2)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .buttonBorderShape(.circle)
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+                .frame(maxWidth: .infinity)
+                .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea(edges: .top)) // 延伸到状态栏
             }
-            .background(Color(UIColor.secondarySystemBackground).ignoresSafeArea())
+            .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
             .sheet(isPresented: $showingTaskFormView) {
                 TaskFormView(taskManager: taskManager)
             }
