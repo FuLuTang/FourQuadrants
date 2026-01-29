@@ -5,81 +5,59 @@ struct TaskRow: View {
     var onToggle: () -> Void
     
     var body: some View {
-        HStack(spacing: 12) {
-            Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
-                    onToggle()
-                }
-            } label: {
-                ZStack {
-                    Circle()
-                        .strokeBorder(
-                            task.isCompleted ? Color.clear : Color.secondary.opacity(0.3),
-                            lineWidth: 2
-                        )
-                        .background(
-                            Circle()
-                                .fill(task.isCompleted ? LinearGradient(colors: [.green, .mint], startPoint: .topLeading, endPoint: .bottomTrailing) : LinearGradient(colors: [.white.opacity(0.1), .clear], startPoint: .top, endPoint: .bottom))
-                        )
-                        .frame(width: 24, height: 24)
-                        .shadow(color: task.isCompleted ? .green.opacity(0.4) : .clear, radius: 4, x: 0, y: 0)
-                    
-                    if task.isCompleted {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .black))
-                            .foregroundColor(.white)
-                            .transition(.scale.combined(with: .opacity))
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-
-            // MARK: - Task Content
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    if task.isTop {
-                        Image(systemName: "pin.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(LinearGradient(colors: [.orange, .yellow], startPoint: .top, endPoint: .bottom))
-                    }
-                    Text(task.title)
-                        .font(.system(.subheadline, design: .rounded)) // Reduce to subheadline
-                        .fontWeight(task.isCompleted ? .regular : .medium)
-                        .strikethrough(task.isCompleted, color: .secondary.opacity(0.5))
-                        .foregroundColor(task.isCompleted ? .secondary : .primary)
-                        .lineLimit(1) // Avoid multiline sprawl
-                }
+        HStack(alignment: .center, spacing: 10) {
+            // 左侧状态图标 - 保持经典圆圈
+            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 18))
+                .foregroundColor(task.isCompleted ? .green : .gray.opacity(0.4))
+                .padding(5)
+            
+            // 中间标题和日期
+            VStack(alignment: .leading, spacing: 4) {
+                Text(task.title)
+                    .font(.system(.subheadline, design: .rounded))
+                    .fontWeight(.medium)
+                    .foregroundColor(task.isCompleted ? .secondary : .primary)
+                    .strikethrough(task.isCompleted, color: .secondary.opacity(0.5))
+                    // 逻辑：有日期胶囊时显示1行节省空间，没日期时显示2行增加信息量
+                    .lineLimit(task.targetDate == nil ? 2 : 1)
+                    .fixedSize(horizontal: false, vertical: true)
                 
                 if let targetDate = task.targetDate {
-                    HStack(spacing: 2) {
+                    HStack(spacing: 3) {
                         Image(systemName: "calendar")
-                            .font(.system(size: 8))
+                            .font(.system(size: 8, weight: .bold))
                         Text(formattedDate(targetDate))
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.system(size: 9, weight: .heavy))
                     }
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
                     .background(
                         Capsule()
-                            .fill(task.isOverdue ? Color.red.opacity(0.1) : Color.blue.opacity(0.05))
+                            .fill(task.isOverdue ? Color.red.opacity(0.12) : Color.blue.opacity(0.08))
                     )
-                    .foregroundColor(task.isOverdue ? .red : .secondary)
+                    .foregroundColor(task.isOverdue ? .red : .blue.opacity(0.8))
                 }
             }
+            .padding(.vertical, 6)
             
             Spacer()
             
-            // 重要性小标记 (Glowing Dot)
-            if task.importance == .high && !task.isCompleted {
-                Circle()
-                    .fill(AppTheme.Colors.urgentImportant)
-                    .frame(width: 6, height: 6)
-                    .shadow(color: AppTheme.Colors.urgentImportant.opacity(0.6), radius: 3, x: 0, y: 0)
+            // 右侧置顶图标 - 保持右侧排列
+            if task.isTop {
+                Image(systemName: "chevron.up.2")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.blue.opacity(0.7))
+                    .padding(.trailing, 12)
             }
         }
-        .padding(.vertical, 6)
         .padding(.horizontal, 8)
-        .contentShape(Rectangle()) // Ensure tap area covers the whole row
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                onToggle()
+            }
+        }
     }
     
     private func formattedDate(_ date: Date) -> String {

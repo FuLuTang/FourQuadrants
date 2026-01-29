@@ -45,8 +45,10 @@ class TaskManager: ObservableObject {
             fetchTasks()
         }
         
-        // Auto-sync on launch
-        triggerSync()
+        // Auto-sync on launch (skip in previews to avoid hangs)
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+            triggerSync()
+        }
     }
     
     // MARK: - Sync
