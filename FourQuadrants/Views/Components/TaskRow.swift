@@ -5,15 +5,14 @@ struct TaskRow: View {
     var onToggle: () -> Void
     
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: 8) {
             // 左侧状态图标 - 保持经典圆圈
             Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 18))
                 .foregroundColor(task.isCompleted ? .green : .gray.opacity(0.4))
-                .padding(5)
             
             // 中间标题和日期
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(task.title)
                     .font(.system(.subheadline, design: .rounded))
                     .fontWeight(.medium)
@@ -39,7 +38,7 @@ struct TaskRow: View {
                     .foregroundColor(task.isOverdue ? .red : .blue)
                 }
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, 4)
             
             Spacer()
             
@@ -51,12 +50,19 @@ struct TaskRow: View {
                     .padding(.trailing, 12)
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
         .contentShape(Rectangle())
         .onTapGesture {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                 onToggle()
             }
+        }
+        // 长按预览：显示任务的所有参数信息
+        .contextMenu {
+            // 空菜单，仅用于显示预览
+        } preview: {
+            TaskPreviewView(task: task)
         }
     }
     

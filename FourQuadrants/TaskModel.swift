@@ -1,4 +1,6 @@
 import Foundation
+import CoreTransferable
+import UniformTypeIdentifiers
 
 enum ImportanceLevel: String, Codable {
     case low, normal, high
@@ -51,6 +53,19 @@ final class QuadrantTask {
         return targetDate.advanced(by: 86400) < Date()
     }
     
+    /// 根据紧急和重要状态计算所属象限
+    @Transient var category: TaskCategory {
+        if isCompleted {
+            return .completed
+        }
+        switch (isImportantQuadrant, isUrgent) {
+        case (true, true): return .importantAndUrgent
+        case (true, false): return .importantButNotUrgent
+        case (false, true): return .urgentButNotImportant
+        case (false, false): return .notImportantAndNotUrgent
+        }
+    }
+    
     // Sync metadata
     var msTodoId: String? = nil
     var msLastModified: Date? = nil
@@ -73,3 +88,23 @@ final class QuadrantTask {
     }
 }
 
+// MARK: - 轻量级传输对象（用于拖放）
+// SwiftData @Model 不能直接遵循 Codable，因此使用独立的结构体
+struct TaskTransferItem: Codable, Transferable {
+    let taskId: UUID
+    let title: String
+    let isCompleted: Bool
+    let targetDate: Date?
+    
+    static var transferRepresentation: some TransferRepresentation {
+        // 使用简单的 Codable 表示，避免复杂的多重表示可能导致的问题
+        CodableRepresentation(contentType: .json)
+    }
+    
+    init(task: QuadrantTask) {
+        self.taskId = task.id
+        self.title = task.title
+        self.isCompleted = task.isCompleted
+        self.targetDate = task.targetDate
+    }
+}

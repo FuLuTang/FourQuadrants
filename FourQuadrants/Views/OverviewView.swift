@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct OverviewView: View {
     let title: String
@@ -57,8 +58,10 @@ struct OverviewView: View {
                                     TaskRow(task: task) {
                                         taskManager.toggleTask(task)
                                     }
-                                    .onDrag {
-                                        NSItemProvider(object: task.id.uuidString as NSString)
+                                    // iOS 16+ 现代拖拽 API（使用 TaskTransferItem 包装）
+                                    .draggable(TaskTransferItem(task: task)) {
+                                        // 自定义拖拽预览
+                                        TaskDragPreview(task: task, color: color)
                                     }
                                     
                                     Divider()
@@ -72,22 +75,24 @@ struct OverviewView: View {
                 }
             }
         }
-        .onDrop(of: ["public.text"], isTargeted: $isTargeted, perform: { providers -> Bool in
-            if let provider = providers.first {
-                provider.loadObject(ofClass: NSString.self) { (nsString, error) in
-                    if let idString = nsString as? String,
-                       let uuid = UUID(uuidString: idString) {
-                        DispatchQueue.main.async {
-                            if let draggedTask = taskManager.tasks.first(where: { $0.id == uuid }) {
-                                taskManager.dragTaskChangeCategory(task: draggedTask, targetCategory: self.category)
-                            }
-                        }
-                    }
+        // iOS 16+ 现代放置目标 API（接收 TaskTransferItem）
+        .dropDestination(for: TaskTransferItem.self) { droppedItems, location in
+            for item in droppedItems {
+                // 通过 ID 查找实际任务对象
+                if let actualTask = taskManager.tasks.first(where: { $0.id == item.taskId }) {
+                    taskManager.dragTaskChangeCategory(task: actualTask, targetCategory: self.category)
                 }
-                return true
             }
-            return false
-        })
+            return !droppedItems.isEmpty
+        } isTargeted: { targeted in
+            isTargeted = targeted
+        }
+        // 长按预览：显示象限的任务列表
+        .contextMenu {
+            // 空菜单，仅用于显示预览
+        } preview: {
+            QuadrantPreviewView(category: category, tasks: filteredTasks)
+        }
     }
     
     var filteredTasks: [QuadrantTask] {
@@ -109,5 +114,35 @@ struct EmptyStateView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 20)
+    }
+}
+
+// MARK: - 自定义拖拽预览
+struct TaskDragPreview: View {
+    let task: QuadrantTask
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+            
+            Text(task.title)
+                .font(.system(.subheadline, design: .rounded))
+                .fontWeight(.medium)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(color.opacity(0.3), lineWidth: 1)
+        )
     }
 }

@@ -4,6 +4,7 @@ struct ListView: View {
     @ObservedObject var taskManager: TaskManager
     @State private var showingTaskFormView = false
     @State private var selectedCategory: TaskCategory? = .all
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         NavigationSplitView {
@@ -75,11 +76,11 @@ struct TaskListView: View {
                 TaskRow(task: task) {
                     taskManager.toggleTask(task)
                 }
-                .listRowBackground(Color.white.opacity(0.5)) // 配合全局背景
+                .listRowBackground(Color(UIColor.secondarySystemGroupedBackground))
                 .listRowSeparator(.visible)
+                .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12)) // 紧凑的行内边距
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    // 点击行中间也可以编辑
                     selectedTaskForEditing = task
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -99,10 +100,10 @@ struct TaskListView: View {
                 }
             }
         }
-        .listStyle(.insetGrouped)
+        .listStyle(.plain) // 使用 plain 样式，去掉 insetGrouped 的额外间距
         .navigationTitle(category.displayName)
         .scrollContentBackground(.hidden)
-        .background(AppTheme.Colors.backgroundGradient.ignoresSafeArea())
+        .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
