@@ -23,12 +23,6 @@ struct DailyTaskFormView: View {
     @State private var isLinked = false
     @State private var linkedTaskTitle: String = ""
     @State private var linkedTaskInfo: String = ""
-    @State private var completionMode: CompletionMode = .full // 默认"做完"
-    
-    enum CompletionMode: String, CaseIterable {
-        case half = "做一半"
-        case full = "做完"
-    }
     
     init(task: DailyTask? = nil, selectedDate: Date = Date()) {
         self.task = task
@@ -144,24 +138,6 @@ struct DailyTaskFormView: View {
                                     .stroke(Color.green.opacity(0.3), lineWidth: 1)
                             )
                             .cornerRadius(12)
-                            
-                            // 完成程度选择器
-                            HStack {
-                                Text("完成后状态:")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                
-                                Spacer()
-                                
-                                Picker("", selection: $completionMode) {
-                                    ForEach(CompletionMode.allCases, id: \.self) { mode in
-                                        Text(mode.rawValue).tag(mode)
-                                    }
-                                }
-                                .pickerStyle(.segmented)
-                                .frame(width: 150)
-                            }
-                            .padding(.vertical, 4)
                             
                             Button(role: .destructive) {
 

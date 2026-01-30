@@ -334,3 +334,145 @@ func cosineSimilarity(_ vectorA: [Float], _ vectorB: [Float]) -> Float? {
 - 根据选定方案调整 UI/逻辑
 - 实现真实的向量计算 + 关联推荐
 - （可选）灵动岛集成
+
+---
+
+## ✅ 最终方案确定：方案 E - 隐式智能排序 (2026-01-30)
+
+### 核心设计理念
+- **每日视图**：纯粹的时间规划工具，无任何关联操作或状态标记
+- **四象限视图**：在现有排序选项中新增"智能排列"
+- **零心智负担**：不引入"boost""推荐""关联"等概念，用户感知：就是个聪明的排序
+
+### 架构要点（重要修正）
+
+#### 四象限独立性
+- **4个象限各自独立**：每个象限管理自己的任务列表
+- **置顶在象限内**：`isPinned` 是象限内部的概念，不跨象限
+- **排序在象限内**：智能排列只在**每个象限内部**起作用
+
+```
+四象限布局：
+┌──────────────────┬──────────────────┐
+│ 🔴 重要 & 紧急    │ 🟡 重要 & 不紧急   │
+│  📌 置顶 (2)      │  📌 置顶 (1)       │
+│    1. 任务A ⭐⭐   │    1. 任务D ⭐⭐⭐  │ ← 智能分数
+│    2. 任务B ⭐    │  📋 普通            │
+│  📋 普通 (智能↓)  │    1. 任务E ⭐⭐   │
+│    1. 任务C ⭐⭐⭐ │    2. 任务F ⭐     │
+│    2. ...        │    (智能排列)      │
+├──────────────────┼──────────────────┤
+│ 🔵 不重要 & 紧急  │ ⚪ 不重要 & 不紧急  │
+│  (同样分层排序)   │  (同样分层排序)    │
+└──────────────────┴──────────────────┘
+```
+
+### 技术实现
+
+#### 1. 排序模式（全局设置）
+```swift
+enum TaskSortMode: String, CaseIterable {
+    case importance = "按重要性"
+    case time = "按创建时间"
+    case name = "按名称"
+    case smart = "智能排列" // 新增，默认选项
+}
+
+@AppStorage("taskSortMode") var sortMode: TaskSortMode = .smart
+```
+
+#### 2. 象限内排序逻辑
+```swift
+struct QuadrantCell: View {
+    let category: TaskCategory
+    var tasks: [QuadrantTask] // 该象限所有任务
+    
+    var sortedTasks: [QuadrantTask] {
+        let pinned = tasks.filter { $0.isPinned }
+        let unpinned = tasks.filter { !$0.isPinned }
+        
+        // 置顶和普通分别排序
+        return sort(pinned) + sort(unpinned)
+    }
+    
+    func sort(_ tasks: [QuadrantTask]) -> [QuadrantTask] {
+        switch sortMode {
+        case .smart:
+            return calculateSmartScore(tasks)
+        case .time:
+            return tasks.sorted { $0.dateCreated > $1.dateCreated }
+        // ...
+        }
+    }
+    
+    func calculateSmartScore(_ tasks: [QuadrantTask]) -> [QuadrantTask] {
+        guard !recentDailyTasks.isEmpty else {
+            // 无每日任务时回退到按时间
+            return tasks.sorted { $0.dateCreated > $1.dateCreated }
+        }
+        
+        // 计算每个任务与最近3天每日任务的最高相似度
+        let scored = tasks.map { task in
+            (task, maxSimilarity(task, with: recentDailyTasks))
+        }
+        
+        return scored
+            .sorted { $0.1 > $1.1 } // 相似度降序
+            .map { $0.0 }
+    }
+}
+```
+
+#### 3. 性能优化
+- **缓存机制**：计算结果缓存5分钟
+- **懒计算**：只在切换到"智能排列"时计算
+- **异步计算**：使用 `Task.detached` 避免阻塞 UI
+- **预期性能**：100任务 × 10每日任务 = 1000次点积 → ~10ms (vDSP)
+
+### 用户体验设计
+
+#### 视觉反馈（可选，Phase 2）
+- **方案 A**：完全隐藏（推荐 Phase 1）
+  - 用户只看到排序结果
+  - 简洁、无干扰
+  
+- **方案 B**：微妙提示（Phase 2 可选）
+  ```
+  完成 iOS 文档 ⭐⭐⭐
+  └→ 今天 14:00 "写代码" (87%)  ← 长按显示
+  ```
+
+#### 默认行为
+- **新安装**：默认"智能排列"
+- **无每日任务**：自动回退到"按时间"，UI 灰色提示
+- **切换简单**：点击排序按钮 → 选择其他模式
+
+### 优势总结
+1. ✅ **零心智负担**：不引入新概念，就是排序
+2. ✅ **强迫症友好**：每日任务完全干净，无状态标记
+3. ✅ **架构兼容**：天然适配4象限+置顶的现有结构
+4. ✅ **实现简单**：只需在现有排序系统添加一个选项
+5. ✅ **可退化**：无每日任务时优雅降级
+6. ✅ **可扩展**：未来可加"显示关联原因"等高级功能
+
+### 缺点与限制
+- ❌ **不支持灵动岛快速完成**（但用户可接受）
+- ⚠️ **需要2步操作**：完成每日 → 切到四象限 → 完成任务
+
+### 实施计划
+
+**Phase 1 - 简化每日视图（当前）**
+- [x] 移除 `DailyTaskFormView` 中的"做一半/做完"选择器
+- [x] 简化每日任务为纯时间规划
+- [ ] 提交代码
+
+**Phase 2 - 实现智能排序**
+- [ ] 实现向量计算 (`NLEmbedding` + `vDSP`)
+- [ ] 在四象限视图添加"智能排列"选项
+- [ ] 实现象限内分层排序逻辑
+- [ ] 性能优化（缓存）
+
+**Phase 3 - 体验优化（可选）**
+- [ ] 添加"显示关联原因"折叠提示
+- [ ] 排序算法优化（时间衰减因子）
+- [ ] 用户教育（首次使用提示）
