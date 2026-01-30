@@ -24,6 +24,12 @@
   - 任务块按时间段排列
   - 当前时间线横穿任务块，实时更新
   - 支持拖拽调整任务时间
+- **智能关联 TaskList**：创建每日任务时自动推荐关联
+  - 使用 NLEmbedding (简体中文模型) 计算语义相似度
+  - 弹出推荐卡片，一键确认关联
+  - 完成每日任务 → 自动同步完成关联的 TaskList 任务
+  - 技术栈：`NaturalLanguage` + `Accelerate (vDSP)` + `SwiftData`
+  - 详细方案见 `AiProjectDetailMemory.md`
 
 ## 第四部分：Icebox (冷宫/延后)
 - **搜索与筛选**：关键字搜索。由于四象限提倡精简任务，此功能优先级下调。
