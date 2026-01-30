@@ -8,6 +8,9 @@ struct OverviewView: View {
     @ObservedObject var taskManager: TaskManager
     var onZoom: ((TaskCategory) -> Void)? = nil
     @State private var isTargeted: Bool = false
+    @State private var selectedTaskForEditing: QuadrantTask? = nil
+    @State private var showingEditTaskView: Bool = false
+
 
     var body: some View {
         ZStack {
@@ -55,9 +58,14 @@ struct OverviewView: View {
                                 EmptyStateView()
                             } else {
                                 ForEach(filteredTasks) { task in
-                                    TaskRow(task: task) {
+                                    TaskRow(task: task, onToggle: {
                                         taskManager.toggleTask(task)
-                                    }
+                                    }, onEdit: {
+                                        selectedTaskForEditing = task
+                                        showingEditTaskView = true
+                                    }, onDelete: {
+                                        taskManager.removeTask(by: task.id)
+                                    })
                                     // iOS 16+ 现代拖拽 API（使用 TaskTransferItem 包装）
                                     .draggable(TaskTransferItem(task: task)) {
                                         // 自定义拖拽预览
@@ -92,6 +100,9 @@ struct OverviewView: View {
             // 空菜单，仅用于显示预览
         } preview: {
             QuadrantPreviewView(category: category, tasks: filteredTasks)
+        }
+        .sheet(item: $selectedTaskForEditing) { task in
+            TaskFormView(taskManager: taskManager, existingTask: task)
         }
     }
     

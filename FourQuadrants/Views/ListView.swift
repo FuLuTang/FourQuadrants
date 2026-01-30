@@ -73,9 +73,14 @@ struct TaskListView: View {
     var body: some View {
         List {
             ForEach(taskManager.filteredTasks(in: category)) { task in
-                TaskRow(task: task) {
+                TaskRow(task: task, onToggle: {
                     taskManager.toggleTask(task)
-                }
+                }, onEdit: {
+                    selectedTaskForEditing = task
+                    showingEditTaskView = true
+                }, onDelete: {
+                    taskManager.removeTask(by: task.id)
+                })
                 .listRowBackground(Color(UIColor.secondarySystemGroupedBackground))
                 .listRowSeparator(.visible)
                 .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12)) // 紧凑的行内边距

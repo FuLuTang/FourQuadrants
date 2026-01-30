@@ -3,6 +3,8 @@ import SwiftUI
 struct TaskRow: View {
     let task: QuadrantTask
     var onToggle: () -> Void
+    var onEdit: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
     
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
@@ -53,16 +55,45 @@ struct TaskRow: View {
         .padding(.horizontal, 6)
         .padding(.vertical, 4)
         .contentShape(Rectangle())
+        // 长按预览 + 菜单
+        // 注意：contextMenu 放在 onTapGesture 之前通常能更好地解决手势冲突
+        // 或者使用 contentShape 确保点击区域正确
+        .contextMenu {
+            // 1. 切换完成状态
+            Button {
+                withAnimation { onToggle() }
+            } label: {
+                Label(task.isCompleted ? "标为未完成" : "完成任务", 
+                      systemImage: task.isCompleted ? "circle" : "checkmark.circle")
+            }
+            
+            // 2. 编辑
+            if let onEdit = onEdit {
+                Button {
+                    onEdit()
+                } label: {
+                    Label("编辑", systemImage: "pencil")
+                }
+            }
+            
+            Divider()
+            
+            // 3. 删除
+            if let onDelete = onDelete {
+                Button(role: .destructive) {
+                    withAnimation { onDelete() }
+                } label: {
+                    Label("删除", systemImage: "trash")
+                }
+            }
+        } preview: {
+            TaskPreviewView(task: task)
+        }
+        // 单击手势
         .onTapGesture {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                 onToggle()
             }
-        }
-        // 长按预览：显示任务的所有参数信息
-        .contextMenu {
-            // 空菜单，仅用于显示预览
-        } preview: {
-            TaskPreviewView(task: task)
         }
     }
     
