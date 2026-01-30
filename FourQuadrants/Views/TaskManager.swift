@@ -7,18 +7,9 @@ class TaskManager: ObservableObject {
     @Published var tasks: [QuadrantTask] = []
     
     private let modelContext: ModelContext
-    private let modelContainer: ModelContainer
     
-    init() {
-        // Initialize SwiftData container and context
-        do {
-            // Register both QuadrantTask and DailyTask
-            let container = try ModelContainer(for: QuadrantTask.self, DailyTask.self)
-            self.modelContainer = container
-            self.modelContext = container.mainContext
-        } catch {
-            fatalError("Failed to initialize ModelContainer: \(error)")
-        }
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
         
         fetchTasks()
         

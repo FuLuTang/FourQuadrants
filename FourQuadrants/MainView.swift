@@ -1,39 +1,49 @@
 import SwiftUI
 
 struct MainView: View {
-    @StateObject private var taskManager = TaskManager() // 创建共享的 TaskManager 实例
+    @Environment(\.modelContext) private var modelContext
+    @State private var taskManager: TaskManager?
     
     var body: some View {
-        TabView {
-            QuadrantViewContainer(taskManager: taskManager) // 传递共享的 TaskManager 实例
-                .tabItem {
-                    Image(systemName: "square.grid.2x2") // 四个方块的图标
-                    Text("四象限")
+        Group {
+            if let taskManager = taskManager {
+                TabView {
+                    QuadrantViewContainer(taskManager: taskManager)
+                        .tabItem {
+                            Image(systemName: "square.grid.2x2")
+                            Text("四象限")
+                        }
+                    
+                    DailyView()
+                        .tabItem {
+                            Image(systemName: "calendar")
+                            Text("今日")
+                        }
+                    
+                    ListView(taskManager: taskManager)
+                        .tabItem {
+                            Image(systemName: "list.bullet")
+                            Text("列表")
+                        }
+                    
+                    SettingsView()
+                        .tabItem {
+                            Image(systemName: "gear")
+                            Text("设置")
+                        }
                 }
-            
-            DailyView() // 今日视图
-                .tabItem {
-                    Image(systemName: "calendar") // 日历图标
-                    Text("今日")
-                }
-            
-            ListView(taskManager: taskManager) // 传递共享的 TaskManager 实例
-                .tabItem {
-                    Image(systemName: "list.bullet") // 列表图标
-                    Text("列表")
-                }
-            
-            SettingsView() // 设置页面
-                .tabItem {
-                    Image(systemName: "gear") // 齿轮图标
-                    Text("设置")
-                }
+                .toolbarBackground(.visible, for: .tabBar)
+                .toolbarBackground(Color(.systemGray6), for: .tabBar)
+                .ignoresSafeArea(.container, edges: [.bottom])
+            } else {
+                ProgressView()
+            }
         }
-        // 🔥 关键修改点1：统一 TabBar 样式
-        .toolbarBackground(.visible, for: .tabBar) // 强制显示背景
-        .toolbarBackground(Color(.systemGray6), for: .tabBar) // 使用系统标准灰色
-        // 🔥 关键修改点2：安全区域适配
-        .ignoresSafeArea(.container, edges: [.bottom]) // 允许内容延伸到 TabBar 下方
+        .onAppear {
+            if taskManager == nil {
+                taskManager = TaskManager(modelContext: modelContext)
+            }
+        }
     }
 }
 
