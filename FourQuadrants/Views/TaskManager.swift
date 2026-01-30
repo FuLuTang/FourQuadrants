@@ -12,7 +12,8 @@ class TaskManager: ObservableObject {
     init() {
         // Initialize SwiftData container and context
         do {
-            let container = try ModelContainer(for: QuadrantTask.self)
+            // Register both QuadrantTask and DailyTask
+            let container = try ModelContainer(for: QuadrantTask.self, DailyTask.self)
             self.modelContainer = container
             self.modelContext = container.mainContext
         } catch {
