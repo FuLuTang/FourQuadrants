@@ -11,6 +11,12 @@ struct MainView: View {
                     Text("四象限")
                 }
             
+            DailyView() // 今日视图
+                .tabItem {
+                    Image(systemName: "calendar") // 日历图标
+                    Text("今日")
+                }
+            
             ListView(taskManager: taskManager) // 传递共享的 TaskManager 实例
                 .tabItem {
                     Image(systemName: "list.bullet") // 列表图标

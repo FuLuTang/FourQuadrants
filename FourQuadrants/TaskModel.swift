@@ -30,6 +30,10 @@ final class QuadrantTask {
     var completionDate: Date?
     var isTop: Bool = false
     
+    // MARK: - 智能关联 (New)
+    var linkedDailyTaskIDs: [UUID]? = [] // 关联的每日任务 (反向引用)
+    var embeddingData: Data?             // 语义向量数据 (预留)
+    
     // Computed property for auto-urgency
     @Transient var isUrgent: Bool {
         get {
