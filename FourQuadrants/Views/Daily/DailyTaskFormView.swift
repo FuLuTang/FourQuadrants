@@ -20,6 +20,9 @@ struct DailyTaskFormView: View {
     // 智能关联模拟状态
     @State private var isCalculatingLink = false
     @State private var showRecommendation = false
+    @State private var isLinked = false
+    @State private var linkedTaskTitle: String = ""
+    @State private var linkedTaskInfo: String = ""
     
     init(task: DailyTask? = nil, selectedDate: Date = Date()) {
         self.task = task
@@ -102,7 +105,53 @@ struct DailyTaskFormView: View {
                 
                 // 3. 智能关联 (Placeholder UI)
                 Section("智能关联 (AI 推荐)") {
-                    if isCalculatingLink {
+                    if isLinked {
+                        // 已关联状态
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                    .font(.title3)
+                                Text("已关联到四象限任务")
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.green)
+                            }
+                            
+                            // 关联任务卡片
+                            HStack {
+                                Circle()
+                                    .fill(AppTheme.Colors.urgentImportant)
+                                    .frame(width: 8, height: 8)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(linkedTaskTitle)
+                                        .font(.subheadline.bold())
+                                    Text(linkedTaskInfo)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color.green.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                            )
+                            .cornerRadius(12)
+                            
+                            Button(role: .destructive) {
+                                withAnimation {
+                                    isLinked = false
+                                    showRecommendation = true
+                                }
+                            } label: {
+                                Label("取消关联", systemImage: "xmark.circle")
+                                    .font(.caption)
+                            }
+                        }
+                        .transition(.opacity)
+                        
+                    } else if isCalculatingLink {
                         HStack {
                             ProgressView()
                                 .padding(.trailing, 8)
@@ -128,8 +177,16 @@ struct DailyTaskFormView: View {
                                         .foregroundColor(.secondary)
                                 }
                                 Spacer()
-                                Button("关联") {
-                                    // Todo: 关联逻辑
+                                Button {
+                                    // 点击关联
+                                    withAnimation {
+                                        isLinked = true
+                                        linkedTaskTitle = "完成 iOS 开发文档"
+                                        linkedTaskInfo = "重要 & 紧急 • 截止: 明天"
+                                        showRecommendation = false
+                                    }
+                                } label: {
+                                    Text("关联")
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .tint(.blue)
@@ -139,17 +196,21 @@ struct DailyTaskFormView: View {
                             .background(Color(.systemGray6))
                             .cornerRadius(12)
                             
-                            Button("手动选择其他任务...") {
-                                
+                            Button {
+                                // Todo: 手动选择逻辑
+                            } label: {
+                                Text("手动选择其他任务...")
                             }
                             .font(.caption)
                         }
+                        .transition(.opacity)
                     } else if !title.isEmpty {
                          Text("输入完成自动推荐相关任务")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
+
 
                 
                 // 4. 备注
@@ -180,9 +241,17 @@ struct DailyTaskFormView: View {
                     endTime = task.startTime.addingTimeInterval(task.duration)
                     colorHex = task.colorHex ?? "#5E81F4"
                     notes = task.notes ?? ""
+                    
+                    // 检查是否已有关联
+                    if let linkedID = task.linkedQuadrantTaskID {
+                        // Todo: 根据 linkedID 查询 QuadrantTask 的信息
+                        // 这里先模拟
+                        isLinked = true
+                        linkedTaskTitle = "已关联的四象限任务"
+                        linkedTaskInfo = "加载中..."
+                    }
                 } else {
                     // 新建模式：设置默认时间
-                    // 默认当前时间下一个整点
                     let now = Date()
                     let calendar = Calendar.current
                     var components = calendar.dateComponents([.year, .month, .day, .hour], from: now)
