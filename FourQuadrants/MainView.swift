@@ -67,6 +67,8 @@ struct MainView: View {
             if taskManager == nil {
                 taskManager = TaskManager(modelContext: modelContext)
             }
+            // 启动灵动岛检查定时器
+            LiveActivityManager.shared.startTimerIfNeeded(context: modelContext)
         }
     }
 }
