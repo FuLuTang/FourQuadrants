@@ -11,12 +11,13 @@ import SwiftUI
 
 struct FourQuadrantsWidgetAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
-        // Dynamic stateful properties about your activity go here!
-        var emoji: String
+        var taskId: String        // DailyTask.id.uuidString
+        var taskName: String      // 包含 "+N" 重叠标识
+        var startTime: Date
+        var endTime: Date
     }
-
-    // Fixed non-changing properties about your activity go here!
-    var name: String
+    
+    // 静态属性（留空，所有数据走 ContentState）
 }
 
 struct FourQuadrantsWidgetLiveActivity: Widget {
@@ -24,7 +25,7 @@ struct FourQuadrantsWidgetLiveActivity: Widget {
         ActivityConfiguration(for: FourQuadrantsWidgetAttributes.self) { context in
             // Lock screen/banner UI goes here
             VStack {
-                Text("Hello \(context.state.emoji)")
+                Text(context.state.taskName)
             }
             .activityBackgroundTint(Color.cyan)
             .activitySystemActionForegroundColor(Color.black)
@@ -40,15 +41,15 @@ struct FourQuadrantsWidgetLiveActivity: Widget {
                     Text("Trailing")
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text("Bottom \(context.state.emoji)")
-                    // more content
+                    Text(context.state.taskName)
                 }
             } compactLeading: {
-                Text("L")
+                Image(systemName: "checklist")
             } compactTrailing: {
-                Text("T \(context.state.emoji)")
+                Text(context.state.taskName)
+                    .lineLimit(1)
             } minimal: {
-                Text(context.state.emoji)
+                Image(systemName: "checklist")
             }
             .widgetURL(URL(string: "http://www.apple.com"))
             .keylineTint(Color.red)
@@ -58,23 +59,23 @@ struct FourQuadrantsWidgetLiveActivity: Widget {
 
 extension FourQuadrantsWidgetAttributes {
     fileprivate static var preview: FourQuadrantsWidgetAttributes {
-        FourQuadrantsWidgetAttributes(name: "World")
+        FourQuadrantsWidgetAttributes()
     }
 }
 
 extension FourQuadrantsWidgetAttributes.ContentState {
-    fileprivate static var smiley: FourQuadrantsWidgetAttributes.ContentState {
-        FourQuadrantsWidgetAttributes.ContentState(emoji: "😀")
-     }
-     
-     fileprivate static var starEyes: FourQuadrantsWidgetAttributes.ContentState {
-         FourQuadrantsWidgetAttributes.ContentState(emoji: "🤩")
-     }
+    fileprivate static var sample: FourQuadrantsWidgetAttributes.ContentState {
+        FourQuadrantsWidgetAttributes.ContentState(
+            taskId: UUID().uuidString,
+            taskName: "写代码",
+            startTime: Date(),
+            endTime: Date().addingTimeInterval(3600)
+        )
+    }
 }
 
 #Preview("Notification", as: .content, using: FourQuadrantsWidgetAttributes.preview) {
-   FourQuadrantsWidgetLiveActivity()
+    FourQuadrantsWidgetLiveActivity()
 } contentStates: {
-    FourQuadrantsWidgetAttributes.ContentState.smiley
-    FourQuadrantsWidgetAttributes.ContentState.starEyes
+    FourQuadrantsWidgetAttributes.ContentState.sample
 }
