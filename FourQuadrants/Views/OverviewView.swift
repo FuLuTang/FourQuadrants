@@ -118,7 +118,7 @@ struct EmptyStateView: View {
             Image(systemName: "tray")
                 .font(.system(size: 20))
                 .foregroundColor(.secondary.opacity(0.3))
-            Text("无任务")
+            Text("no_tasks")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary.opacity(0.5))
             Spacer()

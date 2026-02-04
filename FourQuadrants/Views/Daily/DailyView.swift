@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Combine
 
 struct DailyView: View {
     @Environment(\.modelContext) private var modelContext
@@ -28,8 +29,10 @@ struct DailyView: View {
                         // 任务块 (这里需要查询当天的任务)
                         DailyTasksLayer(selectedDate: selectedDate, hourHeight: hourHeight, timeColumnWidth: timeColumnWidth)
                         
-                        // 当前时间红线
-                        CurrentTimeLine(hourHeight: hourHeight, timeColumnWidth: timeColumnWidth)
+                        // 当前时间红线 (只在今天显示)
+                        if Calendar.current.isDateInToday(selectedDate) {
+                            CurrentTimeLine(hourHeight: hourHeight, timeColumnWidth: timeColumnWidth)
+                        }
                     }
                     .frame(height: CGFloat(endHour - startHour) * hourHeight + 20) // +20 padding
                     .padding(.bottom, 80) // 底部留白给 FAB
@@ -74,6 +77,20 @@ struct DailyView: View {
                     .clipShape(Circle())
             }
             .padding()
+        }
+        // 监听 tab 重复点击（通过 notification）
+        .onReceive(NotificationCenter.default.publisher(for: .scrollDailyToNow)) { _ in
+            if Calendar.current.isDateInToday(selectedDate) {
+                scrollToCurrentTime()
+            } else {
+                // 如果不是今天，先跳到今天再滚动
+                withAnimation {
+                    selectedDate = Date()
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    scrollToCurrentTime()
+                }
+            }
         }
     }
     
@@ -358,4 +375,7 @@ struct DailyTaskBlock: View {
     }
 }
 
-
+// MARK: - Notification Extension
+extension Notification.Name {
+    static let scrollDailyToNow = Notification.Name("scrollDailyToNow")
+}

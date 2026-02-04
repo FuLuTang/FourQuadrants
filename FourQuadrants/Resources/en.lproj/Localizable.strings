@@ -17,3 +17,94 @@
 "cancel" = "Cancel";
 "add" = "Add";
 "save" = "Save";
+
+/* Main Tab */
+"tab_daily" = "Daily";
+"tab_quadrants" = "Quadrants";
+"tab_list" = "List";
+"tab_settings" = "Settings";
+
+/* Quadrant View */
+"quadrant_board_title" = "Matrix";
+"category_important_urgent" = "Important & Urgent";
+"category_important_not_urgent" = "Important, Not Urgent";
+"category_urgent_not_important" = "Urgent, Not Important";
+"category_not_important_not_urgent" = "Not Important & Not Urgent";
+"no_tasks" = "No tasks";
+
+/* List View */
+"category_title" = "Categories";
+"select_category_prompt" = "Select a Category";
+"category_all_incomplete" = "All Incomplete";
+"category_quadrants_section" = "Quadrants";
+"category_completed_section" = "Completed";
+"alert_task_details_title" = "Task Details";
+"alert_ok" = "OK";
+"menu_delete" = "Delete";
+"menu_edit" = "Edit";
+"menu_complete_task" = "Complete Task";
+"menu_mark_incomplete" = "Mark Incomplete";
+
+/* Settings View */
+"settings_title" = "Settings";
+"settings_app_section" = "App Settings";
+"settings_enable_notifications" = "Enable Notifications";
+"settings_dark_mode" = "Dark Mode";
+
+"settings_sync_section" = "Sync";
+"sync_connected" = "Connected to Microsoft To Do";
+"sync_last_time" = "Last sync: %@";
+"sync_never" = "Not synced yet";
+"sync_disconnect" = "Disconnect";
+"sync_connect_microsoft" = "Connect Microsoft To Do";
+
+"settings_about_section" = "About";
+"settings_details" = "Details";
+
+/* About View */
+"app_name_cn" = "XiangXian";
+"app_name_en" = "Quadrant";
+"slogan_part1" = "Prioritize tasks,";
+"slogan_part2" = "Time follows.";
+"about_features_title" = "Features";
+"feature_quadrant_board" = "Quadrant Board";
+"feature_quadrant_desc" = "Task management based on Eisenhower Matrix";
+"feature_drag_drop" = "Drag & Drop";
+"feature_drag_desc" = "Long press to drag tasks between quadrants";
+"feature_smart_urgent" = "Smart Urgent";
+"feature_urgent_desc" = "Auto-detection based on due dates";
+"feature_microsoft_sync" = "Microsoft Sync";
+"feature_sync_desc" = "Two-way sync with Microsoft To Do";
+
+"about_developer_title" = "Developer";
+"about_design_dev" = "Design & Dev";
+"about_tech_stack" = "Tech Stack";
+"about_min_support" = "Minimum Support";
+
+"about_feedback_title" = "Feedback & Support";
+"feedback_send_email" = "Send Feedback Email";
+"feedback_github" = "GitHub Repository";
+"feedback_rate" = "Rate Us on App Store";
+
+"about_legal" = "Legal";
+"legal_privacy" = "Privacy Policy";
+"legal_terms" = "Terms of Service";
+"copyright_notice" = "© 2026 FourQuadrants. All rights reserved.";
+
+/* Privacy & Terms */
+"privacy_title" = "Privacy Policy";
+"privacy_intro" = "We respect and protect your privacy.";
+"privacy_data_storage_title" = "Data Storage";
+"privacy_data_storage_desc" = "All data is stored locally. If sync is enabled, data is processed via official Microsoft API.";
+"privacy_data_collection_title" = "Data Collection";
+"privacy_data_collection_desc" = "We do not collect any personal info.";
+"privacy_third_party_title" = "Third Party Services";
+"privacy_third_party_desc" = "Microsoft Graph API is used for sync.";
+
+"terms_title" = "Terms of Service";
+"terms_intro" = "Welcome to FourQuadrants.";
+"terms_license_title" = "License";
+"terms_license_desc" = "Limited, non-exclusive, non-transferable license for personal use.";
+"terms_disclaimer_title" = "Disclaimer";
+"terms_disclaimer_desc" = "Provided 'as is' without warranty.";
+

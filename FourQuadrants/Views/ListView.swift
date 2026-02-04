@@ -11,12 +11,12 @@ struct ListView: View {
             List(selection: $selectedCategory) {
                 // 独立"全部"选项
                 NavigationLink(value: TaskCategory.all) {
-                    Text("全部未完成")
+                    Text("category_all_incomplete")
                 }
                 .listRowBackground(Color(.secondarySystemBackground))
                 
                 // 四象限分组
-                Section(header: Text("四象限")) {
+                Section(header: Text("category_quadrants_section")) {
                     ForEach([TaskCategory.importantAndUrgent, TaskCategory.urgentButNotImportant, TaskCategory.importantButNotUrgent, TaskCategory.notImportantAndNotUrgent], id: \.self) { category in
                         NavigationLink(value: category) {
                             Text(category.displayName)
@@ -26,7 +26,7 @@ struct ListView: View {
                 }
 
                 // 已完成分组
-                Section(header: Text("已完成")) {
+                Section(header: Text("category_completed_section")) {
                     NavigationLink(value: TaskCategory.completed) {
                         Text(TaskCategory.completed.displayName)
                     }
@@ -41,7 +41,7 @@ struct ListView: View {
                 )
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("分类")
+            .navigationTitle("category_title")
             }
         detail: {
             if let category = selectedCategory {
@@ -51,7 +51,7 @@ struct ListView: View {
                     selectedCategory: $selectedCategory
                 )
             } else {
-                Text("请选择分类")
+                Text("select_category_prompt")
                     .foregroundStyle(.secondary)
             }
         }
@@ -125,7 +125,7 @@ struct TaskListView: View {
             TaskFormView(taskManager: taskManager)
         }
         .alert(isPresented: $showingTaskDetailsAlert) {
-            Alert(title: Text("任务详情"), message: Text(taskDetails), dismissButton: .default(Text("确定")))
+            Alert(title: Text("alert_task_details_title"), message: Text(taskDetails), dismissButton: .default(Text("alert_ok")))
         }
     }
 

@@ -3,37 +3,42 @@
 # 🚀 待办开发内容 (Active Backlog)
 
 ## 第一部分：核心 P0 (Top Priority)
-- **Microsoft To Do 同步**：通过 Microsoft Graph API 实现与微软待办的双向同步。
-  - 集成 MSAL 认证，处理 OAuth 流程。
-  - 同步逻辑开发：处理 `Task` 的 ID 映射与冲突。
-- **iOS 桌面小组件 (WidgetKit)**：支持主屏幕 2x2, 4x4 小组件展示各象限任务。
-- **灵动岛支持 (Live Activities)**：在任务处理时提供实时状态展示。
+
+### 🔴 当前进行中：灵动岛 (Live Activities)
+- **灵动岛支持**：在每日任务进行时提供实时状态展示
+  - [ ] SwiftData 配置 App Group 共享路径
+  - [ ] 重写 `ContentState` 数据结构
+  - [ ] 实现 LiveActivity UI（Expanded/Compact/Minimal）
+  - [ ] 主 App 添加 `checkTask()` 定时检查逻辑
+  - [ ] 测试多任务重叠场景
+  - 详细方案见 `LiveActivity.伪代码` 和 `AiProjectDetailMemory.md`
+
+### 🟡 待开发
+- **Microsoft To Do 同步**：通过 Microsoft Graph API 实现与微软待办的双向同步
+  - 集成 MSAL 认证，处理 OAuth 流程
+  - 同步逻辑开发：处理 `Task` 的 ID 映射与冲突
+- **iOS 桌面小组件 (WidgetKit)**：支持主屏幕 2x2, 4x4 小组件展示各象限任务
 
 ## 第二部分：质感提升 (Premium UX)
 - **长按预览功能（原生 Context Preview）**：
   - **Task 长按**：弹出小窗口显示该任务的所有参数信息（松手消失）
   - **象限窗格长按**：类似 `TaskListView` 的任务列表展示（探索复用组件）
   - ⚠️ 需测试：Task 长按与象限长按是否存在手势冲突
-- **触感反馈 (Haptic Feedback)**：在勾选、拖拽、删除时加入精细震动反馈。
-- **异步基建优化**：使用 `async/await` 重构数据读写逻辑，避免主线程阻塞。
-
-## 第三部分：今日视图 (Daily Planner)
-- **底栏新增「今日」Tab**：每日时间规划功能
-  - 参考 iOS 日历 App 日视图布局
-  - 左侧时间轴（24小时制）
-  - 任务块按时间段排列
-  - 当前时间线横穿任务块，实时更新
-  - 支持拖拽调整任务时间
-- **智能关联 TaskList**：创建每日任务时自动推荐关联
-  - 使用 NLEmbedding (简体中文模型) 计算语义相似度
-  - 弹出推荐卡片，一键确认关联
-  - 完成每日任务 → 自动同步完成关联的 TaskList 任务
+- **触感反馈 (Haptic Feedback)**：在勾选、拖拽、删除时加入精细震动反馈
+- **异步基建优化**：使用 `async/await` 重构数据读写逻辑，避免主线程阻塞
+- **智能关联 TaskList**：创建每日任务时自动推荐关联（向量搜索）
   - 技术栈：`NaturalLanguage` + `Accelerate (vDSP)` + `SwiftData`
   - 详细方案见 `AiProjectDetailMemory.md`
 
-## 第四部分：Icebox (冷宫/延后)
-- **搜索与筛选**：关键字搜索。由于四象限提倡精简任务，此功能优先级下调。
-- **数据可视化**：周报图表。
+## 第三部分：Icebox (冷宫/延后)
+- **搜索与筛选**：关键字搜索。由于四象限提倡精简任务，此功能优先级下调
+- **数据可视化**：周报图表
+
+## ✅ 已完成：今日视图 (Daily Planner)
+- [x] 底栏新增「今日」Tab：每日时间规划功能
+- [x] 参考 iOS 日历 App 日视图布局（24小时时间轴）
+- [x] 任务块按时间段排列，当前时间红线实时更新
+- [x] 支持拖拽调整任务时间（30分钟吸附）
 
 ---
 

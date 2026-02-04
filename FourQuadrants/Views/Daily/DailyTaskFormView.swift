@@ -86,6 +86,17 @@ struct DailyTaskFormView: View {
                         }
                     
                     DatePicker("结束时间", selection: $endTime, displayedComponents: .hourAndMinute)
+                    
+                    // 跨天任务提示
+                    if endTime <= startTime {
+                        HStack {
+                            Image(systemName: "moon.fill")
+                                .foregroundColor(.purple)
+                            Text("延续至次日")
+                                .font(.caption)
+                                .foregroundColor(.purple)
+                        }
+                    }
                 
                     // 快速时长选择
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -244,8 +255,8 @@ struct DailyTaskFormView: View {
                     notes = task.notes ?? ""
                     
                     // 检查是否已有关联
-                    if let linkedID = task.linkedQuadrantTaskID {
-                        // Todo: 根据 linkedID 查询 QuadrantTask 的信息
+                    if task.linkedQuadrantTaskID != nil {
+                        // Todo: 根据 linkedQuadrantTaskID 查询 QuadrantTask 的信息
                         // 这里先模拟
                         isLinked = true
                         linkedTaskTitle = "已关联的四象限任务"
@@ -281,7 +292,13 @@ struct DailyTaskFormView: View {
     ]
     
     private func saveTask() {
-        let duration = endTime.timeIntervalSince(startTime)
+        var duration = endTime.timeIntervalSince(startTime)
+        
+        // 处理跨天任务：如果结束时间早于开始时间，说明跨越午夜
+        // 例如 23:15 → 2:30，需要加 24 小时
+        if duration <= 0 {
+            duration += 24 * 3600  // +24小时
+        }
         
         if let existingTask = task {
             // 更新

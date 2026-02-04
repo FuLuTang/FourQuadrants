@@ -63,7 +63,7 @@ struct TaskRow: View {
             Button {
                 withAnimation { onToggle() }
             } label: {
-                Label(task.isCompleted ? "标为未完成" : "完成任务", 
+                Label(task.isCompleted ? "menu_mark_incomplete" : "menu_complete_task", 
                       systemImage: task.isCompleted ? "circle" : "checkmark.circle")
             }
             
@@ -72,7 +72,7 @@ struct TaskRow: View {
                 Button {
                     onEdit()
                 } label: {
-                    Label("编辑", systemImage: "pencil")
+                    Label("menu_edit", systemImage: "pencil")
                 }
             }
             
@@ -83,7 +83,7 @@ struct TaskRow: View {
                 Button(role: .destructive) {
                     withAnimation { onDelete() }
                 } label: {
-                    Label("删除", systemImage: "trash")
+                    Label("menu_delete", systemImage: "trash")
                 }
             }
         } preview: {

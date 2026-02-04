@@ -1,0 +1,19 @@
+{
+  "width": 480,
+  "height": 346,
+  "cx": [
+    [ "QUADRANT_TASK", 97 ],
+    [ "LINKS", 249 ],
+    [ "DAILY_TASK", 392 ]
+  ],
+  "cy": [
+    [ "QUADRANT_TASK", 173 ],
+    [ "LINKS", 173 ],
+    [ "DAILY_TASK", 173 ]
+  ],
+  "shift": [
+    [ "LINKS,QUADRANT_TASK,0", 0 ],
+    [ "LINKS,DAILY_TASK,0", 0 ]
+  ],
+  "ratio": []
+}

@@ -3,33 +3,57 @@ import SwiftUI
 struct MainView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var taskManager: TaskManager?
+    @State private var selectedTab: Tab = .quadrant
+    @State private var previousTab: Tab = .quadrant
+
+    private enum Tab: Hashable {
+        case daily
+        case quadrant
+        case list
+        case settings
+    }
     
     var body: some View {
         Group {
             if let taskManager = taskManager {
-                TabView {
-                    QuadrantViewContainer(taskManager: taskManager)
-                        .tabItem {
-                            Image(systemName: "square.grid.2x2")
-                            Text("四象限")
+                TabView(selection: Binding(
+                    get: { selectedTab },
+                    set: { newValue in
+                        // 检测是否重复点击同一个 tab
+                        if newValue == selectedTab && newValue == .daily {
+                            // 重复点击 daily tab，发送通知滚动到当前时间
+                            NotificationCenter.default.post(name: .scrollDailyToNow, object: nil)
                         }
-                    
+                        previousTab = selectedTab
+                        selectedTab = newValue
+                    }
+                )) {
                     DailyView()
+                        .tag(Tab.daily)
                         .tabItem {
                             Image(systemName: "calendar")
-                            Text("今日")
+                            Text("tab_daily")
+                        }
+                    
+                    QuadrantViewContainer(taskManager: taskManager)
+                        .tag(Tab.quadrant)
+                        .tabItem {
+                            Image(systemName: "square.grid.2x2")
+                            Text("tab_quadrants")
                         }
                     
                     ListView(taskManager: taskManager)
+                        .tag(Tab.list)
                         .tabItem {
                             Image(systemName: "list.bullet")
-                            Text("列表")
+                            Text("tab_list")
                         }
                     
                     SettingsView()
+                        .tag(Tab.settings)
                         .tabItem {
                             Image(systemName: "gear")
-                            Text("设置")
+                            Text("tab_settings")
                         }
                 }
                 .toolbarBackground(.visible, for: .tabBar)

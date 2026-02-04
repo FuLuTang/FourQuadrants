@@ -10,22 +10,22 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 // 保留原有应用设置区块
-                Section(header: Text("应用设置")) {
-                    Toggle("启用通知", isOn: .constant(true))
-                    Toggle("暗黑模式", isOn: .constant(false))
+                Section(header: Text("settings_app_section")) {
+                    Toggle("settings_enable_notifications", isOn: .constant(true))
+                    Toggle("settings_dark_mode", isOn: .constant(false))
                 }
                 
                 // Sync Settings
-                Section(header: Text("同步")) {
+                Section(header: Text("settings_sync_section")) {
                     SyncSettingsView()
                 }
                 
                 // 修改后的关于区块
-                Section(header: Text("关于")) {
-                    NavigationLink("详细信息", value: Route.about)
+                Section(header: Text("settings_about_section")) {
+                    NavigationLink("settings_details", value: Route.about)
                 }
             }
-            .navigationTitle("设置")
+            .navigationTitle("settings_title")
             .navigationDestination(for: Route.self) { route in
                 switch route {
                 case .about:
@@ -74,9 +74,9 @@ struct AboutDetailView: View {
                             )
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("项限")
+                            Text("app_name_cn")
                                 .font(.title2.bold())
-                            Text("Quadrant")
+                            Text("app_name_en")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             Text("版本 \(appVersion) (\(buildNumber))")
@@ -92,11 +92,11 @@ struct AboutDetailView: View {
                         Text("项")
                             .foregroundStyle(.blue)
                             .fontWeight(.bold)
-                        Text("目有重，")
+                        Text("slogan_part1")
                         Text("限")
                             .foregroundStyle(.purple)
                             .fontWeight(.bold)
-                        Text("时先行。")
+                        Text("slogan_part2")
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -106,28 +106,28 @@ struct AboutDetailView: View {
             }
             
             // 功能亮点
-            Section(header: Text("功能亮点")) {
-                FeatureRow(icon: "square.grid.2x2", title: "四象限看板", description: "基于艾森豪威尔矩阵的任务管理")
-                FeatureRow(icon: "hand.draw", title: "拖拽分类", description: "长按任务即可拖拽到其他象限")
-                FeatureRow(icon: "clock.badge.exclamationmark", title: "智能紧急", description: "根据截止日期自动判断紧急程度")
-                FeatureRow(icon: "arrow.triangle.2.circlepath", title: "微软同步", description: "与 Microsoft To Do 双向同步")
+            Section(header: Text("about_features_title")) {
+                FeatureRow(icon: "square.grid.2x2", title: String(localized: "feature_quadrant_board"), description: String(localized: "feature_quadrant_desc"))
+                FeatureRow(icon: "hand.draw", title: String(localized: "feature_drag_drop"), description: String(localized: "feature_drag_desc"))
+                FeatureRow(icon: "clock.badge.exclamationmark", title: String(localized: "feature_smart_urgent"), description: String(localized: "feature_urgent_desc"))
+                FeatureRow(icon: "arrow.triangle.2.circlepath", title: String(localized: "feature_microsoft_sync"), description: String(localized: "feature_sync_desc"))
             }
             
             // 开发者
-            Section(header: Text("开发者")) {
-                LabeledContent("设计 & 开发", value: "唐颢宸")
-                LabeledContent("技术栈", value: "SwiftUI + SwiftData")
-                LabeledContent("最低支持", value: "iOS 17.0")
+            Section(header: Text("about_developer_title")) {
+                LabeledContent("about_design_dev", value: "FuLuTang")
+                LabeledContent("about_tech_stack", value: "SwiftUI + SwiftData")
+                LabeledContent("about_min_support", value: "iOS 17.0")
             }
             
             // 反馈与支持
-            Section(header: Text("反馈与支持")) {
+            Section(header: Text("about_feedback_title")) {
                 Button {
-                    if let url = URL(string: "mailto:your.email@example.com?subject=四象限反馈") {
+                    if let url = URL(string: "mailto:your.email@example.com?subject=TotalFeedback") {
                         openURL(url)
                     }
                 } label: {
-                    Label("发送反馈邮件", systemImage: "envelope")
+                    Label("feedback_send_email", systemImage: "envelope")
                 }
                 
                 Button {
@@ -135,7 +135,7 @@ struct AboutDetailView: View {
                         openURL(url)
                     }
                 } label: {
-                    Label("GitHub 仓库", systemImage: "link")
+                    Label("feedback_github", systemImage: "link")
                 }
                 
                 Button {
@@ -144,35 +144,35 @@ struct AboutDetailView: View {
                         openURL(url)
                     }
                 } label: {
-                    Label("为我们评分", systemImage: "star")
+                    Label("feedback_rate", systemImage: "star")
                 }
             }
             
             // 法律信息
-            Section(header: Text("法律信息")) {
+            Section(header: Text("about_legal")) {
                 NavigationLink {
                     PrivacyPolicyView()
                 } label: {
-                    Text("隐私政策")
+                    Text("legal_privacy")
                 }
                 
                 NavigationLink {
                     TermsOfServiceView()
                 } label: {
-                    Text("服务条款")
+                    Text("legal_terms")
                 }
             }
             
             // 版权
             Section {
-                Text("© 2026 FourQuadrants. All rights reserved.")
+                Text("copyright_notice")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .listRowBackground(Color.clear)
             }
         }
-        .navigationTitle("关于")
+        .navigationTitle("settings_about_section")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -207,27 +207,27 @@ struct PrivacyPolicyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("隐私政策")
+                Text("privacy_title")
                     .font(.title.bold())
                 
-                Text("本应用尊重并保护您的隐私。")
+                Text("privacy_intro")
                     .font(.body)
                 
-                Text("数据存储")
+                Text("privacy_data_storage_title")
                     .font(.headline)
-                Text("所有任务数据仅存储在您的设备本地。如果您选择启用 Microsoft To Do 同步，数据将通过微软官方 API 传输并存储在您的微软账户中。")
+                Text("privacy_data_storage_desc")
                 
-                Text("数据收集")
+                Text("privacy_data_collection_title")
                     .font(.headline)
-                Text("我们不收集任何个人信息或使用数据。")
+                Text("privacy_data_collection_desc")
                 
-                Text("第三方服务")
+                Text("privacy_third_party_title")
                     .font(.headline)
-                Text("本应用使用 Microsoft Graph API 进行任务同步。使用该功能时，您的数据将受微软隐私政策保护。")
+                Text("privacy_third_party_desc")
             }
             .padding()
         }
-        .navigationTitle("隐私政策")
+        .navigationTitle("privacy_title")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -237,23 +237,23 @@ struct TermsOfServiceView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("服务条款")
+                Text("terms_title")
                     .font(.title.bold())
                 
-                Text("欢迎使用四象限应用。")
+                Text("terms_intro")
                     .font(.body)
                 
-                Text("使用许可")
+                Text("terms_license_title")
                     .font(.headline)
-                Text("本应用授予您有限的、非独占的、不可转让的许可，仅供个人非商业用途。")
+                Text("terms_license_desc")
                 
-                Text("免责声明")
+                Text("terms_disclaimer_title")
                     .font(.headline)
-                Text("本应用按原样提供，不做任何明示或暗示的保证。")
+                Text("terms_disclaimer_desc")
             }
             .padding()
         }
-        .navigationTitle("服务条款")
+        .navigationTitle("terms_title")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -270,16 +270,16 @@ struct SyncSettingsView: View {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
-                    Text("已连接 Microsoft To Do")
+                    Text("sync_connected")
                         .font(.headline)
                 }
                 
                 if let lastSync = syncService.lastSyncTime {
-                    Text("上次同步: \(lastSync.formatted())")
+                    Text("sync_last_time \(lastSync.formatted())")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
-                     Text("尚未同步")
+                     Text("sync_never")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -291,7 +291,7 @@ struct SyncSettingsView: View {
                 Button(role: .destructive) {
                     syncService.signOut()
                 } label: {
-                    Text("断开连接")
+                    Text("sync_disconnect")
                 }
             }
             .padding(.vertical, 4)
@@ -303,7 +303,7 @@ struct SyncSettingsView: View {
             } label: {
                 HStack {
                     Image(systemName: "arrow.triangle.2.circlepath")
-                    Text("连接 Microsoft To Do")
+                    Text("sync_connect_microsoft")
                 }
             }
         }

@@ -1,0 +1,138 @@
+Setting(set.backgroundActivite.True) // 需要用户手动设置
+ActivityAuthorizationInfo().areActivitiesEnabled // 先请求权限，如果用户拒绝，就无法使用灵动岛,后面可以整个用一个if括起来，或者如果没有liveactivity权限就无事发生的话，不加if也行
+staleDate = endTime + 10min
+
+App.onLaunch{
+    if (read(SwiftData.DailyTask).GET(date == today && beginTime <= now <= endTime) ):
+            update(LiveActivity.ContentState)(TaskName, beginTime, endTime, idDailyTask)
+    for each minute{
+        checkTask()
+    }
+}
+
+checkTask(){
+
+    // 0 没开权限就直接收掉
+    if (!ActivityAuthorizationInfo().areActivitiesEnabled){
+        if (LiveActivityRunning) end(LiveActivity)
+        return
+    }
+
+    // 1 一次性读出：今天、未完成、且“正在进行”的任务
+    activeTasks = read(SwiftData.DailyTask)
+                    .GET(date == today && !isDone && beginTime <= now && now <= endTime)
+
+    // 2 没有当前任务：就结束岛（让它消失）
+    if (activeTasks.count == 0){
+        if (LiveActivityRunning) end(LiveActivity)
+        return
+    }
+
+    // 3 有多个重叠任务：选一个“主任务”来显示
+    //    规则：最先结束的任务优先（也最符合你原来思路）
+    selected = argmin(activeTasks, key = endTime)
+
+    overlapCount = activeTasks.count - 1
+
+    displayName = selected.name
+    if (overlapCount > 0){
+        displayName = selected.name + " +" + overlapCount
+    }
+
+    newState = (taskId    = selected.id,
+                TaskName  = displayName,
+                beginTime = selected.beginTime,
+                endTime   = selected.endTime)
+
+    // 4 没有活动就 start，有活动就“只有变化才 update”
+    if (!LiveActivityRunning){
+        Start(LiveActivity)(newState, staleDate = selected.endTime + 10min)
+        return
+    }
+
+    // 5 已有 LiveActivity：判定是否需要更新
+    if (LaunchedTaskId   != selected.id
+        OR LaunchedBegin != selected.beginTime
+        OR LaunchedEnd   != selected.endTime
+        OR LaunchedName  != displayName){
+
+        update(LiveActivity)(newState, staleDate = selected.endTime + 10min)
+    }
+
+    // 6 注意：这里不再用 "now > endTime" 来 end
+    //    因为只要还有其它重叠任务在进行，activeTasks.count 就不会为 0
+    //    end 的唯一条件就是 activeTasks.count == 0（上面已经处理）
+}
+
+
+
+App.onBackground.Once{ // 当施舍了一次刷新
+    checkTask()
+}
+
+class LiveActivity{
+    view Expanded{ // 展开
+        state normal{ // 正常
+            state InDuration{ // 持续中
+                in Leading{
+                    icon.task
+                }
+                in Trailing{
+                    ProgressView.Circular(timerInterval: begin...end, countsDown: false)
+            }
+                in Center{
+                    TaskName
+                }
+            }
+            state End (now > endTime){ // 结束
+                in Leading{
+                    icon.task.done
+                }
+                in Trailing{
+                    icon.done
+                }
+                in Center{
+                    Text("任务已结束")
+                }
+            }
+        }
+        state overdue{ // 逾期
+            in Leading{
+                icon.task.overdue
+            }
+            in Trailing{
+                icon.done
+            }
+            in Center{
+                Button("已结束 打开同步任务") // 引导用户激活App
+            }
+        }
+    }
+    view Compact{ // 紧凑
+        state normal{ // 正常
+            in Leading{
+                icon.task
+            }
+            in Trailing{
+                ProgressView.Circular(timerInterval: begin...end, countsDown: false)
+            }
+        }
+        state overdue{ // 逾期
+            in Leading{
+                icon.task.overdue
+            }
+            in Trailing{
+                icon.done
+            }
+        }
+    }
+    view Minimal{ // 最小圆
+        ProgressView.Circular(timerInterval: begin...end, countsDown: false)
+    }
+    view LockScreen{ //锁屏
+        NewPage(
+
+        )
+    }
+    
+}

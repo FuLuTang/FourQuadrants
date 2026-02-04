@@ -17,3 +17,94 @@
 "cancel" = "取消";
 "add" = "添加";
 "save" = "保存";
+
+/* Main Tab */
+"tab_daily" = "今日";
+"tab_quadrants" = "四象限";
+"tab_list" = "列表";
+"tab_settings" = "设置";
+
+/* Quadrant View */
+"quadrant_board_title" = "四象限看板";
+"category_important_urgent" = "重要且紧急";
+"category_important_not_urgent" = "重要不紧急";
+"category_urgent_not_important" = "紧急不重要";
+"category_not_important_not_urgent" = "不重要不紧急";
+"no_tasks" = "无任务";
+
+/* List View */
+"category_title" = "分类";
+"select_category_prompt" = "请选择分类";
+"category_all_incomplete" = "全部未完成";
+"category_quadrants_section" = "四象限";
+"category_completed_section" = "已完成";
+"alert_task_details_title" = "任务详情";
+"alert_ok" = "确定";
+"menu_delete" = "删除";
+"menu_edit" = "编辑";
+"menu_complete_task" = "完成任务";
+"menu_mark_incomplete" = "标为未完成";
+
+/* Settings View */
+"settings_title" = "设置";
+"settings_app_section" = "应用设置";
+"settings_enable_notifications" = "启用通知";
+"settings_dark_mode" = "暗黑模式";
+
+"settings_sync_section" = "同步";
+"sync_connected" = "已连接 Microsoft To Do";
+"sync_last_time" = "上次同步: %@";
+"sync_never" = "尚未同步";
+"sync_disconnect" = "断开连接";
+"sync_connect_microsoft" = "连接 Microsoft To Do";
+
+"settings_about_section" = "关于";
+"settings_details" = "详细信息";
+
+/* About View */
+"app_name_cn" = "项限";
+"app_name_en" = "Quadrant";
+"slogan_part1" = "项目有重，";
+"slogan_part2" = "限时先行。";
+"about_features_title" = "功能亮点";
+"feature_quadrant_board" = "四象限看板";
+"feature_quadrant_desc" = "基于艾森豪威尔矩阵的任务管理";
+"feature_drag_drop" = "拖拽分类";
+"feature_drag_desc" = "长按任务即可拖拽到其他象限";
+"feature_smart_urgent" = "智能紧急";
+"feature_urgent_desc" = "根据截止日期自动判断紧急程度";
+"feature_microsoft_sync" = "微软同步";
+"feature_sync_desc" = "与 Microsoft To Do 双向同步";
+
+"about_developer_title" = "开发者";
+"about_design_dev" = "设计 & 开发";
+"about_tech_stack" = "技术栈";
+"about_min_support" = "最低支持";
+
+"about_feedback_title" = "反馈与支持";
+"feedback_send_email" = "发送反馈邮件";
+"feedback_github" = "GitHub 仓库";
+"feedback_rate" = "为我们评分";
+
+"about_legal" = "法律信息";
+"legal_privacy" = "隐私政策";
+"legal_terms" = "服务条款";
+"copyright_notice" = "© 2026 FourQuadrants. All rights reserved.";
+
+/* Privacy & Terms */
+"privacy_title" = "隐私政策";
+"privacy_intro" = "本应用尊重并保护您的隐私。";
+"privacy_data_storage_title" = "数据存储";
+"privacy_data_storage_desc" = "所有任务数据仅存储在您的设备本地。如果您选择启用 Microsoft To Do 同步，数据将通过微软官方 API 传输并存储在您的微软账户中。";
+"privacy_data_collection_title" = "数据收集";
+"privacy_data_collection_desc" = "我们不收集任何个人信息或使用数据。";
+"privacy_third_party_title" = "第三方服务";
+"privacy_third_party_desc" = "本应用使用 Microsoft Graph API 进行任务同步。使用该功能时，您的数据将受微软隐私政策保护。";
+
+"terms_title" = "服务条款";
+"terms_intro" = "欢迎使用四象限应用。";
+"terms_license_title" = "使用许可";
+"terms_license_desc" = "本应用授予您有限的、非独占的、不可转让的许可，仅供个人非商业用途。";
+"terms_disclaimer_title" = "免责声明";
+"terms_disclaimer_desc" = "本应用按原样提供，不做任何明示或暗示的保证。";
+
