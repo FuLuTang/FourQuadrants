@@ -13,6 +13,8 @@ class LiveActivityManager {
     // 缓存上一次的状态，用于判断是否需要更新
     private var lastTaskId: String?
     private var lastTaskName: String?
+    private var lastStartTime: Date?
+    private var lastEndTime: Date?
     
     private init() {}
     
@@ -76,12 +78,17 @@ class LiveActivityManager {
         // 5. 没有活动就启动，有活动就更新（仅变化时）
         if currentActivity == nil {
             startActivity(state: newState, staleDate: selected.endTime.addingTimeInterval(600))
-        } else if lastTaskId != newState.taskId || lastTaskName != newState.taskName {
+        } else if lastTaskId != newState.taskId 
+                    || lastTaskName != newState.taskName
+                    || lastStartTime != newState.startTime
+                    || lastEndTime != newState.endTime {
             updateActivity(state: newState, staleDate: selected.endTime.addingTimeInterval(600))
         }
         
         lastTaskId = newState.taskId
         lastTaskName = newState.taskName
+        lastStartTime = newState.startTime
+        lastEndTime = newState.endTime
     }
     
     // MARK: - SwiftData 查询
@@ -147,5 +154,7 @@ class LiveActivityManager {
         currentActivity = nil
         lastTaskId = nil
         lastTaskName = nil
+        lastStartTime = nil
+        lastEndTime = nil
     }
 }

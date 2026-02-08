@@ -590,3 +590,64 @@ struct FourQuadrantsWidgetAttributes: ActivityAttributes {
   4. 测试多任务重叠场景
 
 ---
+
+## 📁 项目文件结构规范 (2026-02-08)
+
+### 文件放置规则
+
+| 类型 | 目录 | 示例 |
+|------|------|------|
+| `@Model` 数据模型 | `Models/` | `QuadrantTask.swift`, `DailyTask.swift` |
+| 业务逻辑/管理器 | `Services/` | `TaskManager.swift`, `LiveActivityManager.swift` |
+| UI 视图 | `Views/` | `DailyView.swift`, `SettingsView.swift` |
+| 可复用组件 | `Views/Components/` | `TaskRow.swift`, `TaskPreviewView.swift` |
+| 样式/设计系统 | `Views/Styles/` | `DesignSystem.swift` |
+
+### ⚠️ 重要提醒
+
+1. **不要把文件放在根目录**：除了 `FourQuadrantsApp.swift` 和 `MainView.swift`
+2. **TaskManager 不是 View**：已从 `Views/` 移到 `Services/`
+3. **枚举/类型定义放 Models**：如 `TaskCategory.swift`
+
+---
+
+## 🔄 App 升级管理 (AppLifecycleManager)
+
+### 位置
+`Services/AppLifecycleManager.swift`
+
+### 使用场景
+
+1. **Schema 迁移**：当修改 `@Model` 结构时
+2. **版本追踪**：检测新安装/升级/同版本
+3. **首次启动逻辑**：初始化默认数据等
+4. **What's New**：版本更新提示
+
+### 修改 Model 后的操作
+
+```swift
+// 1. 递增版本号
+static let currentSchemaVersion = 2  // 从 1 改为 2
+
+// 2. 添加迁移函数
+private func migrateSchemaToV2(modelContainer: ModelContainer) {
+    // 迁移逻辑
+}
+
+// 3. 在 performSchemaMigrationIfNeeded 中调用
+if oldVersion < 2 {
+    migrateSchemaToV2(modelContainer: modelContainer)
+}
+```
+
+### SwiftData 自动处理的变更
+
+| 变更类型 | 需要手动迁移? |
+|---------|-------------|
+| 添加可选字段 | ❌ 不需要 |
+| 添加带默认值的字段 | ❌ 不需要 |
+| 删除字段 | ❌ 不需要 |
+| 重命名字段 | ✅ 需要 |
+| 改变字段类型 | ✅ 需要 |
+
+---

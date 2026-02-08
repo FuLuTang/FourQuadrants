@@ -19,3 +19,26 @@
 - 可以找用户要“运行表现”作为你的实机反馈
 - 当开发新功能时，需要设计基础结构时，可先查看 AI_dev_context/整体项目背景信息.md 中的工程架构，如果有更具体的疑问或决定，可询问用户
 - 任务进度有变动时，及时更新 UserDevDoc.md
+
+---
+
+## 📁 文件组织规范
+
+| 类型 | 目录 | 说明 |
+|------|------|------|
+| `@Model` 数据模型 | `Models/` | SwiftData 模型、枚举类型 |
+| 业务逻辑/管理器 | `Services/` | 不含 UI 的业务类 |
+| UI 视图 | `Views/` | 按功能分子目录 |
+
+⚠️ **新增文件必须放入对应目录，不要放在根目录！**
+
+---
+
+## 🔄 Schema 迁移提醒
+
+修改 `@Model` 结构后：
+1. 递增 `AppLifecycleManager.currentSchemaVersion`
+2. 添加对应的 `migrateSchemaToVX()` 函数
+3. 在迁移链中调用
+
+详见 `AiProjectDetailMemory.md` 的「App 升级管理」章节。

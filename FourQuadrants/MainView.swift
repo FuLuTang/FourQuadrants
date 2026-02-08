@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @State private var taskManager: TaskManager?
     @State private var selectedTab: Tab = .quadrant
     @State private var previousTab: Tab = .quadrant
@@ -69,6 +70,12 @@ struct MainView: View {
             }
             // 启动灵动岛检查定时器
             LiveActivityManager.shared.startTimerIfNeeded(context: modelContext)
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            // App 从后台回到前台时，立即触发灵动岛检查
+            if newPhase == .active {
+                LiveActivityManager.shared.checkTask(context: modelContext)
+            }
         }
     }
 }

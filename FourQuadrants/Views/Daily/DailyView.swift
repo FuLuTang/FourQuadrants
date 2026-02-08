@@ -252,6 +252,7 @@ struct DailyTasksLayer: View {
 struct DailyTaskBlock: View {
     @Bindable var task: DailyTask
     let hourHeight: CGFloat
+    @Environment(\.modelContext) private var modelContext
     
     @State private var dragOffset: CGFloat = 0
     @State private var isDragging = false
@@ -321,6 +322,9 @@ struct DailyTaskBlock: View {
                             let snappedDuration = round(rawDuration / 900.0) * 900.0
                             task.duration = max(900.0, snappedDuration)
                             
+                            // 触发灵动岛更新
+                            LiveActivityManager.shared.checkTask(context: modelContext)
+                            
                             isResizing = false
                             resizeOffset = 0
                         }
@@ -356,6 +360,9 @@ struct DailyTaskBlock: View {
                     if let newStartDate = calendar.date(bySettingHour: Int(snappedMinutes) / 60, minute: Int(snappedMinutes) % 60, second: 0, of: rawNewDate) {
                         currentDurationWithAnimation(newStartDate: newStartDate)
                     }
+                    
+                    // 触发灵动岛更新
+                    LiveActivityManager.shared.checkTask(context: modelContext)
                     
                     isDragging = false
                     dragOffset = 0

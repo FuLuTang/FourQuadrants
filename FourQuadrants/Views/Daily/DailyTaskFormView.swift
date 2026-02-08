@@ -320,6 +320,9 @@ struct DailyTaskFormView: View {
             newTask.notes = notes
             modelContext.insert(newTask)
         }
+        
+        // 立即触发灵动岛检查，确保新建/编辑后及时更新
+        LiveActivityManager.shared.checkTask(context: modelContext)
     }
     
     private func triggerLinkCalculation() {
