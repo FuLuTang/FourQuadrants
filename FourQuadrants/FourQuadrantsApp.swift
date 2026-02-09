@@ -5,6 +5,7 @@ import SwiftData
 struct FourQuadrantsApp: App {
     let modelContainer: ModelContainer
     @State private var showWhatsNew = false
+    @ObservedObject private var languageManager = LanguageManager.shared
     
     init() {
         // 尝试使用 App Group 共享路径，失败则回退到默认路径
@@ -34,6 +35,7 @@ struct FourQuadrantsApp: App {
     var body: some Scene {
         WindowGroup {
             MainView()
+                .environment(\.locale, languageManager.locale)
                 .task {
                     // 1. 执行升级检查（包括 Schema 迁移）
                     let shouldShowWhatsNew = AppLifecycleManager.shared.performUpdateIfNeeded(

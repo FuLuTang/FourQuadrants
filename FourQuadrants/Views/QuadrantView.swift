@@ -46,13 +46,9 @@ struct QuadrantViewContainer: View {
                         showingTaskFormView = true
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(10)
-                            .background(Color.blue)
-                            .clipShape(Circle())
-                            .shadow(color: .blue.opacity(0.3), radius: 4, x: 0, y: 2)
                     }
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(AppTheme.Colors.importantNotUrgent)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)

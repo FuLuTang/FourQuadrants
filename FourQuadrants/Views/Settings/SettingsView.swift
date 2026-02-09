@@ -6,6 +6,9 @@ struct SettingsView: View {
     @AppStorage("darkModeEnabled") private var darkModeEnabled = false
     @AppStorage("darkModeFollowSystem") private var darkModeFollowSystem = true
     
+    // 语言管理器
+    @ObservedObject private var languageManager = LanguageManager.shared
+    
     // 用于控制 colorScheme
     @Environment(\.colorScheme) private var systemColorScheme
     @Environment(\.modelContext) private var modelContext
@@ -35,6 +38,25 @@ struct SettingsView: View {
                     }
                 }
                 
+                // 语言设置
+                Section(header: Text("settings_language_section")) {
+                    Picker(selection: $languageManager.currentLanguage) {
+                        ForEach(LanguageManager.Language.allCases) { language in
+                            HStack {
+                                Text(language.flag)
+                                Text(language.displayName)
+                                if language == .auto {
+                                    Text("(\(LanguageManager.systemLanguageDisplayName))")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .tag(language)
+                        }
+                    } label: {
+                        Text("settings_language")
+                    }
+                }
+                
                 // Sync Settings
                 Section(header: Text("settings_sync_section")) {
                     SyncSettingsView()
@@ -54,6 +76,7 @@ struct SettingsView: View {
                 }
             }
         }
+        .environment(\.locale, languageManager.locale)
         .preferredColorScheme(colorSchemePreference)
     }
     

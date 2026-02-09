@@ -59,6 +59,10 @@
 "sync_disconnect" = "Disconnect";
 "sync_connect_microsoft" = "Connect Microsoft To Do";
 
+"settings_language_section" = "Language";
+"settings_language" = "Language";
+"language_auto" = "Auto (System)";
+
 "settings_about_section" = "About";
 "settings_details" = "Details";
 

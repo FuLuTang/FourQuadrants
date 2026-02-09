@@ -16,6 +16,9 @@ struct TaskFormView: View {
     @State private var urgentThresholdDays: Int
     @State private var isTop: Bool = false
     
+    // 键盘焦点状态 - 修复第三方输入法卡死问题
+    @FocusState private var isTitleFocused: Bool
+    
     init(taskManager: TaskManager, existingTask: QuadrantTask? = nil) {
         self.taskManager = taskManager
         self.existingTask = existingTask
@@ -34,6 +37,11 @@ struct TaskFormView: View {
             Form {
                 Section(header: Text("task_details")) {
                     TextField("task_name", text: $title)
+                        .focused($isTitleFocused)
+                        .submitLabel(.done)
+                        .onSubmit {
+                            isTitleFocused = false
+                        }
                     Section(header: Text("importance")) {
                         Picker("importance", selection: $importance) {
                             Text("low").tag(ImportanceLevel.low)
@@ -67,10 +75,17 @@ struct TaskFormView: View {
                     }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(existingTask == nil ? "add_task" : "edit_task")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("cancel") { dismiss() }
+                    Button("cancel") {
+                        // 先关闭键盘，再 dismiss，避免手势冲突
+                        isTitleFocused = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            dismiss()
+                        }
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(existingTask == nil ? "add" : "save") {
@@ -78,12 +93,23 @@ struct TaskFormView: View {
                     }
                     .disabled(title.isEmpty)
                 }
+                // 键盘工具栏 Done 按钮
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        isTitleFocused = false
+                    }
+                }
             }
         }
+        .presentationDetents([.large]) // 使用 .large 避免键盘冲突
     }
     
     // **统一保存逻辑**
     private func saveTask() {
+        // 先关闭键盘
+        isTitleFocused = false
+        
         let finalTargetDate = hasTargetDate ? targetDate : nil
         let finalUrgentThreshold = (hasTargetDate && hasUrgentThreshold) ? urgentThresholdDays : nil
         let now = Date()  // 获取当前时间

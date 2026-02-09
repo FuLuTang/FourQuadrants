@@ -59,6 +59,10 @@
 "sync_disconnect" = "断开连接";
 "sync_connect_microsoft" = "连接 Microsoft To Do";
 
+"settings_language_section" = "语言";
+"settings_language" = "语言";
+"language_auto" = "自动（跟随系统）";
+
 "settings_about_section" = "关于";
 "settings_details" = "详细信息";
 
