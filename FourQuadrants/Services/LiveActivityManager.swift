@@ -42,7 +42,19 @@ class LiveActivityManager {
     // MARK: - 核心逻辑 (基于伪代码)
     
     func checkTask(context: ModelContext) {
-        // 0. 检查权限
+        // 0. 检查用户设置
+        let notificationsEnabled = UserDefaults.standard.bool(forKey: "notificationsEnabled")
+        // 注意: AppStorage 默认值为 true，但 UserDefaults.bool 默认返回 false
+        // 所以我们需要检查是否是首次运行（没有设置过）
+        let hasSetNotificationPref = UserDefaults.standard.object(forKey: "notificationsEnabled") != nil
+        let isEnabled = hasSetNotificationPref ? notificationsEnabled : true
+        
+        guard isEnabled else {
+            endActivityIfNeeded()
+            return
+        }
+        
+        // 1. 检查系统权限
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             endActivityIfNeeded()
             return
