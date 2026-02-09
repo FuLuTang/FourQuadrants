@@ -29,7 +29,8 @@ class LiveActivityManager {
         
         // 每60秒检查一次
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+            guard let self = self else { return }
+            Task { @MainActor [weak self] in
                 self?.checkTask(context: context)
             }
         }

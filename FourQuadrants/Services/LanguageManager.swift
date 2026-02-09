@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import Foundation
 
 /// 语言管理器 - 负责应用内语言切换
