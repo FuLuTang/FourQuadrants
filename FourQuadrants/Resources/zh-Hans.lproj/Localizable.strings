@@ -49,7 +49,8 @@
 "settings_title" = "设置";
 "settings_app_section" = "应用设置";
 "settings_enable_notifications" = "启用通知";
-"settings_dark_mode" = "暗黑模式";
+"settings_dark_mode" = "深色模式";
+"settings_dark_mode_auto" = "自动（跟随系统）";
 
 "settings_sync_section" = "同步";
 "sync_connected" = "已连接 Microsoft To Do";
@@ -64,6 +65,7 @@
 /* About View */
 "app_name_cn" = "项限";
 "app_name_en" = "Quadrant";
+"about_version %@ (%@)" = "版本 %@ (%@)";
 "slogan_part1" = "项目有重，";
 "slogan_part2" = "限时先行。";
 "about_features_title" = "功能亮点";
@@ -108,3 +110,13 @@
 "terms_disclaimer_title" = "免责声明";
 "terms_disclaimer_desc" = "本应用按原样提供，不做任何明示或暗示的保证。";
 
+/* Daily Task Form View */
+"daily_unlink" = "取消关联";
+"daily_analyzing" = "正在分析语义...";
+"daily_related_tasks" = "检测到与以下任务相关：";
+"daily_link" = "关联";
+"daily_select_other" = "手动选择其他任务...";
+"daily_auto_recommend" = "输入完成自动推荐相关任务";
+"daily_notes" = "备注";
+"daily_new_task" = "新建每日任务";
+"daily_edit_task" = "编辑任务";

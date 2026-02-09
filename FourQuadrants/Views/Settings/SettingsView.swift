@@ -1,6 +1,14 @@
 import SwiftUI
 
 struct SettingsView: View {
+    // 用户偏好设置
+    @AppStorage("notificationsEnabled") private var notificationsEnabled = true
+    @AppStorage("darkModeEnabled") private var darkModeEnabled = false
+    @AppStorage("darkModeFollowSystem") private var darkModeFollowSystem = true
+    
+    // 用于控制 colorScheme
+    @Environment(\.colorScheme) private var systemColorScheme
+    
     // 定义导航路径类型
     private enum Route: Hashable {
         case about
@@ -9,10 +17,21 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // 保留原有应用设置区块
+                // 应用设置区块
                 Section(header: Text("settings_app_section")) {
-                    Toggle("settings_enable_notifications", isOn: .constant(true))
-                    Toggle("settings_dark_mode", isOn: .constant(false))
+                    // 通知开关
+                    Toggle("settings_enable_notifications", isOn: $notificationsEnabled)
+                        .onChange(of: notificationsEnabled) { _, newValue in
+                            handleNotificationToggle(enabled: newValue)
+                        }
+                    
+                    // 深色模式 - 跟随系统
+                    Toggle("settings_dark_mode_auto", isOn: $darkModeFollowSystem)
+                    
+                    // 深色模式 - 手动切换（仅在不跟随系统时可用）
+                    if !darkModeFollowSystem {
+                        Toggle("settings_dark_mode", isOn: $darkModeEnabled)
+                    }
                 }
                 
                 // Sync Settings
@@ -33,6 +52,34 @@ struct SettingsView: View {
                         .toolbar(.hidden, for: .tabBar) // 隐藏底部TabBar
                 }
             }
+        }
+        .preferredColorScheme(colorSchemePreference)
+    }
+    
+    // 计算当前应该使用的 colorScheme
+    private var colorSchemePreference: ColorScheme? {
+        if darkModeFollowSystem {
+            return nil // nil 表示跟随系统
+        }
+        return darkModeEnabled ? .dark : .light
+    }
+    
+    // 处理通知开关变化
+    private func handleNotificationToggle(enabled: Bool) {
+        if enabled {
+            // 请求通知权限
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+                if !granted {
+                    // 如果用户拒绝，需要引导用户去设置
+                    DispatchQueue.main.async {
+                        notificationsEnabled = false
+                    }
+                    print("⚠️ 通知权限被拒绝")
+                }
+            }
+        } else {
+            // 提示用户需要去系统设置关闭
+            print("ℹ️ 用户已关闭应用内通知偏好")
         }
     }
 }
@@ -79,7 +126,7 @@ struct AboutDetailView: View {
                             Text("app_name_en")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            Text("版本 \(appVersion) (\(buildNumber))")
+                            Text("about_version \(appVersion) (\(buildNumber))")
                                 .font(.caption)
                                 .foregroundStyle(.tertiary)
                         }
@@ -123,7 +170,7 @@ struct AboutDetailView: View {
             // 反馈与支持
             Section(header: Text("about_feedback_title")) {
                 Button {
-                    if let url = URL(string: "mailto:your.email@example.com?subject=TotalFeedback") {
+                    if let url = URL(string: "mailto:tanghaochen0506@hotmail.com?subject=TotalFeedback") {
                         openURL(url)
                     }
                 } label: {
@@ -131,7 +178,7 @@ struct AboutDetailView: View {
                 }
                 
                 Button {
-                    if let url = URL(string: "https://github.com/yourusername/FourQuadrants") {
+                    if let url = URL(string: "https://github.com/fulutang/FourQuadrants") {
                         openURL(url)
                     }
                 } label: {

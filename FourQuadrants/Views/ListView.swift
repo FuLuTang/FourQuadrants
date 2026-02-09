@@ -92,14 +92,14 @@ struct TaskListView: View {
                     Button(role: .destructive) {
                         taskManager.removeTask(by: task.id)
                     } label: {
-                        Label("删除", systemImage: "trash")
+                        Label("menu_delete", systemImage: "trash")
                     }
                     
                     Button {
                         selectedTaskForEditing = task
                         showingEditTaskView = true
                     } label: {
-                        Label("编辑", systemImage: "pencil")
+                        Label("menu_edit", systemImage: "pencil")
                     }
                     .tint(category.themeColor)
                 }

@@ -157,7 +157,7 @@ struct DailyTaskFormView: View {
                                     showRecommendation = true
                                 }
                             } label: {
-                                Label("取消关联", systemImage: "xmark.circle")
+                                Label("daily_unlink", systemImage: "xmark.circle")
                                     .font(.caption)
                             }
                         }
@@ -167,12 +167,12 @@ struct DailyTaskFormView: View {
                         HStack {
                             ProgressView()
                                 .padding(.trailing, 8)
-                            Text("正在分析语义...")
+                            Text("daily_analyzing")
                                 .foregroundColor(.secondary)
                         }
                     } else if showRecommendation {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("检测到与以下任务相关：")
+                            Text("daily_related_tasks")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
@@ -198,7 +198,7 @@ struct DailyTaskFormView: View {
                                         showRecommendation = false
                                     }
                                 } label: {
-                                    Text("关联")
+                                    Text("daily_link")
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .tint(.blue)
@@ -211,13 +211,13 @@ struct DailyTaskFormView: View {
                             Button {
                                 // Todo: 手动选择逻辑
                             } label: {
-                                Text("手动选择其他任务...")
+                                Text("daily_select_other")
                             }
                             .font(.caption)
                         }
                         .transition(.opacity)
                     } else if !title.isEmpty {
-                         Text("输入完成自动推荐相关任务")
+                         Text("daily_auto_recommend")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -226,19 +226,19 @@ struct DailyTaskFormView: View {
 
                 
                 // 4. 备注
-                Section("备注") {
+                Section("daily_notes") {
                     TextEditor(text: $notes)
                         .frame(minHeight: 80)
                 }
             }
-            .navigationTitle(task == nil ? "新建每日任务" : "编辑任务")
+            .navigationTitle(task == nil ? String(localized: "daily_new_task") : String(localized: "daily_edit_task"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button("cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button("save") {
                         saveTask()
                         dismiss()
                     }

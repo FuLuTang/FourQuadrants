@@ -50,6 +50,7 @@
 "settings_app_section" = "App Settings";
 "settings_enable_notifications" = "Enable Notifications";
 "settings_dark_mode" = "Dark Mode";
+"settings_dark_mode_auto" = "Auto (Follow System)";
 
 "settings_sync_section" = "Sync";
 "sync_connected" = "Connected to Microsoft To Do";
@@ -64,6 +65,7 @@
 /* About View */
 "app_name_cn" = "XiangXian";
 "app_name_en" = "Quadrant";
+"about_version %@ (%@)" = "Version %@ (%@)";
 "slogan_part1" = "Prioritize tasks,";
 "slogan_part2" = "Time follows.";
 "about_features_title" = "Features";
@@ -107,4 +109,15 @@
 "terms_license_desc" = "Limited, non-exclusive, non-transferable license for personal use.";
 "terms_disclaimer_title" = "Disclaimer";
 "terms_disclaimer_desc" = "Provided 'as is' without warranty.";
+
+/* Daily Task Form View */
+"daily_unlink" = "Unlink";
+"daily_analyzing" = "Analyzing semantics...";
+"daily_related_tasks" = "Related tasks detected:";
+"daily_link" = "Link";
+"daily_select_other" = "Select other task...";
+"daily_auto_recommend" = "Auto-recommend related tasks after input";
+"daily_notes" = "Notes";
+"daily_new_task" = "New Daily Task";
+"daily_edit_task" = "Edit Task";
 

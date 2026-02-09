@@ -12,9 +12,15 @@
   - [ ] 实现 LiveActivity UI（Expanded/Compact/Minimal）
   - [ ] 主 App 添加 `checkTask()` 定时检查逻辑
   - [ ] 测试多任务重叠场景
-  - 详细方案见 `LiveActivity.伪代码` 和 `AiProjectDetailMemory.md`
+  - [ ] 详细方案见 `LiveActivity.伪代码` 和 `AiProjectDetailMemory.md`
+  - [ ] UI优化升级（找用户要figma预览）
 
 ### 🟡 待开发
+- ~~设置页面~~
+  - [x] “通知”开关修复
+  - [x] “深色模式”开关修复
+  - [x] 多语言文字补充
+
 - **Microsoft To Do 同步**：通过 Microsoft Graph API 实现与微软待办的双向同步
   - 集成 MSAL 认证，处理 OAuth 流程
   - 同步逻辑开发：处理 `Task` 的 ID 映射与冲突
