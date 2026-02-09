@@ -46,15 +46,18 @@ struct DailyView: View {
         .overlay(alignment: .bottomTrailing) {
             // 右下角添加按钮
             Button {
-                showAddTaskSheet = true // Present Sheet
+                showAddTaskSheet = true
             } label: {
                 Image(systemName: "plus")
                     .font(.title2.bold())
-                    .foregroundColor(.white)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.white)
                     .frame(width: 56, height: 56)
-                    .background(Color.blue)
-                    .clipShape(Circle())
-                    .shadow(radius: 4, y: 3)
+                    .glassEffect(
+                        .clear.tint(.blue).interactive(),
+                        in: .circle
+                    )
+                    .shadow(color: Color.black.opacity(0.10), radius: 8, x: 0, y: 4)
             }
             .padding()
         }
@@ -71,10 +74,16 @@ struct DailyView: View {
             } label: {
                 Image(systemName: "location.fill")
                     .font(.title3)
-                    .foregroundColor(.blue)
+                    .foregroundStyle(.tint)
                     .padding(12)
                     .background(.ultraThinMaterial)
                     .clipShape(Circle())
+                    .glassEffect(
+                        //.clear.tint(.white)
+                        .clear.interactive(),
+                        in: .circle
+                    )
+                    .shadow(color: Color.black.opacity(0.10), radius: 8, x: 0, y: 4)
             }
             .padding()
         }
@@ -130,7 +139,8 @@ struct DailyView: View {
             }
         }
         .padding(.horizontal)
-        .background(Color(UIColor.systemBackground))
+        .background(.bar)
+        .overlay(Divider().opacity(0.6), alignment: .bottom)
         .zIndex(1)
     }
     
@@ -385,4 +395,14 @@ struct DailyTaskBlock: View {
 // MARK: - Notification Extension
 extension Notification.Name {
     static let scrollDailyToNow = Notification.Name("scrollDailyToNow")
+}
+
+// MARK: - Preview
+#Preview {
+    let container = try! ModelContainer(
+        for: QuadrantTask.self, DailyTask.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    return DailyView()
+        .modelContainer(container)
 }

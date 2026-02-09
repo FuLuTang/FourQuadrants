@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct QuadrantViewContainer: View {
     @ObservedObject var taskManager: TaskManager
@@ -53,7 +54,9 @@ struct QuadrantViewContainer: View {
                             .clipShape(Circle())
                             .shadow(color: .blue.opacity(0.3), radius: 4, x: 0, y: 2)
                     }
-                    .glassEffect()
+                    .glassEffect(
+                        .clear.tint(.blue).interactive()
+                    )
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
@@ -108,4 +111,14 @@ struct QuadrantViewContainer: View {
             .transition(.asymmetric(insertion: .scale(scale: 0.9).combined(with: .opacity), removal: .scale(scale: 0.9).combined(with: .opacity)))
         }
     }
+}
+
+// MARK: - Preview
+#Preview {
+    let container = try! ModelContainer(
+        for: QuadrantTask.self, DailyTask.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    return QuadrantViewContainer(taskManager: TaskManager(modelContext: container.mainContext))
+        .modelContainer(container)
 }

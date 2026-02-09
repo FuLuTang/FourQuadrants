@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct ListView: View {
     @ObservedObject var taskManager: TaskManager
@@ -136,4 +137,14 @@ struct TaskListView: View {
     }
 
 
+}
+
+// MARK: - Preview
+#Preview {
+    let container = try! ModelContainer(
+        for: QuadrantTask.self, DailyTask.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    return ListView(taskManager: TaskManager(modelContext: container.mainContext))
+        .modelContainer(container)
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import UniformTypeIdentifiers
 
 struct OverviewView: View {
@@ -72,8 +73,7 @@ struct OverviewView: View {
                 }
             }
         }
-        // iOS 26 Liquid Glass 效果
-        .background(.glassEffect(in: .rect(cornerRadius: 18)))
+        .glassEffect(in: .rect(cornerRadius: 18))
         .overlay(
             // 保持拖拽高亮效果
             RoundedRectangle(cornerRadius: 18)
@@ -152,4 +152,21 @@ struct TaskDragPreview: View {
                 .strokeBorder(color.opacity(0.3), lineWidth: 1)
         )
     }
+}
+
+// MARK: - Preview
+#Preview {
+    let container = try! ModelContainer(
+        for: QuadrantTask.self, DailyTask.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    return OverviewView(
+        title: "重要且紧急",
+        color: .red,
+        category: .importantAndUrgent,
+        taskManager: TaskManager(modelContext: container.mainContext)
+    )
+    .frame(height: 300)
+    .padding()
+    .modelContainer(container)
 }
