@@ -7,12 +7,12 @@
 
 ### 🔴 当前进行中：灵动岛 (Live Activities)
 - **灵动岛支持**：在每日任务进行时提供实时状态展示
-  - [ ] SwiftData 配置 App Group 共享路径
-  - [ ] 重写 `ContentState` 数据结构
-  - [ ] 实现 LiveActivity UI（Expanded/Compact/Minimal）
-  - [ ] 主 App 添加 `checkTask()` 定时检查逻辑
+  - [x] SwiftData 配置 App Group 共享路径
+  - [x] 重写 `ContentState` 数据结构 (LiveActivityAttributes.swift)
+  - [ ] 实现 LiveActivity UI（Expanded/Compact/Minimal）← **当前阻塞项**
+  - [x] 主 App 添加 `checkTask()` 定时检查逻辑
   - [ ] 测试多任务重叠场景
-  - [ ] 详细方案见 `LiveActivity.伪代码` 和 `AiProjectDetailMemory.md`
+  - [x] 详细方案见 `LiveActivity.伪代码` 和 `AiProjectDetailMemory.md`
   - [ ] UI优化升级（找用户要figma预览）
 
 ### 🟡 待开发
