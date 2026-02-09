@@ -9,6 +9,7 @@ struct FourQuadrantsWidgetAttributes: ActivityAttributes {
         var taskName: String      // 包含 "+N" 重叠标识
         var startTime: Date
         var endTime: Date
+        var colorHex: String?     // 任务颜色 (e.g., "#FF5733")
     }
     
     // 静态属性（留空，所有数据走 ContentState）

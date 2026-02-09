@@ -15,6 +15,7 @@ class LiveActivityManager {
     private var lastTaskName: String?
     private var lastStartTime: Date?
     private var lastEndTime: Date?
+    private var lastColorHex: String?
     
     private init() {}
     
@@ -84,7 +85,8 @@ class LiveActivityManager {
             taskId: selected.id.uuidString,
             taskName: displayName,
             startTime: selected.startTime,
-            endTime: selected.endTime
+            endTime: selected.endTime,
+            colorHex: selected.colorHex
         )
         
         // 5. 没有活动就启动，有活动就更新（仅变化时）
@@ -93,7 +95,8 @@ class LiveActivityManager {
         } else if lastTaskId != newState.taskId 
                     || lastTaskName != newState.taskName
                     || lastStartTime != newState.startTime
-                    || lastEndTime != newState.endTime {
+                    || lastEndTime != newState.endTime
+                    || lastColorHex != newState.colorHex {
             updateActivity(state: newState, staleDate: selected.endTime.addingTimeInterval(600))
         }
         
@@ -101,6 +104,7 @@ class LiveActivityManager {
         lastTaskName = newState.taskName
         lastStartTime = newState.startTime
         lastEndTime = newState.endTime
+        lastColorHex = newState.colorHex
     }
     
     // MARK: - SwiftData 查询
@@ -168,5 +172,6 @@ class LiveActivityManager {
         lastTaskName = nil
         lastStartTime = nil
         lastEndTime = nil
+        lastColorHex = nil
     }
 }
