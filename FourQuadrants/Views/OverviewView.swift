@@ -13,76 +13,72 @@ struct OverviewView: View {
 
 
     var body: some View {
-        ZStack {
-            // 背景使用老版本的低不透明度设计，确保清爽可读
-            // 背景优化：Solid Backing + Tint + Shadow
-            ZStack {
-                Color(UIColor.secondarySystemGroupedBackground) // 确保在深色模式下也有层级感
-                color.opacity(isTargeted ? 0.3 : 0.12) // 降低一点不透明度，因为有了实心底色
-            }
-            .cornerRadius(18)
-            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4) // 物理悬浮感
-            
-            VStack(spacing: 0) {
-                // Header - 仿照初始版本的黑字+简单布局
-                HStack {
-                    Text(title)
-                        .font(.system(.headline, design: .rounded))
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary) // 恢复黑字/深色字
-                    
-                    Spacer()
-                    
-                    Button {
-                        onZoom?(category)
-                    } label: {
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .padding(8)
-                            .background(Color.gray.opacity(0.2))
-                            .foregroundColor(.gray)
-                            .clipShape(Circle())
-                    }
+        VStack(spacing: 0) {
+            // Header - 仿照初始版本的黑字+简单布局
+            HStack {
+                Text(title)
+                    .font(.system(.headline, design: .rounded))
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary) // 恢复黑字/深色字
+                
+                Spacer()
+                
+                Button {
+                    onZoom?(category)
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(8)
+                        .background(Color.gray.opacity(0.2))
+                        .foregroundColor(.gray)
+                        .clipShape(Circle())
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                
-                Divider()
-                    .background(color.opacity(0.3))
-                
-                // Task List
-                GeometryReader { geometry in
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 0) {
-                            if filteredTasks.isEmpty {
-                                EmptyStateView()
-                            } else {
-                                ForEach(filteredTasks) { task in
-                                    TaskRow(task: task, onToggle: {
-                                        taskManager.toggleTask(task)
-                                    }, onEdit: {
-                                        selectedTaskForEditing = task
-                                        showingEditTaskView = true
-                                    }, onDelete: {
-                                        taskManager.removeTask(by: task.id)
-                                    })
-                                    // iOS 16+ 现代拖拽 API（使用 TaskTransferItem 包装）
-                                    .draggable(TaskTransferItem(task: task)) {
-                                        // 自定义拖拽预览
-                                        TaskDragPreview(task: task, color: color)
-                                    }
-                                    
-                                    Divider()
-                                        .background(Color.gray.opacity(0.1))
-                                        .padding(.horizontal, 10)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            
+            Divider()
+                .background(color.opacity(0.3))
+            
+            // Task List
+            GeometryReader { geometry in
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        if filteredTasks.isEmpty {
+                            EmptyStateView()
+                        } else {
+                            ForEach(filteredTasks) { task in
+                                TaskRow(task: task, onToggle: {
+                                    taskManager.toggleTask(task)
+                                }, onEdit: {
+                                    selectedTaskForEditing = task
+                                    showingEditTaskView = true
+                                }, onDelete: {
+                                    taskManager.removeTask(by: task.id)
+                                })
+                                // iOS 16+ 现代拖拽 API（使用 TaskTransferItem 包装）
+                                .draggable(TaskTransferItem(task: task)) {
+                                    // 自定义拖拽预览
+                                    TaskDragPreview(task: task, color: color)
                                 }
+                                
+                                Divider()
+                                    .background(Color.gray.opacity(0.1))
+                                    .padding(.horizontal, 10)
                             }
                         }
-                        .padding(.vertical, 4)
                     }
+                    .padding(.vertical, 4)
                 }
             }
         }
+        // iOS 26 Liquid Glass 效果
+        .background(.glassEffect(in: .rect(cornerRadius: 18)))
+        .overlay(
+            // 保持拖拽高亮效果
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(color.opacity(isTargeted ? 0.5 : 0), lineWidth: 2)
+        )
         // iOS 16+ 现代放置目标 API（接收 TaskTransferItem）
         .dropDestination(for: TaskTransferItem.self) { droppedItems, location in
             for item in droppedItems {
