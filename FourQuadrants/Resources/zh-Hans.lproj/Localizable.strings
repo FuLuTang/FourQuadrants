@@ -51,6 +51,7 @@
 "settings_enable_notifications" = "启用通知";
 "settings_dark_mode" = "深色模式";
 "settings_dark_mode_auto" = "自动（跟随系统）";
+"settings_notifications_footer" = "包括应用通知、灵动岛和手表卡片。";
 
 "settings_sync_section" = "同步";
 "sync_connected" = "已连接 Microsoft To Do";
