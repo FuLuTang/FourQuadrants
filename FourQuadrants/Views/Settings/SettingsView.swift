@@ -8,6 +8,7 @@ struct SettingsView: View {
     
     // 用于控制 colorScheme
     @Environment(\.colorScheme) private var systemColorScheme
+    @Environment(\.modelContext) private var modelContext
     
     // 定义导航路径类型
     private enum Route: Hashable {
@@ -78,8 +79,9 @@ struct SettingsView: View {
                 }
             }
         } else {
-            // 提示用户需要去系统设置关闭
-            print("ℹ️ 用户已关闭应用内通知偏好")
+            // 立即结束灵动岛
+            LiveActivityManager.shared.checkTask(context: modelContext)
+            print("ℹ️ 用户已关闭通知，灵动岛已停止")
         }
     }
 }
