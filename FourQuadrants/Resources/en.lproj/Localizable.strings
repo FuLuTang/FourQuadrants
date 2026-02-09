@@ -51,7 +51,6 @@
 "settings_enable_notifications" = "Enable Notifications";
 "settings_dark_mode" = "Dark Mode";
 "settings_dark_mode_auto" = "Auto (Follow System)";
-"settings_notifications_footer" = "Includes app notifications, Live Activities, and Watch widgets.";
 
 "settings_sync_section" = "Sync";
 "sync_connected" = "Connected to Microsoft To Do";

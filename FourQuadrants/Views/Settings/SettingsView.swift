@@ -18,8 +18,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 // 应用设置区块
-                Section(header: Text("settings_app_section"),
-                        footer: Text("settings_notifications_footer")) {
+                Section(header: Text("settings_app_section")) {
                     // 通知开关
                     Toggle("settings_enable_notifications", isOn: $notificationsEnabled)
                         .onChange(of: notificationsEnabled) { _, newValue in
