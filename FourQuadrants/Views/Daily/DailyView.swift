@@ -9,6 +9,8 @@ struct DailyView: View {
     @State private var showAddTaskSheet = false // Add Sheet State
     @State private var headerDragOffset: CGFloat = 0 // Date Header Swipe State
     @State private var transitionEdge: Edge = .trailing // Transition Direction State
+    @State private var editingTaskId: PersistentIdentifier? // Global Edit State
+    @State private var isCreatingTask = false // Prevent duplicate creation
     
     // MARK: - Constants
     private let hourHeight: CGFloat = 60
@@ -24,8 +26,34 @@ struct DailyView: View {
                     // 背景网格 & 时间标签
                     timeGrid
                     
+                    // Invisible Layer for "Tap to Create" and "Tap to Dismiss"
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation {
+                                editingTaskId = nil
+                            }
+                        }
+                        .gesture(
+                            LongPressGesture(minimumDuration: 0.5)
+                                .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
+                                .onEnded { value in
+                                    switch value {
+                                    case .second(true, let drag):
+                                        guard let startLocation = drag?.startLocation else { return }
+                                        createNewTask(at: startLocation.y)
+                                    default: break
+                                    }
+                                }
+                        )
+                    
                     // 任务块 (这里需要查询当天的任务)
-                    DailyTasksLayer(selectedDate: selectedDate, hourHeight: hourHeight, timeColumnWidth: timeColumnWidth)
+                    DailyTasksLayer(
+                        selectedDate: selectedDate,
+                        hourHeight: hourHeight,
+                        timeColumnWidth: timeColumnWidth,
+                        editingTaskId: $editingTaskId
+                    )
                     
                     // 当前时间红线 (只在今天显示)
                     if Calendar.current.isDateInToday(selectedDate) {
@@ -42,17 +70,20 @@ struct DailyView: View {
                 scrollToCurrentTime()
             }
         }
-        // 顶部模糊渐变遮罩 (防止内容直接切断)
+        .scrollDisabled(editingTaskId != nil) // Disable scroll when editing to prevent conflicts? Or keep enabled? User said: "Tap outside to exit". Better to keep scroll enabled but maybe tap outside works.
+        // Actually, if we put the gesture on the ZStack background, it might block scrolling if not careful.
+        // The `Color.clear` above is inside ScrollView.
+
+        // Stronger Top Fade
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(.thickMaterial) 
-                .mask {
+                .fill(
                     LinearGradient(
-                        colors: [.black, .black.opacity(0)],
+                        colors: [Color(UIColor.systemBackground), Color(UIColor.systemBackground).opacity(0)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
-                }
+                )
                 .frame(height: 100)
                 .ignoresSafeArea(edges: .top)
                 .allowsHitTesting(false)
@@ -244,6 +275,47 @@ struct DailyView: View {
             scrollProxy?.scrollTo(max(0, hour - 2), anchor: .top)
         }
     }
+    
+    private func createNewTask(at yOffset: CGFloat) {
+        // 1. Calculate time from Y offset
+        // y = ((hour * 60 + minute) / 60) * hourHeight + 10
+        // y - 10 = totalHours * hourHeight
+        // totalHours = (y - 10) / hourHeight
+        let totalHours = (yOffset - 10) / hourHeight
+        let hour = Int(totalHours)
+        let minute = Int((totalHours - Double(hour)) * 60)
+        
+        let clampedHour = max(0, min(23, hour))
+        let clampedMinute = (minute / 15) * 15 // Snap to 15m
+        
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day], from: selectedDate)
+        components.hour = clampedHour
+        components.minute = clampedMinute
+        components.second = 0
+        
+        guard let startTime = calendar.date(from: components) else { return }
+        
+        // 2. Create Task
+        let newTask = DailyTask(
+            title: "新任务",
+            startTime: startTime,
+            duration: 3600, // 1 hour
+            colorHex: "#5E81F4"
+        )
+        
+        modelContext.insert(newTask)
+        
+        // 3. Auto-enter Edit Mode
+        // We defer this slightly to ensure the view appears
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            editingTaskId = newTask.id
+        }
+        
+        // Feedback
+        let feedback = UIImpactFeedbackGenerator(style: .medium)
+        feedback.impactOccurred()
+    }
 }
 
 // MARK: - Subviews
@@ -304,13 +376,15 @@ struct DailyTasksLayer: View {
     let selectedDate: Date
     let hourHeight: CGFloat
     let timeColumnWidth: CGFloat
+    @Binding var editingTaskId: PersistentIdentifier?
     
     @Query private var tasks: [DailyTask]
     
-    init(selectedDate: Date, hourHeight: CGFloat, timeColumnWidth: CGFloat) {
+    init(selectedDate: Date, hourHeight: CGFloat, timeColumnWidth: CGFloat, editingTaskId: Binding<PersistentIdentifier?>) {
         self.selectedDate = selectedDate
         self.hourHeight = hourHeight
         self.timeColumnWidth = timeColumnWidth
+        self._editingTaskId = editingTaskId
         
         // 构造谓词查询当天的任务
         let startOfDay = Calendar.current.startOfDay(for: selectedDate)
@@ -324,7 +398,7 @@ struct DailyTasksLayer: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             ForEach(tasks) { task in
-                DailyTaskBlock(task: task, hourHeight: hourHeight)
+                DailyTaskBlock(task: task, hourHeight: hourHeight, editingTaskId: $editingTaskId)
                     .frame(maxWidth: .infinity)
                     .padding(.leading, timeColumnWidth + 8) // 让出时间轴
                     .padding(.trailing, 8)

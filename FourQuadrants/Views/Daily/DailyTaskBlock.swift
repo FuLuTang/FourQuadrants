@@ -4,17 +4,23 @@ import SwiftData
 struct DailyTaskBlock: View {
     @Bindable var task: DailyTask
     let hourHeight: CGFloat
+    
     @Environment(\.modelContext) private var modelContext
     
+    @Binding var editingTaskId: PersistentIdentifier?
+    
     // State Machine
-    @State private var editMode: TaskBlockState = .normal
+    private var editMode: TaskBlockState {
+        editingTaskId == task.id ? .editing : .normal
+    }
     @State private var showEditSheet = false
     
-    // Gesture Temporary State
+    // Gesture State
+    @GestureState private var isDraggingBody = false
     @State private var initialStartTime: Date?
     @State private var initialDuration: TimeInterval?
     
-    // Helpers
+    // Internal
     private let interaction = TaskInteractionManager.shared
     
     var body: some View {
@@ -22,9 +28,13 @@ struct DailyTaskBlock: View {
         let height = (CGFloat(duration) / 3600.0) * hourHeight
         
         ZStack(alignment: .topLeading) {
-            // --- 任务卡片主体 ---
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(hex: task.colorHex ?? "#5E81F4"))
+            // --- Task Card ---
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(hex: task.colorHex ?? "#5E81F4").opacity(editMode == .editing ? 0.9 : 0.8))
+                .glassEffect(
+                    .clear.tint(Color(hex: task.colorHex ?? "#5E81F4").opacity(0.1)).interactive(),
+                    in: .rect(cornerRadius: 12)
+                )
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(task.title)
@@ -37,99 +47,137 @@ struct DailyTaskBlock: View {
                             .foregroundColor(.white.opacity(0.8))
                             .lineLimit(1)
                     }
-                    .padding(6)
+                    .padding(8)
                 }
-                // 编辑态视觉强化：白色描边 + 提升阴影
+                // Edit Mode Visuals
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.white, lineWidth: editMode == .editing ? 2 : 0)
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.white.opacity(0.8), lineWidth: editMode == .editing ? 2 : 0)
                 )
                 .shadow(
-                    color: editMode == .editing ? .black.opacity(0.25) : .black.opacity(0.1),
-                    radius: editMode == .editing ? 8 : 2,
-                    y: editMode == .editing ? 4 : 1
+                    color: editMode == .editing ? .black.opacity(0.3) : .black.opacity(0.1),
+                    radius: editMode == .editing ? 10 : 4,
+                    y: editMode == .editing ? 5 : 2
                 )
         }
-        .frame(height: max(height, 20))
-        // 编辑态：添加调整手柄 (使用 overlay 避免影响布局)
-        .overlay(alignment: .topLeading) {
+        .frame(height: max(height, 30))
+        // Resize Handles (Edit Mode Only)
+        .overlay(alignment: .top) {
             if editMode == .editing {
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 12, height: 12)
-                    .shadow(radius: 1)
-                    .offset(x: -4, y: -4) // 块顶靠左小圆
+                // Resize Top Zone (Invisible but touchable)
+                Color.clear
+                    .frame(height: 20)
+                    .contentShape(Rectangle())
+                    .overlay(
+                        Capsule()
+                            .fill(.white.opacity(0.5))
+                            .frame(width: 24, height: 4)
+                    )
+                    .offset(y: -10)
                     .gesture(resizeTopGesture)
             }
         }
-        .overlay(alignment: .bottomTrailing) {
+        .overlay(alignment: .bottom) {
             if editMode == .editing {
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 12, height: 12)
-                    .shadow(radius: 1)
-                    .offset(x: 4, y: 4) // 块底靠右小圆
+                // Resize Bottom Zone
+                Color.clear
+                    .frame(height: 20)
+                    .contentShape(Rectangle())
+                    .overlay(
+                        Capsule()
+                            .fill(.white.opacity(0.5))
+                            .frame(width: 24, height: 4)
+                    )
+                    .offset(y: 10)
                     .gesture(resizeBottomGesture)
             }
         }
-        .contentShape(Rectangle()) // 确保点击区域覆盖整个 Frame
-        // --- 交互逻辑 ---
+        .contentShape(Rectangle())
+        // --- Interactions ---
         .onTapGesture {
             if editMode == .normal {
                 showEditSheet = true
             } else {
-                // 编辑态下点击退出编辑
-                withAnimation { editMode = .normal }
+                // Tap self in edit mode -> Do nothing
             }
         }
-        .onLongPressGesture {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                editMode = (editMode == .normal) ? .editing : .normal
-            }
-        }
-        // 只有编辑态可以拖拽主体移动
+        // Sequenced Gesture: Long Press -> Drag (Move) OR Long Press -> Release (Edit)
         .gesture(
-            editMode == .editing ? dragBodyGesture : nil
+            editMode == .normal ? combinedGestures : nil
         )
-        // Sheet for details
+        // Edit Mode: Drag Body to Move
+        .gesture(
+            editMode == .editing ? dragBodyGesture(isEditMode: true) : nil
+        )
         .sheet(isPresented: $showEditSheet) {
             DailyTaskFormView(task: task, selectedDate: task.scheduledDate)
         }
         // Native Haptics: Trigger on value change
         .sensoryFeedback(.impact(weight: .light), trigger: task.startTime)
         .sensoryFeedback(.impact(weight: .light), trigger: task.duration)
-        .sensoryFeedback(.impact(weight: .medium), trigger: editMode) { oldValue, newValue in
-            // Only trigger when entering/exiting edit mode
-            return oldValue != newValue
+        // Haptic on Enter Edit Mode
+        .sensoryFeedback(.impact(weight: .medium), trigger: editMode) { old, new in
+            return old != new && new == .editing
         }
+        .scaleEffect(isDraggingBody ? 1.05 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isDraggingBody)
     }
     
-    // MARK: - Gestures
+    // MARK: - Combined Gesture (Normal Mode)
     
-    // 1. Body Drag: Move Time (Snapping)
-    var dragBodyGesture: some Gesture {
-        DragGesture()
-            .onChanged { value in
-                if initialStartTime == nil { initialStartTime = task.startTime }
-                guard let start = initialStartTime else { return }
-                
-                let deltaHours = Double(value.translation.height / hourHeight)
-                let rawDate = start.addingTimeInterval(deltaHours * 3600)
-                let snappedDate = interaction.snapTime(rawDate, intervalMinutes: 15)
-                
-                if snappedDate != task.startTime {
-                    task.startTime = snappedDate
+    var combinedGestures: some Gesture {
+        LongPressGesture(minimumDuration: 0.25)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+            .updating($isDraggingBody) { value, state, _ in
+                switch value {
+                case .second(true, _):
+                    state = true
+                default:
+                    state = false
                 }
             }
-            .onEnded { _ in
-                initialStartTime = nil
-                LiveActivityManager.shared.checkTask(context: modelContext)
+            .onChanged { value in
+                switch value {
+                case .second(true, let drag):
+                    // Entering "Picked Up" state
+                    // If drag is nil, it's just the long press phase transitioning
+                    guard let drag = drag else { return }
+                    
+                    // Logic: Move Task
+                    handleMove(drag: drag)
+                    
+                default: break
+                }
+            }
+            .onEnded { value in
+                switch value {
+                case .second(true, let drag):
+                    if let drag = drag, abs(drag.translation.height) > 10 {
+                        // Was dragging -> Drop
+                        finalizeMove()
+                    } else {
+                        // Was stationary -> Enter Edit Mode
+                        withAnimation { editingTaskId = task.id }
+                    }
+                default: break
+                }
             }
     }
     
-    // 2. Bottom Handle: Resize Duration (Snapping)
+    // MARK: - Helper Gestures
+    
+    func dragBodyGesture(isEditMode: Bool) -> some Gesture {
+        DragGesture(coordinateSpace: .global)
+            .onChanged { value in
+                handleMove(drag: value)
+            }
+            .onEnded { _ in
+                finalizeMove()
+            }
+    }
+    
     var resizeBottomGesture: some Gesture {
-        DragGesture()
+        DragGesture(coordinateSpace: .global)
             .onChanged { value in
                 if initialDuration == nil { initialDuration = task.duration }
                 guard let startDuration = initialDuration else { return }
@@ -144,13 +192,12 @@ struct DailyTaskBlock: View {
             }
             .onEnded { _ in
                 initialDuration = nil
-                LiveActivityManager.shared.checkTask(context: modelContext)
+                checkLiveActivity()
             }
     }
     
-    // 3. Top Handle: Resize Start Time (Keep End Time, change moves start)
     var resizeTopGesture: some Gesture {
-        DragGesture()
+        DragGesture(coordinateSpace: .global)
             .onChanged { value in
                 if initialStartTime == nil {
                     initialStartTime = task.startTime
@@ -162,7 +209,7 @@ struct DailyTaskBlock: View {
                 let rawNewStart = start.addingTimeInterval(deltaHours * 3600)
                 let snappedNewStart = interaction.snapTime(rawNewStart, intervalMinutes: 15)
                 
-                // Calculate new duration to keep end time constant
+                // Calculate new duration
                 let originalEnd = start.addingTimeInterval(duration)
                 let newDuration = originalEnd.timeIntervalSince(snappedNewStart)
                 
@@ -174,12 +221,36 @@ struct DailyTaskBlock: View {
             .onEnded { _ in
                 initialStartTime = nil
                 initialDuration = nil
-                LiveActivityManager.shared.checkTask(context: modelContext)
+                checkLiveActivity()
             }
+    }
+    
+    // MARK: - Logic
+    
+    private func handleMove(drag: DragGesture.Value) {
+        if initialStartTime == nil { initialStartTime = task.startTime }
+        guard let start = initialStartTime else { return }
+        
+        let deltaHours = Double(drag.translation.height / hourHeight)
+        let rawDate = start.addingTimeInterval(deltaHours * 3600)
+        let snappedDate = interaction.snapTime(rawDate, intervalMinutes: 15)
+        
+        if snappedDate != task.startTime {
+            task.startTime = snappedDate
+        }
+    }
+    
+    private func finalizeMove() {
+        initialStartTime = nil
+        checkLiveActivity()
+    }
+    
+    private func checkLiveActivity() {
+        LiveActivityManager.shared.checkTask(context: modelContext)
     }
 }
 
-// MARK: - Interaction Helpers
+// MARK: - Helpers
 
 enum TaskBlockState {
     case normal
@@ -194,7 +265,6 @@ struct TaskInteractionManager {
         let minute = calendar.component(.minute, from: date)
         let hour = calendar.component(.hour, from: date)
         let totalMinutes = Double(hour * 60 + minute)
-        // Round to nearest interval
         let snappedMinutes = round(totalMinutes / Double(intervalMinutes)) * Double(intervalMinutes)
         
         return calendar.date(bySettingHour: Int(snappedMinutes) / 60, minute: Int(snappedMinutes) % 60, second: 0, of: date) ?? date
