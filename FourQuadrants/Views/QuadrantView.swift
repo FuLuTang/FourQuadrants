@@ -50,13 +50,13 @@ struct QuadrantViewContainer: View {
                             .font(.system(size: 20, weight: .bold))
                             .foregroundStyle(.white)
                             .padding(10)
-                            .background(Color.blue)
                             .clipShape(Circle())
-                            .shadow(color: .blue.opacity(0.3), radius: 4, x: 0, y: 2)
+                            .glassEffect(
+                                .clear.tint(.blue).interactive(),
+                                in: .circle
+                            )
+                            .shadow(color: Color.black.opacity(0.10), radius: 8, x: 0, y: 4)
                     }
-                    .glassEffect(
-                        .clear.tint(.blue).interactive()
-                    )
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)

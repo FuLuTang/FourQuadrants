@@ -15,33 +15,33 @@ struct DailyView: View {
     private let endHour = 24
     
     var body: some View {
-        VStack(spacing: 0) {
-            // 1. 日期导航栏
-            dateHeader
-            
-            // 2. 时间轴滚动区域
-            ScrollViewReader { proxy in
-                ScrollView {
-                    ZStack(alignment: .topLeading) {
-                        // 背景网格 & 时间标签
-                        timeGrid
-                        
-                        // 任务块 (这里需要查询当天的任务)
-                        DailyTasksLayer(selectedDate: selectedDate, hourHeight: hourHeight, timeColumnWidth: timeColumnWidth)
-                        
-                        // 当前时间红线 (只在今天显示)
-                        if Calendar.current.isDateInToday(selectedDate) {
-                            CurrentTimeLine(hourHeight: hourHeight, timeColumnWidth: timeColumnWidth)
-                        }
+        // 时间轴滚动区域（全屏）
+        ScrollViewReader { proxy in
+            ScrollView {
+                ZStack(alignment: .topLeading) {
+                    // 背景网格 & 时间标签
+                    timeGrid
+                    
+                    // 任务块 (这里需要查询当天的任务)
+                    DailyTasksLayer(selectedDate: selectedDate, hourHeight: hourHeight, timeColumnWidth: timeColumnWidth)
+                    
+                    // 当前时间红线 (只在今天显示)
+                    if Calendar.current.isDateInToday(selectedDate) {
+                        CurrentTimeLine(hourHeight: hourHeight, timeColumnWidth: timeColumnWidth)
                     }
-                    .frame(height: CGFloat(endHour - startHour) * hourHeight + 20) // +20 padding
-                    .padding(.bottom, 80) // 底部留白给 FAB
                 }
-                .onAppear {
-                    scrollProxy = proxy
-                    scrollToCurrentTime()
-                }
+                .frame(height: CGFloat(endHour - startHour) * hourHeight + 20) // +20 padding
+                .padding(.top, 60) // 为顶部浮动的 dateHeader 留出空间
+                .padding(.bottom, 80) // 底部留白给 FAB
             }
+            .onAppear {
+                scrollProxy = proxy
+                scrollToCurrentTime()
+            }
+        }
+        // 日期导航栏（浮动在顶部）
+        .overlay(alignment: .top) {
+            dateHeader
         }
         .overlay(alignment: .bottomTrailing) {
             // 右下角添加按钮
@@ -107,41 +107,77 @@ struct DailyView: View {
     
     private var dateHeader: some View {
         HStack {
-            Button {
-                withAnimation {
-                    selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+            Spacer() // 确保整体居中
+            
+            // --- 居中的液态玻璃块 ---
+            HStack(spacing: 0) {
+                // 1. 左切换按钮
+                Button {
+                    changeDate(by: -1)
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.body.bold())
+                        .padding(.leading, 16)
+                        .padding(.trailing, 8)
+                        .padding(.vertical, 12)
+                        .contentShape(Rectangle()) // 扩大点击区域
                 }
-            } label: {
-                Image(systemName: "chevron.left")
-                    .padding()
-            }
-            
-            Spacer()
-            
-            Text(selectedDate.formatted(date: .complete, time: .omitted))
-                .font(.headline)
-                .onTapGesture {
-                    // TODO: 弹出小日历
-                    withAnimation {
-                        selectedDate = Date()
+                .buttonStyle(.plain) // 保持玻璃原始质感
+
+                // 2. 文字部分（支持滑动）
+                Text(selectedDate.formatted(date: .abbreviated, time: .omitted))
+                    .font(.system(.headline, design: .rounded).monospacedDigit())
+                    .frame(minWidth: 120) // 给滑动留出足够的感应区域
+                    .padding(.vertical, 12)
+                    .contentShape(Rectangle())
+                    // --- 核心滑动逻辑 ---
+                    .gesture(
+                        DragGesture()
+                            .onEnded { value in
+                                let threshold: CGFloat = 40
+                                if value.translation.width < -threshold {
+                                    changeDate(by: 1) // 向左滑，看未来
+                                } else if value.translation.width > threshold {
+                                    changeDate(by: -1) // 向右滑，回过去
+                                }
+                            }
+                    )
+                    .onTapGesture {
+                        withAnimation(.spring()) { selectedDate = Date() }
                     }
+
+                // 3. 右切换按钮
+                Button {
+                    changeDate(by: 1)
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.body.bold())
+                        .padding(.trailing, 16)
+                        .padding(.leading, 8)
+                        .padding(.vertical, 12)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+            }
+            // --- iOS 26 液态玻璃样式 ---
+            .glassEffect(
+                .clear.tint(.white.opacity(0.1)).interactive(), 
+                in: .capsule // 使用胶囊形更符合悬浮块的审美
+            )
+            .shadow(color: .black.opacity(0.1), radius: 10, y: 5)
             
             Spacer()
-            
-            Button {
-                withAnimation {
-                    selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
-                }
-            } label: {
-                Image(systemName: "chevron.right")
-                    .padding()
-            }
         }
-        .padding(.horizontal)
-        .background(.bar)
-        .overlay(Divider().opacity(0.6), alignment: .bottom)
+        .padding(.top, 8)
         .zIndex(1)
+    }
+
+    // 辅助方法：带动画的日期切换
+    private func changeDate(by days: Int) {
+        // 使用 iOS 26 推荐的物理弹簧动画，模拟“推挤”玻璃的感觉
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            selectedDate = Calendar.current.date(byAdding: .day, value: days, to: selectedDate) ?? selectedDate
+        }
     }
     
     private var timeGrid: some View {
@@ -185,32 +221,47 @@ struct CurrentTimeLine: View {
     
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
-            let date = context.date
-            if Calendar.current.isDateInToday(date) {
-                let calendar = Calendar.current
-                let hour = CGFloat(calendar.component(.hour, from: date))
-                let minute = CGFloat(calendar.component(.minute, from: date))
-                let totalMinutes = hour * 60 + minute
-                let yOffset = (totalMinutes / 60) * hourHeight + 10 // +10 top padding match grid
-                
-                HStack(spacing: 0) {
-                    Text(date.formatted(date: .omitted, time: .shortened))
-                        .font(.caption2.bold())
-                        .foregroundColor(.red)
-                        .frame(width: timeColumnWidth, alignment: .trailing)
-                        .padding(.trailing, 4)
-                        .background(Color(UIColor.systemBackground)) // 遮挡背景网格
-                    
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 6, height: 6)
-                    
-                    Rectangle()
-                        .fill(Color.red)
-                        .frame(height: 1)
-                }
-                .offset(y: yOffset)
+            timeLineContent(for: context.date)
+        }
+    }
+    
+    @ViewBuilder
+    private func timeLineContent(for date: Date) -> some View {
+        if Calendar.current.isDateInToday(date) {
+            let calendar = Calendar.current
+            let hour = CGFloat(calendar.component(.hour, from: date))
+            let minute = CGFloat(calendar.component(.minute, from: date))
+            let totalMinutes = hour * 60 + minute
+            let yOffset = (totalMinutes / 60) * hourHeight + 10
+
+            HStack(spacing: 4) {
+                // --- 左侧时间胶囊 ---
+                Text(date.formatted(date: .omitted, time: .shortened))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    // 透明玻璃效果
+                    .glassEffect(
+                        .regular.interactive(),
+                        in: .capsule
+                    )
+
+                // --- 右侧红线 ---
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [.red, .red.opacity(0)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(height: 1.5)
             }
+            .padding(.leading, 4)
+            .offset(y: yOffset)
+            .zIndex(999)
         }
     }
 }
@@ -386,9 +437,7 @@ struct DailyTaskBlock: View {
     
     // Helper to separate animation logic
     private func currentDurationWithAnimation(newStartDate: Date) {
-        withAnimation(.spring()) {
-            task.startTime = newStartDate
-        }
+        task.startTime = newStartDate
     }
 }
 

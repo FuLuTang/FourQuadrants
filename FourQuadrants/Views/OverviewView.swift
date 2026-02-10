@@ -30,9 +30,12 @@ struct OverviewView: View {
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
                         .font(.system(size: 10, weight: .bold))
                         .padding(8)
-                        .background(Color.gray.opacity(0.2))
-                        .foregroundColor(.gray)
                         .clipShape(Circle())
+                        .glassEffect(
+                            .clear.tint(.gray.opacity(0.2)).interactive(),
+                            in: .circle
+                        )
+                        .shadow(color: Color.black.opacity(0.10), radius: 8, x: 0, y: 4)
                 }
             }
             .padding(.horizontal, 12)
@@ -73,7 +76,8 @@ struct OverviewView: View {
                 }
             }
         }
-        .glassEffect(in: .rect(cornerRadius: 18))
+        // iOS 26 Liquid Glass 效果 + 象限颜色 tint（透明度与原设计一致）
+        .glassEffect(.regular.tint(color.opacity(0.12)), in: .rect(cornerRadius: 18))
         .overlay(
             // 保持拖拽高亮效果
             RoundedRectangle(cornerRadius: 18)

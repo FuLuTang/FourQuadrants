@@ -51,3 +51,6 @@
 - `FourQuadrants/Views/`: 包含主视图、象限视图、列表视图和表单视图。
 - `FourQuadrants/Services/`: 包含持久化、通知等服务类。
 - `FourQuadrants/Resources/`: 国际化、资源文件。
+
+
+> 注意：如果使用Vibe Coding，可以尝试https://developer-docs-mcp.dev MCP插件，它能提供更详细的文档信息。
