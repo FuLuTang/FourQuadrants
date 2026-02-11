@@ -298,7 +298,8 @@ struct DailyView: View {
         
         // 2. Create Task
         let newTask = DailyTask(
-            title: "新任务",
+            title: String(localized: "new_task"), // 使用 Localized String
+            scheduledDate: selectedDate, // 补全缺失参数
             startTime: startTime,
             duration: 3600, // 1 hour
             colorHex: "#5E81F4"

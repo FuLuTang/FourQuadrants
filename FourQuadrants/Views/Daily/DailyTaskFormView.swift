@@ -24,6 +24,9 @@ struct DailyTaskFormView: View {
     @State private var linkedTaskTitle: String = ""
     @State private var linkedTaskInfo: String = ""
     
+    // Delete Alert
+    @State private var showDeleteAlert = false
+    
     init(task: DailyTask? = nil, selectedDate: Date = Date()) {
         self.task = task
         self.selectedDate = selectedDate
@@ -230,6 +233,21 @@ struct DailyTaskFormView: View {
                     TextEditor(text: $notes)
                         .frame(minHeight: 80)
                 }
+                
+                // 5. 删除按钮
+                if task != nil {
+                    Section {
+                        Button(role: .destructive) {
+                            showDeleteAlert = true
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Text("delete")
+                                Spacer()
+                            }
+                        }
+                    }
+                }
             }
             .navigationTitle(task == nil ? String(localized: "daily_new_task") : String(localized: "daily_edit_task"))
             .navigationBarTitleDisplayMode(.inline)
@@ -244,6 +262,14 @@ struct DailyTaskFormView: View {
                     }
                     .disabled(title.isEmpty)
                 }
+            }
+            .alert(String(localized: "confirm_delete_task_title"), isPresented: $showDeleteAlert) {
+                Button("delete", role: .destructive) {
+                    deleteTask()
+                }
+                Button("cancel", role: .cancel) { }
+            } message: {
+                Text("confirm_delete_task_message")
             }
             .onAppear {
                 if let task = task {
@@ -323,6 +349,13 @@ struct DailyTaskFormView: View {
         
         // 立即触发灵动岛检查，确保新建/编辑后及时更新
         LiveActivityManager.shared.checkTask(context: modelContext)
+    }
+    
+    private func deleteTask() {
+        guard let task = task else { return }
+        modelContext.delete(task)
+        LiveActivityManager.shared.checkTask(context: modelContext)
+        dismiss()
     }
     
     private func triggerLinkCalculation() {

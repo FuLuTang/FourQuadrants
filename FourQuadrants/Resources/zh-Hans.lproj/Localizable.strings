@@ -124,3 +124,7 @@
 "daily_notes" = "备注";
 "daily_new_task" = "新建每日任务";
 "daily_edit_task" = "编辑任务";
+"confirm_delete_task_title" = "删除任务";
+"confirm_delete_task_message" = "确定要删除此任务吗？此操作无法撤销。";
+"delete" = "删除";
+"new_task" = "新任务";
