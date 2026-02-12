@@ -1,0 +1,77 @@
+func moveTask(task: Task, to quadrant: Quadrant) {
+    // ... 一堆已经做过的逻辑
+    
+    switch(targetCategory){
+    case .拖到重要且紧急:
+        // 紧急性
+        if(本来不紧急){
+            if(原始阈值 不为空){
+                if(原始阈值放到现在算 = 紧急){
+                    task.阈值 = 原始阈值
+                }else{
+                    task.阈值 = 目标日期 - 现在（让自动计算后属于紧急）
+                }
+            }else 原始阈值为空{
+                task.阈值 = 目标日期 - 现在（让自动计算后属于紧急）
+            }
+        }else 本来紧急{
+            // 无需操作
+        }
+
+        // 重要性
+        if(本来不重要){
+            重要性 = .high
+        }else 本来重要{
+            // 无需操作
+        }
+            
+    case .拖到重要不紧急:
+
+        // 紧急性
+        if(本来紧急){
+            if(原始阈值 不为空){
+                if(原始阈值放到现在算 = 不紧急){
+                    task.阈值 = 原始阈值
+                }else{
+                    task.阈值 = 目标日期 - 现在（让自动计算后属于不紧急）
+                }
+            }else 原始阈值为空{
+                task.阈值 = 目标日期 - 现在（让自动计算后属于不紧急）
+            }
+        }else 本来不紧急{
+            // 无需操作
+        }
+
+        // 重要性...
+        
+            
+    case .拖到不重要且紧急:
+        // 紧急性...
+
+        // 重要性
+        if(本来重要){
+            if(原始重要性 == .high){
+                重要性 = .normal
+            }elseif(原始重要性 == .normal){
+                重要性 = .normal
+            }else{ // 原始重要性 == .low
+                重要性 = .low
+            }
+        }else 本来不重要{
+            // 无需操作
+        }      
+    
+    case .拖到不重要不紧急:
+        // ...
+    }
+}
+
+func createNewTask(to quadrant: Quadrant) {
+    // ... 一堆已经做过的逻辑
+    
+    原始阈值 = input.urgentThresholdDays
+    阈值 = 原始阈值
+
+    原始重要性 = input.importance
+    重要性 = 原始重要性 // 毕竟重要性有三层，norm和low都是不重要，所以需要特殊处理。本来是low的拖到重要再拖到不重要 还是low，本来norm的拖到重要再拖到不重要 还是norm。只有high拖到不重要才是norm。
+}

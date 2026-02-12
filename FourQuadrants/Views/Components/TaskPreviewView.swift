@@ -43,6 +43,17 @@ struct TaskPreviewView: View {
                     color: importanceColor
                 )
                 
+                // 原始重要性（仅当与当前不同时显示）
+                if let original = task.originalImportance,
+                   original != task.importance {
+                    previewRow(
+                        icon: "flag",
+                        title: "原始重要性",
+                        value: originalImportanceText(original),
+                        color: .purple
+                    )
+                }
+                
                 // 紧急状态
                 previewRow(
                     icon: "bolt.fill",
@@ -88,13 +99,22 @@ struct TaskPreviewView: View {
                     )
                 }
                 
-                // 自动紧急阈值
-                if let threshold = task.urgentThresholdDays {
+                // 紧急阈值信息
+                if let original = task.originalUrgentThresholdDays {
                     previewRow(
                         icon: "timer",
-                        title: "自动紧急",
-                        value: "剩余 \(threshold) 天时触发",
+                        title: "原始阈值",
+                        value: "剩余 \(original) 天时触发",
                         color: .orange
+                    )
+                }
+                if let threshold = task.urgentThresholdDays,
+                   threshold != task.originalUrgentThresholdDays {
+                    previewRow(
+                        icon: "timer.circle",
+                        title: "自动阈值",
+                        value: "剩余 \(threshold) 天时触发",
+                        color: .yellow
                     )
                 }
             }
@@ -152,6 +172,14 @@ struct TaskPreviewView: View {
         case .high: return .red
         case .normal: return .blue
         case .low: return .gray
+        }
+    }
+    
+    private func originalImportanceText(_ level: ImportanceLevel) -> String {
+        switch level {
+        case .high: return "高"
+        case .normal: return "普通"
+        case .low: return "低"
         }
     }
     

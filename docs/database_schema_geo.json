@@ -1,15 +1,15 @@
 {
-  "width": 480,
-  "height": 346,
+  "width": 504,
+  "height": 364,
   "cx": [
-    [ "QUADRANT_TASK", 97 ],
-    [ "LINKS", 249 ],
-    [ "DAILY_TASK", 392 ]
+    [ "QUADRANT_TASK", 109 ],
+    [ "LINKS", 273 ],
+    [ "DAILY_TASK", 416 ]
   ],
   "cy": [
-    [ "QUADRANT_TASK", 173 ],
-    [ "LINKS", 173 ],
-    [ "DAILY_TASK", 173 ]
+    [ "QUADRANT_TASK", 182 ],
+    [ "LINKS", 182 ],
+    [ "DAILY_TASK", 182 ]
   ],
   "shift": [
     [ "LINKS,QUADRANT_TASK,0", 0 ],

@@ -8,6 +8,17 @@ enum ImportanceLevel: String, Codable {
 
 import SwiftData
 
+// MARK: - ⚠️ Schema 版本提醒
+// 修改 @Model 结构（添加/删除/重命名字段）时，必须同步操作：
+// 1. 在 AppLifecycleManager.swift 中递增 currentSchemaVersion
+// 2. 添加对应的 migrateSchemaToVX() 迁移函数
+// 3. 在 performSchemaMigrationIfNeeded() 中调用新迁移
+//
+// 当前 Schema 版本：V3
+// - V1: 初始版本 (QuadrantTask + DailyTask)
+// - V2: 新增 originalUrgentThresholdDays
+// - V3: 新增 originalImportance
+
 @Model
 final class QuadrantTask {
     var id: UUID = UUID()
@@ -27,6 +38,8 @@ final class QuadrantTask {
     var manualIsUrgent: Bool = false
     
     var urgentThresholdDays: Int? = nil
+    var originalUrgentThresholdDays: Int? = nil
+    var originalImportance: ImportanceLevel? = nil
     var completionDate: Date?
     var isTop: Bool = false
     
@@ -75,7 +88,7 @@ final class QuadrantTask {
     var msLastModified: Date? = nil
     
     // Custom initializer to match existing calls that use 'isUrgent'
-    init(id: UUID = UUID(), title: String, date: Date, dateLatestModified: Date = Date(), targetDate: Date? = nil, isCompleted: Bool = false, importance: ImportanceLevel = ImportanceLevel.normal, isUrgent: Bool = false, urgentThresholdDays: Int? = nil, completionDate: Date? = nil, isTop: Bool = false, msTodoId: String? = nil, msLastModified: Date? = nil) {
+    init(id: UUID = UUID(), title: String, date: Date, dateLatestModified: Date = Date(), targetDate: Date? = nil, isCompleted: Bool = false, importance: ImportanceLevel = ImportanceLevel.normal, isUrgent: Bool = false, urgentThresholdDays: Int? = nil, originalUrgentThresholdDays: Int? = nil, originalImportance: ImportanceLevel? = nil, completionDate: Date? = nil, isTop: Bool = false, msTodoId: String? = nil, msLastModified: Date? = nil) {
         self.id = id
         self.title = title
         self.date = date
@@ -85,6 +98,8 @@ final class QuadrantTask {
         self.importance = importance
         self.manualIsUrgent = isUrgent
         self.urgentThresholdDays = urgentThresholdDays
+        self.originalUrgentThresholdDays = originalUrgentThresholdDays
+        self.originalImportance = originalImportance
         self.completionDate = completionDate
         self.isTop = isTop
         self.msTodoId = msTodoId

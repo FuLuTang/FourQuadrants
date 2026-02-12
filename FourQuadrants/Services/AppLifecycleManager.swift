@@ -16,7 +16,9 @@ final class AppLifecycleManager {
     
     /// 当前 Schema 版本号（每次修改 @Model 结构时手动递增）
     /// - 1: 初始版本 (QuadrantTask + DailyTask)
-    static let currentSchemaVersion = 1
+    /// - 2: 新增 originalUrgentThresholdDays 字段 (双紧急阈值)
+    /// - 3: 新增 originalImportance 字段 (重要性双轨追踪)
+    static let currentSchemaVersion = 3
     
     // MARK: - Properties
     
@@ -140,10 +142,13 @@ final class AppLifecycleManager {
             migrateSchemaToV1(modelContainer: modelContainer)
         }
         
-        // 未来版本的迁移示例：
-        // if oldVersion < 2 {
-        //     migrateSchemaToV2(modelContainer: modelContainer)
-        // }
+        if oldVersion < 2 {
+            migrateSchemaToV2(modelContainer: modelContainer)
+        }
+        
+        if oldVersion < 3 {
+            migrateSchemaToV3(modelContainer: modelContainer)
+        }
         
         print("📦 [Schema] 迁移完成!")
     }
@@ -170,6 +175,47 @@ final class AppLifecycleManager {
         // }
         
         print("📦 [Schema] V1 迁移完成")
+    }
+    
+    /// 迁移到 Schema V2
+    /// - 新增 originalUrgentThresholdDays：将现有 urgentThresholdDays 拷贝为原始值
+    private func migrateSchemaToV2(modelContainer: ModelContainer) {
+        print("📦 [Schema] 执行 V2 迁移 (双紧急阈值)...")
+        
+        let context = ModelContext(modelContainer)
+        let fetchDescriptor = FetchDescriptor<QuadrantTask>()
+        if let tasks = try? context.fetch(fetchDescriptor) {
+            for task in tasks {
+                // 将现有的 urgentThresholdDays 拷贝到 originalUrgentThresholdDays
+                if task.originalUrgentThresholdDays == nil && task.urgentThresholdDays != nil {
+                    task.originalUrgentThresholdDays = task.urgentThresholdDays
+                }
+            }
+            try? context.save()
+            print("📦 [Schema] V2 迁移完成，已处理 \(tasks.count) 个任务")
+        } else {
+            print("📦 [Schema] V2 迁移：无法获取任务数据")
+        }
+    }
+    
+    /// 迁移到 Schema V3
+    /// - 新增 originalImportance：将现有 importance 拷贝为原始值
+    private func migrateSchemaToV3(modelContainer: ModelContainer) {
+        print("📦 [Schema] 执行 V3 迁移 (重要性双轨追踪)...")
+        
+        let context = ModelContext(modelContainer)
+        let fetchDescriptor = FetchDescriptor<QuadrantTask>()
+        if let tasks = try? context.fetch(fetchDescriptor) {
+            for task in tasks {
+                if task.originalImportance == nil {
+                    task.originalImportance = task.importance
+                }
+            }
+            try? context.save()
+            print("📦 [Schema] V3 迁移完成，已处理 \(tasks.count) 个任务")
+        } else {
+            print("📦 [Schema] V3 迁移：无法获取任务数据")
+        }
     }
     
     // MARK: - 版本信息存储

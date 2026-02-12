@@ -1,6 +1,6 @@
 :
 
-QUADRANT_TASK: _id, title, date, dateLatestModified, targetDate, isCompleted, importance, manualIsUrgent, urgentThresholdDays, completionDate, isTop, msTodoId, msLastModified, embeddingData
+QUADRANT_TASK: _id, title, date, dateLatestModified, targetDate, isCompleted, importance, manualIsUrgent, urgentThresholdDays, originalUrgentThresholdDays, completionDate, isTop, msTodoId, msLastModified, embeddingData
 LINKS, 1N QUADRANT_TASK, 0N DAILY_TASK
 DAILY_TASK: _id, title, date, scheduledDate, startTime, duration, isCompleted, completedAt, linkedQuadrantTaskID, embeddingData, colorHex, notes
 

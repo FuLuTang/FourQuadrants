@@ -73,7 +73,7 @@ class TaskManager: ObservableObject {
         }
     }
 
-    func addTask(title: String, importance: ImportanceLevel, isUrgent: Bool, isTop: Bool, targetDate: Date? = nil, urgentThresholdDays: Int? = nil, dateLatestModified: Date) {
+    func addTask(title: String, importance: ImportanceLevel, isUrgent: Bool, isTop: Bool, targetDate: Date? = nil, urgentThresholdDays: Int? = nil, originalUrgentThresholdDays: Int? = nil, originalImportance: ImportanceLevel? = nil, dateLatestModified: Date) {
         let newTask = QuadrantTask(
             title: title,
             date: Date(), // Creation date
@@ -83,19 +83,23 @@ class TaskManager: ObservableObject {
             importance: importance,
             isUrgent: isUrgent,
             urgentThresholdDays: urgentThresholdDays,
+            originalUrgentThresholdDays: originalUrgentThresholdDays,
+            originalImportance: originalImportance,
             isTop: isTop
         )
         modelContext.insert(newTask)
         saveContext()
     }
 
-    func updateTask(_ task: QuadrantTask, title: String, importance: ImportanceLevel, isUrgent: Bool, isTop: Bool, targetDate: Date?, urgentThresholdDays: Int? = nil, dateLatestModified: Date) {
+    func updateTask(_ task: QuadrantTask, title: String, importance: ImportanceLevel, isUrgent: Bool, isTop: Bool, targetDate: Date?, urgentThresholdDays: Int? = nil, originalUrgentThresholdDays: Int? = nil, originalImportance: ImportanceLevel? = nil, dateLatestModified: Date) {
         // SwiftData objects are reference types (classes). We can modify them directly.
         task.title = title
         task.importance = importance
+        task.originalImportance = originalImportance
         task.manualIsUrgent = isUrgent // Directly update backing property
         task.targetDate = targetDate
         task.urgentThresholdDays = urgentThresholdDays
+        task.originalUrgentThresholdDays = originalUrgentThresholdDays
         task.isTop = isTop
         task.dateLatestModified = Date()
         
@@ -171,53 +175,82 @@ class TaskManager: ObservableObject {
     }
 
     func dragTaskChangeCategory(task: QuadrantTask, targetCategory: TaskCategory) {
-        // **更新重要性**
-        switch targetCategory {
-        case .importantAndUrgent, .importantButNotUrgent:
-            task.importance = .high
-        case .urgentButNotImportant, .notImportantAndNotUrgent:
-            if task.importance == .high {
-                task.importance = .normal
-            }
-        default:
-            break
-        }
-        
-        // **更新紧急性**
+        // --- 判定目标象限的期望状态 ---
         let expectsUrgent: Bool = {
             switch targetCategory {
-            case .importantAndUrgent, .urgentButNotImportant:
-                return true
-            case .importantButNotUrgent, .notImportantAndNotUrgent:
-                return false
-            default:
-                return task.isUrgent
+            case .importantAndUrgent, .urgentButNotImportant: return true
+            case .importantButNotUrgent, .notImportantAndNotUrgent: return false
+            default: return task.isUrgent
+            }
+        }()
+        let expectsImportant: Bool = {
+            switch targetCategory {
+            case .importantAndUrgent, .importantButNotUrgent: return true
+            case .urgentButNotImportant, .notImportantAndNotUrgent: return false
+            default: return task.isImportantQuadrant
             }
         }()
         
-        if expectsUrgent {
+        // === 紧急性处理 ===
+        let wasUrgent = task.isUrgent
+        
+        if expectsUrgent && !wasUrgent {
+            // 不紧急 → 紧急：优先尝试恢复原始阈值
             if let targetDate = task.targetDate {
-                let now = Date()
-                let diff = Calendar.current.dateComponents([.day], from: now, to: targetDate).day ?? 0
-                task.urgentThresholdDays = diff
-                // We update the backing storage directly or implicitly via logic
-                // Since isUrgent is computed based on threshold, setting threshold is enough if date exists
-                // BUT, our setter updates 'manualIsUrgent'. Re-evaluating needs care.
-                // For simplicity in SwiftData migration:
-                task.manualIsUrgent = (diff >= 0)
+                let remaining = daysRemaining(to: targetDate)
+                if let original = task.originalUrgentThresholdDays, remaining <= original {
+                    // 原始阈值放到现在算 = 紧急 → 恢复原始值
+                    task.urgentThresholdDays = original
+                } else {
+                    // 原始阈值不存在或不够紧急 → 强算为剩余天数
+                    task.urgentThresholdDays = max(remaining, 0)
+                }
+                task.manualIsUrgent = true
             } else {
+                // 无目标日期，仅靠手动标记
                 task.manualIsUrgent = true
             }
-        } else {
+        } else if !expectsUrgent && wasUrgent {
+            // 紧急 → 不紧急：关闭阈值开关，保留原始阈值数据
             task.urgentThresholdDays = nil
             task.manualIsUrgent = false
+            // 注意：originalUrgentThresholdDays 不动
         }
+        // 如果紧急状态不变，不做任何操作
+        
+        // === 重要性处理 ===
+        let wasImportant = task.isImportantQuadrant
+        
+        if expectsImportant && !wasImportant {
+            // 不重要 → 重要
+            task.importance = .high
+        } else if !expectsImportant && wasImportant {
+            // 重要 → 不重要：尝试恢复原始重要性
+            if let original = task.originalImportance {
+                // 原始是 .high → 没法恢复（否则又变重要），降为 .normal
+                // 原始是 .normal → 恢复 .normal
+                // 原始是 .low → 恢复 .low
+                task.importance = (original == .high) ? .normal : original
+            } else {
+                task.importance = .normal
+            }
+        }
+        // 如果重要性不变，不做任何操作
         
         // **更新最后编辑日期**
         task.dateLatestModified = Date()
         
         saveContext()
         objectWillChange.send()
+    }
+    
+    // MARK: - 辅助方法
+    
+    /// 计算从今天到目标日期的剩余天数
+    private func daysRemaining(to targetDate: Date) -> Int {
+        let now = Calendar.current.startOfDay(for: Date())
+        let targetDay = Calendar.current.startOfDay(for: targetDate)
+        return Calendar.current.dateComponents([.day], from: now, to: targetDay).day ?? 0
     }
 
     func filteredTasks(in category: TaskCategory) -> [QuadrantTask] {

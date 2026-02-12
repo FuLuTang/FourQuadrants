@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Icon (light) -->
+	<key>red_light</key>
+	<string>#ffb1ac</string>
+	<key>blue_light</key>
+	<string>#99caff</string>
+	<key>green_light</key>
+	<string>#aee9bd</string>
+	<key>gray_light</key>
+	<string>#d2d2d4</string>
+
+	<!-- App Icon (dark) - TODO: provide actual values -->
+	<key>red_dark</key>
+	<string>#000000</string>
+	<key>blue_dark</key>
+	<string>#000000</string>
+	<key>green_dark</key>
+	<string>#000000</string>
+	<key>gray_dark</key>
+	<string>#000000</string>
+
+	<!-- Book Icon (light) -->
+	<key>bookIcon_side_light</key>
+	<string>#b66041</string>
+	<key>bookIcon_face_light</key>
+	<string>#e5a790</string>
+	<key>bookIcon_pen_light</key>
+	<string>#88cbd3</string>
+
+	<!-- Book Icon (dark) - TODO: provide actual values -->
+	<key>bookIcon_side_dark</key>
+	<string>#000000</string>
+	<key>bookIcon_face_dark</key>
+	<string>#000000</string>
+	<key>bookIcon_pen_dark</key>
+	<string>#000000</string>
+</dict>
+</plist>

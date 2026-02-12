@@ -29,7 +29,7 @@ struct TaskFormView: View {
         _hasTargetDate = State(initialValue: existingTask?.targetDate != nil)
         _targetDate = State(initialValue: existingTask?.targetDate ?? Date())
         _hasUrgentThreshold = State(initialValue: existingTask?.urgentThresholdDays != nil)
-        _urgentThresholdDays = State(initialValue: existingTask?.urgentThresholdDays ?? 3)
+        _urgentThresholdDays = State(initialValue: existingTask?.urgentThresholdDays ?? existingTask?.originalUrgentThresholdDays ?? 3)
     }
     
     var body: some View {
@@ -123,7 +123,9 @@ struct TaskFormView: View {
                 isTop: isTop,
                 targetDate: finalTargetDate,
                 urgentThresholdDays: finalUrgentThreshold,
-                dateLatestModified: now // 更新最后修改时间
+                originalUrgentThresholdDays: finalUrgentThreshold,
+                originalImportance: importance,
+                dateLatestModified: now
             )
         } else {
             taskManager.addTask(
@@ -133,7 +135,9 @@ struct TaskFormView: View {
                 isTop: isTop,
                 targetDate: finalTargetDate,
                 urgentThresholdDays: finalUrgentThreshold,
-                dateLatestModified: now // 新建任务时记录创建时间
+                originalUrgentThresholdDays: finalUrgentThreshold,
+                originalImportance: importance,
+                dateLatestModified: now
             )
         }
         dismiss()
