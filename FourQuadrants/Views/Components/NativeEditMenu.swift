@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 
+// Internal implementation of the Edit Menu Interaction
 struct NativeEditMenu: UIViewRepresentable {
     var actions: [NativeMenuAction]
     @Binding var isPresented: Bool
@@ -44,23 +45,18 @@ struct NativeEditMenu: UIViewRepresentable {
             self.parent = parent
         }
         
-        // MARK: - UIEditMenuInteractionDelegate
-        
         func editMenuInteraction(_ interaction: UIEditMenuInteraction, menuFor configuration: UIEditMenuConfiguration, suggestedActions: [UIMenuElement]) -> UIMenu? {
-            
             var menuElements: [UIMenuElement] = []
             
             for actionItem in actions {
                 let action = UIAction(title: actionItem.title, attributes: actionItem.style == .destructive ? .destructive : []) { _ in
                     actionItem.action()
-                    // Dispatch to main thread to close binding
                     DispatchQueue.main.async {
                         self.parent.isPresented = false
                     }
                 }
                 menuElements.append(action)
             }
-            
             return UIMenu(children: menuElements)
         }
         
@@ -79,6 +75,7 @@ class NativeEditMenuCallbackView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         self.backgroundColor = .clear
+        // Important: Interaction enabled but frame should be minimal in parent to avoid blocking
         self.isUserInteractionEnabled = true
         
         let interaction = UIEditMenuInteraction(delegate: self)
@@ -92,12 +89,11 @@ class NativeEditMenuCallbackView: UIView {
     
     func presentMenu() {
         guard let interaction = interaction else { return }
+        // Present at center top relative to this view
         let config = UIEditMenuConfiguration(identifier: nil, sourcePoint: CGPoint(x: bounds.midX, y: 0))
         interaction.presentEditMenu(with: config)
     }
 }
-
-
 
 extension NativeEditMenuCallbackView: UIEditMenuInteractionDelegate {
     func editMenuInteraction(_ interaction: UIEditMenuInteraction, menuFor configuration: UIEditMenuConfiguration, suggestedActions: [UIMenuElement]) -> UIMenu? {
@@ -106,5 +102,18 @@ extension NativeEditMenuCallbackView: UIEditMenuInteractionDelegate {
     
     func editMenuInteraction(_ interaction: UIEditMenuInteraction, willDismissMenuFor configuration: UIEditMenuConfiguration, animator: UIEditMenuInteractionAnimating) {
         coordinator?.editMenuInteraction(interaction, willDismissMenuFor: configuration, animator: animator)
+    }
+}
+
+// MARK: - Convenience Modifier
+extension View {
+    func nativeContextMenu(isPresented: Binding<Bool>, actions: [NativeEditMenu.NativeMenuAction]) -> some View {
+        self.background {
+            if isPresented.wrappedValue {
+                NativeEditMenu(actions: actions, isPresented: isPresented)
+                    .frame(width: 1, height: 1)
+                    .opacity(0.01) // Invisible but present
+            }
+        }
     }
 }

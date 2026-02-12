@@ -29,27 +29,20 @@ struct DailyTaskBlock: View {
         
         ZStack(alignment: .topLeading) {
             taskCard
-            
-            if showContextMenu && !isDraggingBody {
-                NativeEditMenu(
-                    actions: [
-                        .init(title: String(localized: "edit"), action: {
-                            showContextMenu = false
-                            showEditSheet = true
-                        }, style: .standard),
-                        .init(title: String(localized: "delete"), action: {
-                            withAnimation {
-                                modelContext.delete(task)
-                                checkLiveActivity()
-                            }
-                        }, style: .destructive)
-                    ],
-                    isPresented: $showContextMenu
-                )
-                .frame(width: 1, height: 1) // Tiny frame to attach to
-            }
         }
         .frame(height: max(height, 30))
+        .nativeContextMenu(isPresented: $showContextMenu, actions: [
+            .init(title: String(localized: "edit"), action: {
+                showContextMenu = false
+                showEditSheet = true
+            }, style: .standard),
+            .init(title: String(localized: "delete"), action: {
+                withAnimation {
+                    modelContext.delete(task)
+                    checkLiveActivity()
+                }
+            }, style: .destructive)
+        ])
         .overlay(alignment: .top) { topResizeHandle }
         .overlay(alignment: .bottom) { bottomResizeHandle }
         .contentShape(Rectangle())

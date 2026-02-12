@@ -492,24 +492,31 @@ struct DailyView: View {
         var body: some View {
             // Calculate layout once when tasks change
             let layout = DailyTaskLayout.calculateLayout(for: tasks, hourHeight: hourHeight)
+            let screenWidth = UIScreen.main.bounds.width
+            let availableWidth = screenWidth - timeColumnWidth - 24
             
             return ZStack(alignment: .topLeading) {
                 ForEach(tasks) { task in
                     if let geometry = layout[task.id] {
+                        
+                        // Calculate precise frame and position
+                        let width = availableWidth * geometry.frame.width
+                        let height = geometry.frame.height
+                        
+                        // X position is left padding + offset + half width (because position is center)
+                        let xOffset = timeColumnWidth + 8 + (geometry.frame.origin.x * availableWidth)
+                        let xPosition = xOffset + (width / 2)
+                        
+                        // Y position is top padding + offset + half height
+                        let yPosition = geometry.frame.origin.y + (height / 2)
+                        
                         DailyTaskBlock(task: task, hourHeight: hourHeight, editingTaskId: $editingTaskId)
-                        // Manual Frame Calculation
-                            .frame(height: geometry.frame.height)
-                            .frame(maxWidth: .infinity) // Fill the calculated width
-                        // Custom width based on layout
-                            .padding(.leading, timeColumnWidth + 8 + (geometry.frame.origin.x * (UIScreen.main.bounds.width - timeColumnWidth - 24)))
-                            .frame(width: (UIScreen.main.bounds.width - timeColumnWidth - 24) * geometry.frame.width)
-                            .position(
-                                x: (UIScreen.main.bounds.width - timeColumnWidth - 24) * geometry.frame.width / 2 + timeColumnWidth + 8 + (geometry.frame.origin.x * (UIScreen.main.bounds.width - timeColumnWidth - 24)),
-                                y: geometry.frame.origin.y + geometry.frame.height / 2
-                            )
+                            .frame(width: width, height: height)
+                            .position(x: xPosition, y: yPosition)
                     }
                 }
             }
+            // Ensure container has enough height
             .frame(height: CGFloat(24) * hourHeight + 20)
         }
     }
