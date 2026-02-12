@@ -14,6 +14,7 @@ struct DailyTaskBlock: View {
         editingTaskId == task.id ? .editing : .normal
     }
     @State private var showEditSheet = false
+    @State private var showContextMenu = false // Custom Menu State
     
     // Gesture State
     @GestureState private var isDraggingBody = false
@@ -24,84 +25,43 @@ struct DailyTaskBlock: View {
     private let interaction = TaskInteractionManager.shared
     
     var body: some View {
-        let duration = task.duration
-        let height = (CGFloat(duration) / 3600.0) * hourHeight
+        let height = (CGFloat(task.duration) / 3600.0) * hourHeight
         
         ZStack(alignment: .topLeading) {
-            // --- Task Card ---
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(hex: task.colorHex ?? "#5E81F4").opacity(editMode == .editing ? 0.9 : 0.8))
-                .glassEffect(
-                    .clear.tint(Color(hex: task.colorHex ?? "#5E81F4").opacity(0.1)).interactive(),
-                    in: .rect(cornerRadius: 12)
+            taskCard
+            
+            if showContextMenu && !isDraggingBody {
+                NativeEditMenu(
+                    actions: [
+                        .init(title: String(localized: "edit"), action: {
+                            showContextMenu = false
+                            showEditSheet = true
+                        }, style: .standard),
+                        .init(title: String(localized: "delete"), action: {
+                            withAnimation {
+                                modelContext.delete(task)
+                                checkLiveActivity()
+                            }
+                        }, style: .destructive)
+                    ],
+                    isPresented: $showContextMenu
                 )
-                .overlay(alignment: .topLeading) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(task.title)
-                            .font(.caption.bold())
-                            .foregroundColor(.white)
-                            .lineLimit(1)
-                        
-                        Text("\(task.startTime.formatted(date: .omitted, time: .shortened)) - \(task.startTime.addingTimeInterval(task.duration).formatted(date: .omitted, time: .shortened))")
-                            .font(.caption2)
-                            .foregroundColor(.white.opacity(0.8))
-                            .lineLimit(1)
-                    }
-                    .padding(8)
-                }
-                // Edit Mode Visuals
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.white.opacity(0.8), lineWidth: editMode == .editing ? 2 : 0)
-                )
-                .shadow(
-                    color: editMode == .editing ? .black.opacity(0.3) : .black.opacity(0.1),
-                    radius: editMode == .editing ? 10 : 4,
-                    y: editMode == .editing ? 5 : 2
-                )
+                .frame(width: 1, height: 1) // Tiny frame to attach to
+            }
         }
         .frame(height: max(height, 30))
-        // Resize Handles (Edit Mode Only)
-        .overlay(alignment: .top) {
-            if editMode == .editing {
-                // Resize Top Zone (Invisible but touchable)
-                Color.clear
-                    .frame(height: 20)
-                    .contentShape(Rectangle())
-                    .overlay(
-                        Capsule()
-                            .fill(.white.opacity(0.5))
-                            .frame(width: 24, height: 4)
-                    )
-                    .offset(y: -10)
-                    .gesture(resizeTopGesture)
-            }
-        }
-        .overlay(alignment: .bottom) {
-            if editMode == .editing {
-                // Resize Bottom Zone
-                Color.clear
-                    .frame(height: 20)
-                    .contentShape(Rectangle())
-                    .overlay(
-                        Capsule()
-                            .fill(.white.opacity(0.5))
-                            .frame(width: 24, height: 4)
-                    )
-                    .offset(y: 10)
-                    .gesture(resizeBottomGesture)
-            }
-        }
+        .overlay(alignment: .top) { topResizeHandle }
+        .overlay(alignment: .bottom) { bottomResizeHandle }
         .contentShape(Rectangle())
         // --- Interactions ---
         .onTapGesture {
-            if editMode == .normal {
+            if showContextMenu {
+                withAnimation { showContextMenu = false }
+            } else if editMode == .normal {
                 showEditSheet = true
-            } else {
-                // Tap self in edit mode -> Do nothing
             }
         }
-        // Sequenced Gesture: Long Press -> Drag (Move) OR Long Press -> Release (Edit)
+        // Sequenced Gesture: Long Press -> Drag (Move) OR Long Press -> Context Menu
         .gesture(
             editMode == .normal ? combinedGestures : nil
         )
@@ -112,26 +72,105 @@ struct DailyTaskBlock: View {
         .sheet(isPresented: $showEditSheet) {
             DailyTaskFormView(task: task, selectedDate: task.scheduledDate)
         }
-        // Native Haptics: Trigger on value change
+        // Native Haptics
         .sensoryFeedback(.impact(weight: .light), trigger: task.startTime)
         .sensoryFeedback(.impact(weight: .light), trigger: task.duration)
-        // Haptic on Enter Edit Mode
-        .sensoryFeedback(.impact(weight: .medium), trigger: editMode) { old, new in
-            return old != new && new == .editing
-        }
+        .sensoryFeedback(.impact(weight: .medium), trigger: showContextMenu) { old, new in return new }
         .scaleEffect(isDraggingBody ? 1.05 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isDraggingBody)
+        .zIndex(showContextMenu || isDraggingBody ? 10 : 1) // Bring to front
+    }
+    
+    // MARK: - Subviews
+    
+    private var taskCard: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .fill(Color(hex: task.colorHex ?? "#5E81F4").opacity(editMode == .editing ? 0.9 : 0.8))
+            .glassEffect(
+                .clear.tint(Color(hex: task.colorHex ?? "#5E81F4").opacity(0.1)).interactive(),
+                in: .rect(cornerRadius: 12)
+            )
+            .overlay(alignment: .topLeading) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(task.title)
+                        .font(.caption.bold())
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                    
+                    Text("\(task.startTime.formatted(date: .omitted, time: .shortened)) - \(task.startTime.addingTimeInterval(task.duration).formatted(date: .omitted, time: .shortened))")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.8))
+                        .lineLimit(1)
+                        
+                    // Notes Display
+                    if let notes = task.notes, !notes.isEmpty, (CGFloat(task.duration) / 3600.0) * hourHeight > 50 {
+                        Text(notes)
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.7))
+                            .lineLimit(2)
+                            .padding(.top, 2)
+                    }
+                }
+                .padding(8)
+            }
+            // Edit Mode Visuals
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.8), lineWidth: editMode == .editing ? 2 : 0)
+            )
+            .shadow(
+                color: editMode == .editing ? .black.opacity(0.3) : .black.opacity(0.1),
+                radius: editMode == .editing ? 10 : 4,
+                y: editMode == .editing ? 5 : 2
+            )
+    }
+    
+
+    
+    @ViewBuilder
+    private var topResizeHandle: some View {
+        if editMode == .editing {
+            Color.clear
+                .frame(height: 20)
+                .contentShape(Rectangle())
+                .overlay(
+                    Capsule()
+                        .fill(.white.opacity(0.5))
+                        .frame(width: 24, height: 4)
+                )
+                .offset(y: -10)
+                .gesture(resizeTopGesture)
+        }
+    }
+    
+    @ViewBuilder
+    private var bottomResizeHandle: some View {
+        if editMode == .editing {
+            Color.clear
+                .frame(height: 20)
+                .contentShape(Rectangle())
+                .overlay(
+                    Capsule()
+                        .fill(.white.opacity(0.5))
+                        .frame(width: 24, height: 4)
+                )
+                .offset(y: 10)
+                .gesture(resizeBottomGesture)
+        }
     }
     
     // MARK: - Combined Gesture (Normal Mode)
     
     var combinedGestures: some Gesture {
-        LongPressGesture(minimumDuration: 0.25)
+        LongPressGesture(minimumDuration: 0.3)
             .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
             .updating($isDraggingBody) { value, state, _ in
                 switch value {
-                case .second(true, _):
-                    state = true
+                case .second(true, let drag):
+                    // If dragging significantly, we are dragging body
+                    if let drag = drag, abs(drag.translation.height) > 5 {
+                         state = true
+                    }
                 default:
                     state = false
                 }
@@ -140,12 +179,14 @@ struct DailyTaskBlock: View {
                 switch value {
                 case .second(true, let drag):
                     // Entering "Picked Up" state
-                    // If drag is nil, it's just the long press phase transitioning
-                    guard let drag = drag else { return }
-                    
-                    // Logic: Move Task
-                    handleMove(drag: drag)
-                    
+                    if let drag = drag, abs(drag.translation.height) > 5 {
+                        // Dragging -> Hide Menu if visible
+                        if showContextMenu { withAnimation { showContextMenu = false } }
+                        handleMove(drag: drag)
+                    } else if !showContextMenu && drag == nil {
+                         // Long Press just triggered (drag is nil or very small start)
+                         // Show Menu feedback?
+                    }
                 default: break
                 }
             }
@@ -156,8 +197,8 @@ struct DailyTaskBlock: View {
                         // Was dragging -> Drop
                         finalizeMove()
                     } else {
-                        // Was stationary -> Enter Edit Mode
-                        withAnimation { editingTaskId = task.id }
+                        // Was stationary -> Toggle Context Menu
+                        withAnimation { showContextMenu = true }
                     }
                 default: break
                 }

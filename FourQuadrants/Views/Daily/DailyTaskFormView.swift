@@ -9,6 +9,8 @@ struct DailyTaskFormView: View {
     // 编辑模式传入 task，新建模式为 nil
     var task: DailyTask?
     var selectedDate: Date // 新建时的默认日期
+    var isNew: Bool = false
+    var onSave: ((DailyTask) -> Void)? = nil
     
     // Form States
     @State private var title: String = ""
@@ -27,9 +29,11 @@ struct DailyTaskFormView: View {
     // Delete Alert
     @State private var showDeleteAlert = false
     
-    init(task: DailyTask? = nil, selectedDate: Date = Date()) {
+    init(task: DailyTask? = nil, selectedDate: Date = Date(), isNew: Bool = false, onSave: ((DailyTask) -> Void)? = nil) {
         self.task = task
         self.selectedDate = selectedDate
+        self.isNew = isNew
+        self.onSave = onSave
     }
     
     var body: some View {
@@ -333,9 +337,18 @@ struct DailyTaskFormView: View {
             existingTask.duration = duration
             existingTask.colorHex = colorHex
             existingTask.notes = notes
-            // existingTask.scheduledDate = selectedDate // 日期通常不变，或者需要处理跨天
+            
+            if isNew, let onSave = onSave {
+                // Return the configured task to parent
+                onSave(existingTask)
+            } else if isNew {
+                 // Fallback: direct insert if no callback
+                 modelContext.insert(existingTask)
+            }
+            // else: regular update, already modified reference
+            
         } else {
-            // 新建
+            // 新建 (Legacy path or fallback)
             let newTask = DailyTask(
                 title: title,
                 scheduledDate: selectedDate,
@@ -344,7 +357,12 @@ struct DailyTaskFormView: View {
                 colorHex: colorHex
             )
             newTask.notes = notes
-            modelContext.insert(newTask)
+            
+            if let onSave = onSave {
+                onSave(newTask)
+            } else {
+                modelContext.insert(newTask)
+            }
         }
         
         // 立即触发灵动岛检查，确保新建/编辑后及时更新
