@@ -29,20 +29,30 @@ struct DailyTaskBlock: View {
         
         ZStack(alignment: .topLeading) {
             taskCard
+                .zIndex(1) // Base layer
+            
+            // Custom Context Menu Overlay
+            if showContextMenu && !isDraggingBody {
+                contextMenu
+                    .zIndex(100)
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+                    .padding(.bottom, 10) // Spacing from card
+                    .alignmentGuide(.bottom) { _ in 0 } // Align to bottom of container?? No.
+                    // We want it positioned relevant to the card. 
+                    // Let's use overlay on the card or ZStack.
+                    // ZStack alignment is topLeading.
+                    // We want the menu to appear probably centered horizontally on the card, and above or below.
+                    // Let's position it "Above" the card.
+            }
         }
         .frame(height: max(height, 30))
-        .nativeContextMenu(isPresented: $showContextMenu, actions: [
-            .init(title: String(localized: "edit"), action: {
-                showContextMenu = false
-                showEditSheet = true
-            }, style: .standard),
-            .init(title: String(localized: "delete"), action: {
-                withAnimation {
-                    modelContext.delete(task)
-                    checkLiveActivity()
-                }
-            }, style: .destructive)
-        ])
+        .overlay(alignment: .top) { 
+            if showContextMenu && !isDraggingBody {
+                contextMenu
+                    .offset(y: -45) // Shift up above the card
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+            }
+        }
         .overlay(alignment: .top) { topResizeHandle }
         .overlay(alignment: .bottom) { bottomResizeHandle }
         .contentShape(Rectangle())
@@ -75,6 +85,44 @@ struct DailyTaskBlock: View {
     }
     
     // MARK: - Subviews
+    
+    private var contextMenu: some View {
+        HStack(spacing: 0) {
+            Button {
+                withAnimation {
+                    showContextMenu = false
+                    showEditSheet = true
+                }
+            } label: {
+                Label(String(localized: "edit"), systemImage: "pencil")
+                    .font(.caption.bold())
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+            }
+            .foregroundStyle(.primary)
+
+            Divider()
+                .frame(height: 20)
+            
+            Button {
+                withAnimation {
+                    modelContext.delete(task)
+                    checkLiveActivity()
+                }
+            } label: {
+                Label(String(localized: "delete"), systemImage: "trash")
+                    .font(.caption.bold())
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+            }
+            .foregroundStyle(.red)
+        }
+        .background(.regularMaterial)
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 2)
+    }
     
     private var taskCard: some View {
         RoundedRectangle(cornerRadius: 12)
@@ -118,8 +166,6 @@ struct DailyTaskBlock: View {
             )
     }
     
-
-    
     @ViewBuilder
     private var topResizeHandle: some View {
         if editMode == .editing {
@@ -160,7 +206,6 @@ struct DailyTaskBlock: View {
             .updating($isDraggingBody) { value, state, _ in
                 switch value {
                 case .second(true, let drag):
-                    // If dragging significantly, we are dragging body
                     if let drag = drag, abs(drag.translation.height) > 5 {
                          state = true
                     }
@@ -171,14 +216,9 @@ struct DailyTaskBlock: View {
             .onChanged { value in
                 switch value {
                 case .second(true, let drag):
-                    // Entering "Picked Up" state
                     if let drag = drag, abs(drag.translation.height) > 5 {
-                        // Dragging -> Hide Menu if visible
                         if showContextMenu { withAnimation { showContextMenu = false } }
                         handleMove(drag: drag)
-                    } else if !showContextMenu && drag == nil {
-                         // Long Press just triggered (drag is nil or very small start)
-                         // Show Menu feedback?
                     }
                 default: break
                 }
@@ -187,11 +227,10 @@ struct DailyTaskBlock: View {
                 switch value {
                 case .second(true, let drag):
                     if let drag = drag, abs(drag.translation.height) > 10 {
-                        // Was dragging -> Drop
                         finalizeMove()
                     } else {
-                        // Was stationary -> Toggle Context Menu
-                        withAnimation { showContextMenu = true }
+                        // Stationary Long Press -> Toggle Menu
+                        withAnimation { showContextMenu.toggle() }
                     }
                 default: break
                 }
@@ -243,7 +282,6 @@ struct DailyTaskBlock: View {
                 let rawNewStart = start.addingTimeInterval(deltaHours * 3600)
                 let snappedNewStart = interaction.snapTime(rawNewStart, intervalMinutes: 15)
                 
-                // Calculate new duration
                 let originalEnd = start.addingTimeInterval(duration)
                 let newDuration = originalEnd.timeIntervalSince(snappedNewStart)
                 
@@ -258,8 +296,6 @@ struct DailyTaskBlock: View {
                 checkLiveActivity()
             }
     }
-    
-    // MARK: - Logic
     
     private func handleMove(drag: DragGesture.Value) {
         if initialStartTime == nil { initialStartTime = task.startTime }
