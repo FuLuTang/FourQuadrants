@@ -15,6 +15,10 @@ struct DailyView: View {
     @State private var isGhostDragging = false
     @State private var showGhostForm = false
     
+    // New Gesture States
+    @State private var activeTouchY: CGFloat? = nil
+    @State private var didCreateByLongPress = false
+    
     // MARK: - 常量
     private let hourHeight: CGFloat = 60
     private let timeColumnWidth: CGFloat = 50
@@ -27,9 +31,59 @@ struct DailyView: View {
             ScrollView {
                 ZStack(alignment: .topLeading) {
                     // 背景网格 & 时间标签
+                    // 1. 背景网格 (作为手势的载体)
                     timeGrid
-                    
-                    // Interaction Layer (Long Press to Create)
+                        .contentShape(Rectangle()) // 确保空白处也能点击
+                        // --- 核心修改：双重并行手势 ---
+                        
+                        // ① 持续追踪手指位置 +（长按成功后）拖动更新 ghost
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 0, coordinateSpace: .named("DailyZStack"))
+                                .onChanged { value in
+                                    // 实时记录位置，供 LongPress 使用
+                                    activeTouchY = value.location.y
+                                    
+                                    // 如果长按已触发（isGhostDragging），则更新任务位置
+                                    if isGhostDragging, ghostTask != nil {
+                                        updateGhostTask(at: value.location.y)
+                                    }
+                                }
+                                .onEnded { _ in
+                                    // 手指抬起，清理状态
+                                    defer {
+                                        activeTouchY = nil
+                                        didCreateByLongPress = false
+                                    }
+                                    
+                                    // 如果是通过长按创建的，且没被取消，则弹窗
+                                    if didCreateByLongPress, ghostTask != nil {
+                                        showGhostForm = true
+                                        isGhostDragging = false
+                                    } else {
+                                        // 否则（比如只是普通点击或滚动），重置
+                                        resetGhostTask()
+                                    }
+                                }
+                        )
+                        
+                        // ② 长按识别成功“那一刻”就创建 ghost（不需要移动）
+                        .simultaneousGesture(
+                            LongPressGesture(minimumDuration: 0.5, maximumDistance: 10)
+                                .onEnded { _ in
+                                    // 长按时间到！
+                                    guard ghostTask == nil, let y = activeTouchY else { return }
+                                    
+                                    // 立即创建任务
+                                    initGhostTask(at: y)
+                                    isGhostDragging = true
+                                    didCreateByLongPress = true
+                                    
+                                    let feedback = UIImpactFeedbackGenerator(style: .medium)
+                                    feedback.impactOccurred()
+                                }
+                        )
+
+                    // 2. 只有点击交互 (点击空白取消编辑)
                     Color.clear
                         .contentShape(Rectangle())
                         .onTapGesture {
@@ -37,45 +91,7 @@ struct DailyView: View {
                                 editingTaskId = nil
                             }
                         }
-                        .gesture(
-                            LongPressGesture(minimumDuration: 0.3, maximumDistance: 5)
-                                .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
-                                .onChanged { value in
-                                    switch value {
-                                    case .second(true, let drag):
-                                        // Dragging (or just holding after long press)
-                                        if let drag = drag {
-                                            updateGhostTask(at: drag.location.y)
-                                            isGhostDragging = true
-                                        } else if ghostTask == nil {
-                                            // Initial Long Press Trigger
-                                            // Start at the location of the press (we need the location from somewhere...
-                                            // Sequence gesture doesn't give initial location easily in .second state if drag hasn't moved much.
-                                            // But DragGesture starts immediately after long press finishes.
-                                            // Actually, the drag value might be nil initially.
-                                            // Let's use a workaround or rely on the first non-nil drag update.
-                                            // Better: Use .onEnded of LongPress? No, sequence handles it.
-                                            // We'll init ghost task on first drag update which happens immediately after long press
-                                        }
-                                    default: break
-                                    }
-                                }
-                                .onEnded { value in
-                                    switch value {
-                                    case .second(true, _):
-                                        // Ended dragging -> Open Form
-                                        if ghostTask != nil {
-                                            showGhostForm = true
-                                            isGhostDragging = false
-                                            let feedback = UIImpactFeedbackGenerator(style: .medium)
-                                            feedback.impactOccurred()
-                                        }
-                                    default:
-                                        // Example: Lifted before long press finished
-                                        resetGhostTask()
-                                    }
-                                }
-                        )
+                        .allowsHitTesting(false)
                     
                     // 任务块 (这里需要查询当天的任务)
                     DailyTasksLayer(
@@ -102,6 +118,7 @@ struct DailyView: View {
                         CurrentTimeLine(hourHeight: hourHeight, timeColumnWidth: timeColumnWidth)
                     }
                 }
+                .coordinateSpace(name: "DailyZStack")
                 .frame(height: CGFloat(endHour - startHour) * hourHeight + 20) // +20 padding
                 // .padding(.top, 60) removed to allow content behind heater
                 .padding(.bottom, 80) // 底部留白给 FAB
@@ -387,6 +404,27 @@ struct DailyView: View {
         }
     }
     
+    // 修改：通过 Y 坐标初始化任务
+    private func initGhostTask(at yOffset: CGFloat) {
+        let (hour, minute) = timeFromY(yOffset)
+        
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day], from: selectedDate)
+        components.hour = hour
+        components.minute = minute
+        components.second = 0
+        
+        guard let startTime = calendar.date(from: components) else { return }
+        
+        ghostTask = DailyTask(
+            title: String(localized: "new_task"),
+            scheduledDate: selectedDate,
+            startTime: startTime,
+            duration: 3600,
+            colorHex: "#5E81F4"
+        )
+    }
+    
     private func resetGhostTask() {
         ghostTask = nil
         isGhostDragging = false
@@ -395,7 +433,7 @@ struct DailyView: View {
     
     // Helper to extract time from Y offset (reused by updateGhostTask)
     private func timeFromY(_ yOffset: CGFloat) -> (Int, Int) {
-        let totalHours = (yOffset - 10) / hourHeight
+        let totalHours = Double((yOffset - 10) / hourHeight)
         let hour = Int(totalHours)
         let minute = Int((totalHours - Double(hour)) * 60)
         

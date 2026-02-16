@@ -201,8 +201,8 @@ struct DailyTaskBlock: View {
     // MARK: - Combined Gesture (Normal Mode)
     
     var combinedGestures: some Gesture {
-        LongPressGesture(minimumDuration: 0.3)
-            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+        LongPressGesture(minimumDuration: 0.4, maximumDistance: 10)
+            .sequenced(before: DragGesture(minimumDistance: 5, coordinateSpace: .global))
             .updating($isDraggingBody) { value, state, _ in
                 switch value {
                 case .second(true, let drag):
