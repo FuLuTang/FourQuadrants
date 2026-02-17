@@ -272,11 +272,11 @@ struct DailyView: View {
                                     return 
                                 }
                                 
-                                // 1. Density Mapping (Gap: 25px -> 3px) - User Preferred
-                                let dynamicGap = max(3, 25.0 - (absX / halfWidth) * 22.0)
+                                // 1. Density Mapping (Gap: 20px -> 3px) - User Preferred
+                                let dynamicGap = max(3, 20.0 - (absX / halfWidth) * 22.0)
                                 
-                                // 2. Intensity Mapping (Strength: 0.4 -> 0.9) - User Preferred
-                                let intensity = 0.4 + (absX / halfWidth) * 0.5
+                                // 2. Intensity Mapping (Strength: 0.5 -> 0.8) - User Preferred
+                                let intensity = 0.5 + (absX / halfWidth) * 0.3
                                 
                                 if abs(currentX - lastHapticOffset) > dynamicGap {
                                     let impact = UIImpactFeedbackGenerator(style: .light)
