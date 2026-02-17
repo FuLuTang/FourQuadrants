@@ -14,6 +14,7 @@ struct DailyView: View {
     @State private var ghostTask: DailyTask? // Transient task during creation/drag
     @State private var isGhostDragging = false
     @State private var showGhostForm = false
+    @State private var lastHapticOffset: CGFloat = 0 // Track for haptic mapping
     
     // New Gesture States - REMOVED (Replaced by UIKit)
     
@@ -255,6 +256,19 @@ struct DailyView: View {
                         DragGesture()
                             .onChanged { value in
                                 headerDragOffset = value.translation.width
+                                
+                                // --- Haptic Distance-Density Mapping ---
+                                let currentX = value.translation.width
+                                let absX = abs(currentX)
+                                
+                                // Distance between ticks: 35px near center -> 6px near edge
+                                // Density increases as we pull further
+                                let dynamicGap = max(6, 35.0 - (absX / 150.0) * 29.0)
+                                
+                                if abs(currentX - lastHapticOffset) > dynamicGap {
+                                    UISelectionFeedbackGenerator().selectionChanged()
+                                    lastHapticOffset = currentX
+                                }
                             }
                             .onEnded { value in
                                 let threshold: CGFloat = 40
@@ -267,6 +281,7 @@ struct DailyView: View {
                                         headerDragOffset = 0
                                     }
                                 }
+                                lastHapticOffset = 0 // Reset for next swipe
                             }
                     )
                     .onTapGesture {
