@@ -258,20 +258,23 @@ struct DailyView: View {
                             .onChanged { value in
                                 headerDragOffset = value.translation.width
                                 
-                                // --- Haptic Distance-Density Mapping (Linked to Width) ---
+                                // --- Haptic Distance-Intensity-Density Mapping ---
                                 let currentX = value.translation.width
                                 let absX = abs(currentX)
-                                let halfWidth = max(50, headerWidth / 2) // Fallback to 50
+                                let halfWidth = max(50, headerWidth / 2)
                                 
-                                // Return early if finger is outside the slider bounds
+                                // Finger outside the physical slider block
                                 guard absX <= halfWidth else { return }
                                 
-                                // Distance between ticks: 35px near center -> 2px near edge
-                                // Density increases as we pull further towards the slider edge
+                                // 1. Density Mapping (Gap: 35px -> 2px)
                                 let dynamicGap = max(2, 35.0 - (absX / halfWidth) * 33.0)
                                 
+                                // 2. Intensity Mapping (Strength: 0.3 -> 1.0)
+                                let intensity = 0.3 + (absX / halfWidth) * 0.7
+                                
                                 if abs(currentX - lastHapticOffset) > dynamicGap {
-                                    UISelectionFeedbackGenerator().selectionChanged()
+                                    let impact = UIImpactFeedbackGenerator(style: .light)
+                                    impact.impactOccurred(intensity: intensity)
                                     lastHapticOffset = currentX
                                 }
                             }
@@ -308,9 +311,13 @@ struct DailyView: View {
             }
             .background(
                 GeometryReader { geo in
-                    Color.clear.onAppear {
-                        headerWidth = geo.size.width
-                    }
+                    Color.clear
+                        .onAppear {
+                            headerWidth = geo.size.width
+                        }
+                        .onChange(of: geo.size.width) { _, newValue in
+                            headerWidth = newValue
+                        }
                 }
             )
             // --- iOS 26 液态玻璃样式 ---
