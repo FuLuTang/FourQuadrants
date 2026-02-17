@@ -175,17 +175,8 @@ struct DailyView: View {
         .overlay(alignment: .bottomLeading) {
             // 左下角“回到当前”按钮
             Button {
-                let now = Date()
-                // Only update selectedDate if not today to avoid header transition
-                if !Calendar.current.isDate(selectedDate, inSameDayAs: now) {
-                    withAnimation {
-                        selectedDate = now
-                    }
-                }
-                // Always scroll to time
-                withAnimation {
-                    scrollToCurrentTime()
-                }
+                resetToToday()
+                scrollToCurrentTime()
             } label: {
                 Image(systemName: "location.fill")
                     .font(.title3)
@@ -205,23 +196,31 @@ struct DailyView: View {
 
         // 监听 tab 重复点击（通过 notification）
         .onReceive(NotificationCenter.default.publisher(for: .scrollDailyToNow)) { _ in
-            if Calendar.current.isDateInToday(selectedDate) {
-                scrollToCurrentTime()
-            } else {
-                // 如果不是今天，先跳到今天再滚动
-                withAnimation {
-                    selectedDate = Date()
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    scrollToCurrentTime()
-                }
-            }
+            resetToToday()
+            scrollToCurrentTime()
         }
         // Native Haptics: Trigger on date change
         .sensoryFeedback(.selection, trigger: selectedDate)
     }
     
     // MARK: - 组件
+    
+    private func resetToToday() {
+        let now = Date()
+        if !Calendar.current.isDate(selectedDate, inSameDayAs: now) {
+            // 跨天回归：计算方向并触发切页动画
+            transitionEdge = now > selectedDate ? .trailing : .leading
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                selectedDate = now
+                headerDragOffset = 0
+            }
+        } else {
+            // 同天回归：仅平滑复位偏移量，不触发 ID 变更动画
+            withAnimation(.spring()) {
+                headerDragOffset = 0
+            }
+        }
+    }
     
     private var dateHeader: some View {
         HStack {
@@ -263,14 +262,21 @@ struct DailyView: View {
                                 let absX = abs(currentX)
                                 let halfWidth = max(50, headerWidth / 2)
                                 
-                                // Finger outside the physical slider block
-                                guard absX <= halfWidth else { return }
+                                // --- Wall Hit Logic ---
+                                if absX > halfWidth {
+                                    // If we just crossed the boundary this frame
+                                    if abs(lastHapticOffset) <= halfWidth {
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred(intensity: 0.7)
+                                        lastHapticOffset = currentX * 1.5 // Move sentinel out from boundary
+                                    }
+                                    return 
+                                }
                                 
-                                // 1. Density Mapping (Gap: 35px -> 2px)
-                                let dynamicGap = max(2, 35.0 - (absX / halfWidth) * 33.0)
+                                // 1. Density Mapping (Gap: 25px -> 3px) - User Preferred
+                                let dynamicGap = max(3, 25.0 - (absX / halfWidth) * 22.0)
                                 
-                                // 2. Intensity Mapping (Strength: 0.3 -> 1.0)
-                                let intensity = 0.3 + (absX / halfWidth) * 0.7
+                                // 2. Intensity Mapping (Strength: 0.4 -> 0.9) - User Preferred
+                                let intensity = 0.4 + (absX / halfWidth) * 0.5
                                 
                                 if abs(currentX - lastHapticOffset) > dynamicGap {
                                     let impact = UIImpactFeedbackGenerator(style: .light)
@@ -293,7 +299,7 @@ struct DailyView: View {
                             }
                     )
                     .onTapGesture {
-                        withAnimation(.spring()) { selectedDate = Date() }
+                        resetToToday()
                     }
                 
                 // 3. 右切换按钮
