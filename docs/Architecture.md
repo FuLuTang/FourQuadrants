@@ -13,6 +13,7 @@
   - **核心逻辑**：执行 `filteredTasks` 分类算法、`sortTasks` 智能排序算法，以及 `dragTaskChangeCategory` 交互同步逻辑。
 - **View (`Views/`)**:
   - 纯响应式界面，通过 `@ObservedObject` 观察 TaskManager 的状态变化。
+  - **高级交互**：在 `DailyView` 中引入了 UIKit 的 `UILongPressGestureRecognizer` (通过 `UIViewRepresentable`)，以解决复杂手势与 `ScrollView` 的冲突。
 
 ## 🧩 四象限与智能判定逻辑
 

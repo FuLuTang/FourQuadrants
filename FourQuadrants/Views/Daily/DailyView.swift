@@ -15,9 +15,7 @@ struct DailyView: View {
     @State private var isGhostDragging = false
     @State private var showGhostForm = false
     
-    // New Gesture States
-    @State private var activeTouchY: CGFloat? = nil
-    @State private var didCreateByLongPress = false
+    // New Gesture States - REMOVED (Replaced by UIKit)
     
     // MARK: - 常量
     private let hourHeight: CGFloat = 60
@@ -32,66 +30,38 @@ struct DailyView: View {
                 ZStack(alignment: .topLeading) {
                     // 背景网格 & 时间标签
                     // 1. 背景网格 (作为手势的载体)
-                    timeGrid
-                        .contentShape(Rectangle()) // 确保空白处也能点击
-                        // --- 核心修改：双重并行手势 ---
-                        
-                        // ① 持续追踪手指位置 +（长按成功后）拖动更新 ghost
-                        .simultaneousGesture(
-                            DragGesture(minimumDistance: 0, coordinateSpace: .named("DailyZStack"))
-                                .onChanged { value in
-                                    // 实时记录位置，供 LongPress 使用
-                                    activeTouchY = value.location.y
-                                    
-                                    // 如果长按已触发（isGhostDragging），则更新任务位置
-                                    if isGhostDragging, ghostTask != nil {
-                                        updateGhostTask(at: value.location.y)
-                                    }
-                                }
-                                .onEnded { _ in
-                                    // 手指抬起，清理状态
-                                    defer {
-                                        activeTouchY = nil
-                                        didCreateByLongPress = false
-                                    }
-                                    
-                                    // 如果是通过长按创建的，且没被取消，则弹窗
-                                    if didCreateByLongPress, ghostTask != nil {
-                                        showGhostForm = true
-                                        isGhostDragging = false
-                                    } else {
-                                        // 否则（比如只是普通点击或滚动），重置
-                                        resetGhostTask()
-                                    }
-                                }
-                        )
-                        
-                        // ② 长按识别成功“那一刻”就创建 ghost（不需要移动）
-                        .simultaneousGesture(
-                            LongPressGesture(minimumDuration: 0.5, maximumDistance: 10)
-                                .onEnded { _ in
-                                    // 长按时间到！
-                                    guard ghostTask == nil, let y = activeTouchY else { return }
-                                    
-                                    // 立即创建任务
-                                    initGhostTask(at: y)
-                                    isGhostDragging = true
-                                    didCreateByLongPress = true
-                                    
-                                    let feedback = UIImpactFeedbackGenerator(style: .medium)
-                                    feedback.impactOccurred()
-                                }
-                        )
 
-                    // 2. 只有点击交互 (点击空白取消编辑)
-                    Color.clear
-                        .contentShape(Rectangle())
+                    timeGrid
+                        // ❌ 删除原来的 .gesture/simultaneousGesture
+                        // ✅ 添加新的 UIKit 手势层
+                        .overlay(
+                            TimeGridGesture(
+                                minDuration: 0.5,
+                                onBegan: { point in
+                                    // 长按触发：立即在当前坐标创建 Ghost
+                                    createGhostTask(at: point.y)
+                                },
+                                onChanged: { point in
+                                    // 手指不松开，继续移动：更新 Ghost 位置
+                                    if let ghost = ghostTask {
+                                        updateGhostPosition(ghost, at: point.y)
+                                    }
+                                },
+                                onEnded: { point in
+                                    // 松手：确认创建
+                                    if let ghost = ghostTask {
+                                        commitGhostTask(ghost)
+                                    }
+                                }
+                            )
+                        )
+                        .contentShape(Rectangle()) // 确保空白处也能点击
+                        // 2. 只有点击交互 (点击空白取消编辑)
                         .onTapGesture {
                             withAnimation {
                                 editingTaskId = nil
                             }
                         }
-                        .allowsHitTesting(false)
                     
                     // 任务块 (这里需要查询当天的任务)
                     DailyTasksLayer(
@@ -371,41 +341,9 @@ struct DailyView: View {
         }
     }
     
-    private func updateGhostTask(at yOffset: CGFloat) {
-        let (hour, minute) = timeFromY(yOffset)
-        
-        let calendar = Calendar.current
-        var components = calendar.dateComponents([.year, .month, .day], from: selectedDate)
-        components.hour = hour
-        components.minute = minute
-        components.second = 0
-        
-        guard let startTime = calendar.date(from: components) else { return }
-        
-        if ghostTask == nil {
-            // Initialize Ghost
-            let feedback = UIImpactFeedbackGenerator(style: .heavy)
-            feedback.impactOccurred()
-            
-            ghostTask = DailyTask(
-                title: String(localized: "new_task"),
-                scheduledDate: selectedDate,
-                startTime: startTime,
-                duration: 3600,
-                colorHex: "#5E81F4"
-            )
-        } else {
-            // Update Time
-            if ghostTask?.startTime != startTime {
-                let feedback = UISelectionFeedbackGenerator()
-                feedback.selectionChanged()
-                ghostTask?.startTime = startTime
-            }
-        }
-    }
+    // MARK: - Ghost Task Logic
     
-    // 修改：通过 Y 坐标初始化任务
-    private func initGhostTask(at yOffset: CGFloat) {
+    private func createGhostTask(at yOffset: CGFloat) {
         let (hour, minute) = timeFromY(yOffset)
         
         let calendar = Calendar.current
@@ -423,6 +361,34 @@ struct DailyView: View {
             duration: 3600,
             colorHex: "#5E81F4"
         )
+        isGhostDragging = true
+        
+        // Haptic feedback
+        let feedback = UIImpactFeedbackGenerator(style: .medium)
+        feedback.impactOccurred()
+    }
+    
+    private func updateGhostPosition(_ task: DailyTask, at yOffset: CGFloat) {
+         let (hour, minute) = timeFromY(yOffset)
+         
+         let calendar = Calendar.current
+         var components = calendar.dateComponents([.year, .month, .day], from: selectedDate)
+         components.hour = hour
+         components.minute = minute
+         components.second = 0
+         
+         guard let startTime = calendar.date(from: components) else { return }
+         
+         if task.startTime != startTime {
+             let feedback = UISelectionFeedbackGenerator()
+             feedback.selectionChanged()
+             task.startTime = startTime
+         }
+    }
+    
+    private func commitGhostTask(_ task: DailyTask) {
+        showGhostForm = true
+        isGhostDragging = false
     }
     
     private func resetGhostTask() {
