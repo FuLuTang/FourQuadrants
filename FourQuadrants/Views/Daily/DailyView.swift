@@ -15,6 +15,7 @@ struct DailyView: View {
     @State private var isGhostDragging = false
     @State private var showGhostForm = false
     @State private var lastHapticOffset: CGFloat = 0 // Track for haptic mapping
+    @State private var headerWidth: CGFloat = 0 // Track physical width for haptic mapping
     
     // New Gesture States - REMOVED (Replaced by UIKit)
     
@@ -257,13 +258,17 @@ struct DailyView: View {
                             .onChanged { value in
                                 headerDragOffset = value.translation.width
                                 
-                                // --- Haptic Distance-Density Mapping ---
+                                // --- Haptic Distance-Density Mapping (Linked to Width) ---
                                 let currentX = value.translation.width
                                 let absX = abs(currentX)
+                                let halfWidth = max(50, headerWidth / 2) // Fallback to 50
                                 
-                                // Distance between ticks: 35px near center -> 6px near edge
-                                // Density increases as we pull further
-                                let dynamicGap = max(6, 35.0 - (absX / 150.0) * 29.0)
+                                // Return early if finger is outside the slider bounds
+                                guard absX <= halfWidth else { return }
+                                
+                                // Distance between ticks: 35px near center -> 2px near edge
+                                // Density increases as we pull further towards the slider edge
+                                let dynamicGap = max(2, 35.0 - (absX / halfWidth) * 33.0)
                                 
                                 if abs(currentX - lastHapticOffset) > dynamicGap {
                                     UISelectionFeedbackGenerator().selectionChanged()
@@ -301,6 +306,13 @@ struct DailyView: View {
                 }
                 .buttonStyle(.plain)
             }
+            .background(
+                GeometryReader { geo in
+                    Color.clear.onAppear {
+                        headerWidth = geo.size.width
+                    }
+                }
+            )
             // --- iOS 26 液态玻璃样式 ---
             .glassEffect(
                 .clear.tint(.white.opacity(0.1)).interactive(),
