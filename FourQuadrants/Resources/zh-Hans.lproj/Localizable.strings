@@ -1,132 +1,132 @@
 /* Task Form */
-"task_details" = "任务详情";
-"task_name" = "任务名称";
-"importance" = "重要性";
-"low" = "低";
-"normal" = "普通";
-"high" = "高";
-"urgent" = "紧急";
-"top" = "置顶";
-"target_date" = "目标日期";
-"set_target_date" = "设置目标日期";
-"select_date" = "选择日期";
-"set_urgent_threshold" = "设置紧急阈值";
-"urgent_threshold_days" = "紧急阈值天数: %d 天";
-"add_task" = "添加任务";
-"edit_task" = "编辑任务";
-"cancel" = "取消";
-"add" = "添加";
-"save" = "保存";
+"task_details" = "Task Details";
+"task_name" = "Task Name";
+"importance" = "Importance";
+"low" = "Low";
+"normal" = "Normal";
+"high" = "High";
+"urgent" = "Urgent";
+"top" = "Pin to Top";
+"target_date" = "Target Date";
+"set_target_date" = "Set Target Date";
+"select_date" = "Select Date";
+"set_urgent_threshold" = "Set Urgent Threshold";
+"urgent_threshold_days" = "Urgent Threshold: %d days";
+"add_task" = "Add Task";
+"edit_task" = "Edit Task";
+"cancel" = "Cancel";
+"add" = "Add";
+"save" = "Save";
 
 /* Main Tab */
-"tab_daily" = "今日";
-"tab_quadrants" = "四象限";
-"tab_list" = "列表";
-"tab_settings" = "设置";
+"tab_daily" = "Daily";
+"tab_quadrants" = "Quadrants";
+"tab_list" = "List";
+"tab_settings" = "Settings";
 
 /* Quadrant View */
-"quadrant_board_title" = "四象限看板";
-"category_important_urgent" = "重要且紧急";
-"category_important_not_urgent" = "重要不紧急";
-"category_urgent_not_important" = "紧急不重要";
-"category_not_important_not_urgent" = "不重要不紧急";
-"no_tasks" = "无任务";
+"quadrant_board_title" = "Matrix";
+"category_important_urgent" = "Important & Urgent";
+"category_important_not_urgent" = "Important, Not Urgent";
+"category_urgent_not_important" = "Urgent, Not Important";
+"category_not_important_not_urgent" = "Not Important & Not Urgent";
+"no_tasks" = "No tasks";
 
 /* List View */
-"category_title" = "分类";
-"select_category_prompt" = "请选择分类";
-"category_all_incomplete" = "全部未完成";
-"category_quadrants_section" = "四象限";
-"category_completed_section" = "已完成";
-"alert_task_details_title" = "任务详情";
-"alert_ok" = "确定";
-"menu_delete" = "删除";
-"menu_edit" = "编辑";
-"menu_complete_task" = "完成任务";
-"menu_mark_incomplete" = "标为未完成";
+"category_title" = "Categories";
+"select_category_prompt" = "Select a Category";
+"category_all_incomplete" = "All Incomplete";
+"category_quadrants_section" = "Quadrants";
+"category_completed_section" = "Completed";
+"alert_task_details_title" = "Task Details";
+"alert_ok" = "OK";
+"menu_delete" = "Delete";
+"menu_edit" = "Edit";
+"menu_complete_task" = "Complete Task";
+"menu_mark_incomplete" = "Mark Incomplete";
 
 /* Settings View */
-"settings_title" = "设置";
-"settings_app_section" = "应用设置";
-"settings_enable_notifications" = "启用通知";
-"settings_dark_mode" = "深色模式";
-"settings_dark_mode_auto" = "自动（跟随系统）";
+"settings_title" = "Settings";
+"settings_app_section" = "App Settings";
+"settings_enable_notifications" = "Enable Notifications";
+"settings_dark_mode" = "Dark Mode";
+"settings_dark_mode_auto" = "Auto (Follow System)";
 
-"settings_sync_section" = "同步";
-"sync_connected" = "已连接 Microsoft To Do";
-"sync_last_time" = "上次同步: %@";
-"sync_never" = "尚未同步";
-"sync_disconnect" = "断开连接";
-"sync_connect_microsoft" = "连接 Microsoft To Do";
+"settings_sync_section" = "Sync";
+"sync_connected" = "Connected to Microsoft To Do";
+"sync_last_time" = "Last sync: %@";
+"sync_never" = "Not synced yet";
+"sync_disconnect" = "Disconnect";
+"sync_connect_microsoft" = "Connect Microsoft To Do";
 
-"settings_language_section" = "语言";
-"settings_language" = "语言";
-"language_auto" = "自动（跟随系统）";
+"settings_language_section" = "Language";
+"settings_language" = "Language";
+"language_auto" = "Auto (System)";
 
-"settings_about_section" = "关于";
-"settings_details" = "详细信息";
+"settings_about_section" = "About";
+"settings_details" = "Details";
 
 /* About View */
-"app_name_cn" = "项限";
+"app_name_cn" = "XiangXian";
 "app_name_en" = "Quadrant";
-"about_version %@ (%@)" = "版本 %@ (%@)";
-"slogan_part1" = "项目有重，";
-"slogan_part2" = "限时先行。";
-"about_features_title" = "功能亮点";
-"feature_quadrant_board" = "四象限看板";
-"feature_quadrant_desc" = "基于艾森豪威尔矩阵的任务管理";
-"feature_drag_drop" = "拖拽分类";
-"feature_drag_desc" = "长按任务即可拖拽到其他象限";
-"feature_smart_urgent" = "智能紧急";
-"feature_urgent_desc" = "根据截止日期自动判断紧急程度";
-"feature_microsoft_sync" = "微软同步";
-"feature_sync_desc" = "与 Microsoft To Do 双向同步";
+"about_version %@ (%@)" = "Version %@ (%@)";
+"slogan_part1" = "Prioritize tasks,";
+"slogan_part2" = "Time follows.";
+"about_features_title" = "Features";
+"feature_quadrant_board" = "Quadrant Board";
+"feature_quadrant_desc" = "Task management based on Eisenhower Matrix";
+"feature_drag_drop" = "Drag & Drop";
+"feature_drag_desc" = "Long press to drag tasks between quadrants";
+"feature_smart_urgent" = "Smart Urgent";
+"feature_urgent_desc" = "Auto-detection based on due dates";
+"feature_microsoft_sync" = "Microsoft Sync";
+"feature_sync_desc" = "Two-way sync with Microsoft To Do";
 
-"about_developer_title" = "开发者";
-"about_design_dev" = "设计 & 开发";
-"about_tech_stack" = "技术栈";
-"about_min_support" = "最低支持";
+"about_developer_title" = "Developer";
+"about_design_dev" = "Design & Dev";
+"about_tech_stack" = "Tech Stack";
+"about_min_support" = "Minimum Support";
 
-"about_feedback_title" = "反馈与支持";
-"feedback_send_email" = "发送反馈邮件";
-"feedback_github" = "GitHub 仓库";
-"feedback_rate" = "为我们评分";
+"about_feedback_title" = "Feedback & Support";
+"feedback_send_email" = "Send Feedback Email";
+"feedback_github" = "GitHub Repository";
+"feedback_rate" = "Rate Us on App Store";
 
-"about_legal" = "法律信息";
-"legal_privacy" = "隐私政策";
-"legal_terms" = "服务条款";
+"about_legal" = "Legal";
+"legal_privacy" = "Privacy Policy";
+"legal_terms" = "Terms of Service";
 "copyright_notice" = "© 2026 FourQuadrants. All rights reserved.";
 
 /* Privacy & Terms */
-"privacy_title" = "隐私政策";
-"privacy_intro" = "本应用尊重并保护您的隐私。";
-"privacy_data_storage_title" = "数据存储";
-"privacy_data_storage_desc" = "所有任务数据仅存储在您的设备本地。如果您选择启用 Microsoft To Do 同步，数据将通过微软官方 API 传输并存储在您的微软账户中。";
-"privacy_data_collection_title" = "数据收集";
-"privacy_data_collection_desc" = "我们不收集任何个人信息或使用数据。";
-"privacy_third_party_title" = "第三方服务";
-"privacy_third_party_desc" = "本应用使用 Microsoft Graph API 进行任务同步。使用该功能时，您的数据将受微软隐私政策保护。";
+"privacy_title" = "Privacy Policy";
+"privacy_intro" = "We respect and protect your privacy.";
+"privacy_data_storage_title" = "Data Storage";
+"privacy_data_storage_desc" = "All data is stored locally. If sync is enabled, data is processed via official Microsoft API.";
+"privacy_data_collection_title" = "Data Collection";
+"privacy_data_collection_desc" = "We do not collect any personal info.";
+"privacy_third_party_title" = "Third Party Services";
+"privacy_third_party_desc" = "Microsoft Graph API is used for sync.";
 
-"terms_title" = "服务条款";
-"terms_intro" = "欢迎使用四象限应用。";
-"terms_license_title" = "使用许可";
-"terms_license_desc" = "本应用授予您有限的、非独占的、不可转让的许可，仅供个人非商业用途。";
-"terms_disclaimer_title" = "免责声明";
-"terms_disclaimer_desc" = "本应用按原样提供，不做任何明示或暗示的保证。";
+"terms_title" = "Terms of Service";
+"terms_intro" = "Welcome to FourQuadrants.";
+"terms_license_title" = "License";
+"terms_license_desc" = "Limited, non-exclusive, non-transferable license for personal use.";
+"terms_disclaimer_title" = "Disclaimer";
+"terms_disclaimer_desc" = "Provided 'as is' without warranty.";
 
 /* Daily Task Form View */
-"daily_unlink" = "取消关联";
-"daily_analyzing" = "正在分析语义...";
-"daily_related_tasks" = "检测到与以下任务相关：";
-"daily_link" = "关联";
-"daily_select_other" = "手动选择其他任务...";
-"daily_auto_recommend" = "输入完成自动推荐相关任务";
-"daily_notes" = "备注";
-"daily_new_task" = "新建每日任务";
-"daily_edit_task" = "编辑任务";
-"confirm_delete_task_title" = "删除任务";
-"confirm_delete_task_message" = "确定要删除此任务吗？此操作无法撤销。";
-"delete" = "删除";
-"edit" = "编辑";
-"new_task" = "新任务";
-"new_task" = "新任务";
+"daily_unlink" = "Unlink";
+"daily_analyzing" = "Analyzing semantics...";
+"daily_related_tasks" = "Related tasks detected:";
+"daily_link" = "Link";
+"daily_select_other" = "Select other task...";
+"daily_auto_recommend" = "Auto-recommend related tasks after input";
+"daily_notes" = "Notes";
+"daily_new_task" = "New Daily Task";
+"daily_edit_task" = "Edit Task";
+"confirm_delete_task_title" = "Delete Task";
+"confirm_delete_task_message" = "Are you sure you want to delete this task? This action cannot be undone.";
+"delete" = "Delete";
+"edit" = "Edit";
+"new_task" = "New Task";
+
