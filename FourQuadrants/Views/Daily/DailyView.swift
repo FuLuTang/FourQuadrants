@@ -266,7 +266,7 @@ struct DailyView: View {
                                 if absX > halfWidth {
                                     // If we just crossed the boundary this frame
                                     if abs(lastHapticOffset) <= halfWidth {
-                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred(intensity: 0.7)
+                                        UIImpactFeedbackGenerator(style: .rigid).impactOccurred(intensity: 0.8)
                                         lastHapticOffset = currentX * 1.5 // Move sentinel out from boundary
                                     }
                                     return 
