@@ -16,8 +16,8 @@ struct DailyTaskBlock: View {
     @State private var showEditSheet = false
     @State private var showContextMenu = false // Custom Menu State
     
-    // Gesture State
-    @GestureState private var isDraggingBody = false
+    // Gesture State - Now using @State for UIKit-driven updates
+    @State private var isDraggingBody = false
     @State private var initialStartTime: Date?
     @State private var initialDuration: TimeInterval?
     
@@ -29,59 +29,60 @@ struct DailyTaskBlock: View {
         
         ZStack(alignment: .topLeading) {
             taskCard
-                .zIndex(1) // Base layer
+                .zIndex(1)
             
-            // Custom Context Menu Overlay
-            if showContextMenu && !isDraggingBody {
-                contextMenu
-                    .zIndex(100)
-                    .transition(.scale(scale: 0.8).combined(with: .opacity))
-                    .padding(.bottom, 10) // Spacing from card
-                    .alignmentGuide(.bottom) { _ in 0 } // Align to bottom of container?? No.
-                    // We want it positioned relevant to the card. 
-                    // Let's use overlay on the card or ZStack.
-                    // ZStack alignment is topLeading.
-                    // We want the menu to appear probably centered horizontally on the card, and above or below.
-                    // Let's position it "Above" the card.
-            }
+            // --- UIKit Interaction Overlay (The Core Optimization) ---
+            TaskInteractionOverlay(
+                isEditing: Binding(
+                    get: { editingTaskId == task.id },
+                    set: { newValue in
+                        withAnimation {
+                            editingTaskId = newValue ? task.id : nil
+                        }
+                    }
+                ),
+                onMove: { deltaY in
+                    handleMove(deltaY: deltaY)
+                },
+                onResizeTop: { deltaY in
+                    handleResizeTop(deltaY: deltaY)
+                },
+                onResizeBottom: { deltaY in
+                    handleResizeBottom(deltaY: deltaY)
+                },
+                onEnd: {
+                    finalizeInteraction()
+                },
+                onSelect: {
+                    if showContextMenu {
+                        withAnimation { showContextMenu = false }
+                    } else if editMode == .normal {
+                        showEditSheet = true
+                    }
+                }
+            )
+            .zIndex(5)
         }
         .frame(height: max(height, 30))
         .overlay(alignment: .top) { 
             if showContextMenu && !isDraggingBody {
                 contextMenu
-                    .offset(y: -45) // Shift up above the card
-                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+                    .offset(y: -45)
+                    .transition(.scale.combined(with: .opacity))
             }
         }
         .overlay(alignment: .top) { topResizeHandle }
         .overlay(alignment: .bottom) { bottomResizeHandle }
         .contentShape(Rectangle())
-        // --- Interactions ---
-        .onTapGesture {
-            if showContextMenu {
-                withAnimation { showContextMenu = false }
-            } else if editMode == .normal {
-                showEditSheet = true
-            }
-        }
-        // Sequenced Gesture: Long Press -> Drag (Move) OR Long Press -> Context Menu
-        .gesture(
-            editMode == .normal ? combinedGestures : nil
-        )
-        // Edit Mode: Drag Body to Move
-        .gesture(
-            editMode == .editing ? dragBodyGesture(isEditMode: true) : nil
-        )
         .sheet(isPresented: $showEditSheet) {
             DailyTaskFormView(task: task, selectedDate: task.scheduledDate)
         }
-        // Native Haptics
         .sensoryFeedback(.impact(weight: .light), trigger: task.startTime)
         .sensoryFeedback(.impact(weight: .light), trigger: task.duration)
-        .sensoryFeedback(.impact(weight: .medium), trigger: showContextMenu) { old, new in return new }
+        .sensoryFeedback(.impact(weight: .medium), trigger: showContextMenu) { _, new in return new }
         .scaleEffect(isDraggingBody ? 1.05 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isDraggingBody)
-        .zIndex(showContextMenu || isDraggingBody ? 10 : 1) // Bring to front
+        .zIndex(showContextMenu || isDraggingBody ? 10 : 1)
     }
     
     // MARK: - Subviews
@@ -154,7 +155,6 @@ struct DailyTaskBlock: View {
                 }
                 .padding(8)
             }
-            // Edit Mode Visuals
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(Color.white.opacity(0.8), lineWidth: editMode == .editing ? 2 : 0)
@@ -169,139 +169,35 @@ struct DailyTaskBlock: View {
     @ViewBuilder
     private var topResizeHandle: some View {
         if editMode == .editing {
-            Color.clear
-                .frame(height: 20)
-                .contentShape(Rectangle())
-                .overlay(
-                    Capsule()
-                        .fill(.white.opacity(0.5))
-                        .frame(width: 24, height: 4)
-                )
-                .offset(y: -10)
-                .gesture(resizeTopGesture)
+            Capsule()
+                .fill(.white.opacity(0.5))
+                .frame(width: 24, height: 4)
+                .padding(.top, 4)
+                .allowsHitTesting(false) // Let UIKit overlay handle the hits
         }
     }
     
     @ViewBuilder
     private var bottomResizeHandle: some View {
         if editMode == .editing {
-            Color.clear
-                .frame(height: 20)
-                .contentShape(Rectangle())
-                .overlay(
-                    Capsule()
-                        .fill(.white.opacity(0.5))
-                        .frame(width: 24, height: 4)
-                )
-                .offset(y: 10)
-                .gesture(resizeBottomGesture)
+            Capsule()
+                .fill(.white.opacity(0.5))
+                .frame(width: 24, height: 4)
+                .padding(.bottom, 4)
+                .allowsHitTesting(false) // Let UIKit overlay handle the hits
         }
     }
     
-    // MARK: - Combined Gesture (Normal Mode)
+    // MARK: - Logic Refined for UIKit
     
-    var combinedGestures: some Gesture {
-        LongPressGesture(minimumDuration: 0.4, maximumDistance: 10)
-            .sequenced(before: DragGesture(minimumDistance: 5, coordinateSpace: .global))
-            .updating($isDraggingBody) { value, state, _ in
-                switch value {
-                case .second(true, let drag):
-                    if let drag = drag, abs(drag.translation.height) > 5 {
-                         state = true
-                    }
-                default:
-                    state = false
-                }
-            }
-            .onChanged { value in
-                switch value {
-                case .second(true, let drag):
-                    if let drag = drag, abs(drag.translation.height) > 5 {
-                        if showContextMenu { withAnimation { showContextMenu = false } }
-                        handleMove(drag: drag)
-                    }
-                default: break
-                }
-            }
-            .onEnded { value in
-                switch value {
-                case .second(true, let drag):
-                    if let drag = drag, abs(drag.translation.height) > 10 {
-                        finalizeMove()
-                    } else {
-                        // Stationary Long Press -> Toggle Menu
-                        withAnimation { showContextMenu.toggle() }
-                    }
-                default: break
-                }
-            }
-    }
-    
-    // MARK: - Helper Gestures
-    
-    func dragBodyGesture(isEditMode: Bool) -> some Gesture {
-        DragGesture(coordinateSpace: .global)
-            .onChanged { value in
-                handleMove(drag: value)
-            }
-            .onEnded { _ in
-                finalizeMove()
-            }
-    }
-    
-    var resizeBottomGesture: some Gesture {
-        DragGesture(coordinateSpace: .global)
-            .onChanged { value in
-                if initialDuration == nil { initialDuration = task.duration }
-                guard let startDuration = initialDuration else { return }
-                
-                let deltaHours = Double(value.translation.height / hourHeight)
-                let rawDuration = startDuration + (deltaHours * 3600)
-                let snappedDuration = interaction.snapDuration(rawDuration, intervalMinutes: 15)
-                
-                if snappedDuration != task.duration {
-                    task.duration = snappedDuration
-                }
-            }
-            .onEnded { _ in
-                initialDuration = nil
-                checkLiveActivity()
-            }
-    }
-    
-    var resizeTopGesture: some Gesture {
-        DragGesture(coordinateSpace: .global)
-            .onChanged { value in
-                if initialStartTime == nil {
-                    initialStartTime = task.startTime
-                    initialDuration = task.duration
-                }
-                guard let start = initialStartTime, let duration = initialDuration else { return }
-                
-                let deltaHours = Double(value.translation.height / hourHeight)
-                let rawNewStart = start.addingTimeInterval(deltaHours * 3600)
-                let snappedNewStart = interaction.snapTime(rawNewStart, intervalMinutes: 15)
-                
-                let originalEnd = start.addingTimeInterval(duration)
-                let newDuration = originalEnd.timeIntervalSince(snappedNewStart)
-                
-                if newDuration >= 900 && snappedNewStart != task.startTime {
-                    task.startTime = snappedNewStart
-                    task.duration = newDuration
-                }
-            }
-            .onEnded { _ in
-                initialStartTime = nil
-                initialDuration = nil
-                checkLiveActivity()
-            }
-    }
-    
-    private func handleMove(drag: DragGesture.Value) {
-        if initialStartTime == nil { initialStartTime = task.startTime }
+    private func handleMove(deltaY: CGFloat) {
+        if initialStartTime == nil { 
+            initialStartTime = task.startTime 
+            withAnimation { isDraggingBody = true }
+        }
         guard let start = initialStartTime else { return }
         
-        let deltaHours = Double(drag.translation.height / hourHeight)
+        let deltaHours = Double(deltaY / hourHeight)
         let rawDate = start.addingTimeInterval(deltaHours * 3600)
         let snappedDate = interaction.snapTime(rawDate, intervalMinutes: 15)
         
@@ -310,8 +206,47 @@ struct DailyTaskBlock: View {
         }
     }
     
-    private func finalizeMove() {
+    private func handleResizeBottom(deltaY: CGFloat) {
+        if initialDuration == nil { 
+            initialDuration = task.duration 
+            withAnimation { isDraggingBody = true }
+        }
+        guard let startDuration = initialDuration else { return }
+        
+        let deltaHours = Double(deltaY / hourHeight)
+        let rawDuration = startDuration + (deltaHours * 3600)
+        let snappedDuration = interaction.snapDuration(rawDuration, intervalMinutes: 15)
+        
+        if snappedDuration != task.duration {
+            task.duration = snappedDuration
+        }
+    }
+    
+    private func handleResizeTop(deltaY: CGFloat) {
+        if initialStartTime == nil {
+            initialStartTime = task.startTime
+            initialDuration = task.duration
+            withAnimation { isDraggingBody = true }
+        }
+        guard let start = initialStartTime, let duration = initialDuration else { return }
+        
+        let deltaHours = Double(deltaY / hourHeight)
+        let rawNewStart = start.addingTimeInterval(deltaHours * 3600)
+        let snappedNewStart = interaction.snapTime(rawNewStart, intervalMinutes: 15)
+        
+        let originalEnd = start.addingTimeInterval(duration)
+        let newDuration = originalEnd.timeIntervalSince(snappedNewStart)
+        
+        if newDuration >= 900 && snappedNewStart != task.startTime {
+            task.startTime = snappedNewStart
+            task.duration = newDuration
+        }
+    }
+    
+    private func finalizeInteraction() {
+        withAnimation { isDraggingBody = false }
         initialStartTime = nil
+        initialDuration = nil
         checkLiveActivity()
     }
     

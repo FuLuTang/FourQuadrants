@@ -1,0 +1,60 @@
+# Xcode
+#
+# gitignore contributors: switch to the 
+# https://github.com/github/gitignore/blob/master/Swift.gitignore
+# or
+# https://github.com/github/gitignore/blob/master/Objective-C.gitignore
+# and copy/paste its contents here
+
+## Build results
+build/
+DerivedData/
+
+## Usage Data
+.DS_Store
+UserInterfaceState.xcuserstate
+$RECYCLE.BIN/
+
+## OS X
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+
+## Thumbnails
+._*
+
+## Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+## Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network\ Trash\ Folder
+Temporary\ Items
+.apdisk
+
+## Swift Package Manager
+.build/
+.swiftpm/
+
+## Xcode User Settings
+xcuserdata/
+*.userdata
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+## Other
+*.log
+build_log*.txt
