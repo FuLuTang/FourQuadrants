@@ -534,29 +534,28 @@ struct DailyView: View {
         }
         
         var body: some View {
-            // Calculate layout once when tasks change
-            let layout = DailyTaskLayout.calculateLayout(for: tasks, hourHeight: hourHeight)
-            let screenWidth = UIScreen.main.bounds.width
-            let availableWidth = screenWidth - timeColumnWidth - 24
-            
-            return ZStack(alignment: .topLeading) {
-                ForEach(tasks) { task in
-                    if let geometry = layout[task.id] {
-                        
-                        // Calculate precise frame and position
-                        let width = availableWidth * geometry.frame.width
-                        let height = geometry.frame.height
-                        
-                        // X position is left padding + offset + half width (because position is center)
-                        let xOffset = timeColumnWidth + 8 + (geometry.frame.origin.x * availableWidth)
-                        let xPosition = xOffset + (width / 2)
-                        
-                        // Y position is top padding + offset + half height
-                        let yPosition = geometry.frame.origin.y + (height / 2)
-                        
-                        DailyTaskBlock(task: task, hourHeight: hourHeight, editingTaskId: $editingTaskId)
-                            .frame(width: width, height: height)
-                            .position(x: xPosition, y: yPosition)
+            GeometryReader { geometry in
+                let availableWidth = geometry.size.width - timeColumnWidth - 24
+                let layout = DailyTaskLayout.calculateLayout(for: tasks, hourHeight: hourHeight)
+                
+                ZStack(alignment: .topLeading) {
+                    ForEach(tasks) { task in
+                        if let geometryData = layout[task.id] {
+                            // Calculate precise frame and position
+                            let width = availableWidth * geometryData.frame.width
+                            let height = geometryData.frame.height
+                            
+                            // X position is left padding + offset + half width (because position is center)
+                            let xOffset = timeColumnWidth + 8 + (geometryData.frame.origin.x * availableWidth)
+                            let xPosition = xOffset + (width / 2)
+                            
+                            // Y position is top padding + offset + half height
+                            let yPosition = geometryData.frame.origin.y + (height / 2)
+                            
+                            DailyTaskBlock(task: task, hourHeight: hourHeight, editingTaskId: $editingTaskId)
+                                .frame(width: width, height: height)
+                                .position(x: xPosition, y: yPosition)
+                        }
                     }
                 }
             }

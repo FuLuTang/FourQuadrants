@@ -9,6 +9,7 @@ class LiveActivityManager {
     
     private var currentActivity: Activity<FourQuadrantsWidgetAttributes>?
     private var timer: Timer?
+    private var modelContainer: ModelContainer?
     
     // 缓存上一次的状态，用于判断是否需要更新
     private var lastTaskId: String?
@@ -21,17 +22,18 @@ class LiveActivityManager {
     
     // MARK: - 定时器
     
-    func startTimerIfNeeded(context: ModelContext) {
+    func startTimerIfNeeded(container: ModelContainer) {
+        self.modelContainer = container
         guard timer == nil else { return }
         
         // 立即检查一次
-        checkTask(context: context)
+        checkTask(context: container.mainContext)
         
         // 每60秒检查一次
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
+            guard let self = self, let container = self.modelContainer else { return }
             Task { @MainActor [weak self] in
-                self?.checkTask(context: context)
+                self?.checkTask(context: container.mainContext)
             }
         }
     }
