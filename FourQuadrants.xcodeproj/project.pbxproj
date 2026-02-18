@@ -605,7 +605,6 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = FourQuadrants/FourQuadrants.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -623,7 +622,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.fulu.FourQuadrants;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -644,7 +642,6 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = FourQuadrants/FourQuadrants.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -662,7 +659,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.fulu.FourQuadrants;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -803,11 +799,9 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.fulu.FourQuadrants.FourQuadrantsTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -825,11 +819,9 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.fulu.FourQuadrants.FourQuadrantsTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -846,10 +838,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.fulu.FourQuadrants.FourQuadrantsUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -866,10 +856,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.fulu.FourQuadrants.FourQuadrantsUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -889,7 +877,6 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = FourQuadrantsWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FourQuadrantsWidget/Info.plist;
@@ -900,7 +887,6 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.fulu.FourQuadrants.FourQuadrantsWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -920,7 +906,6 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = FourQuadrantsWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FourQuadrantsWidget/Info.plist;
@@ -931,7 +916,6 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.fulu.FourQuadrants.FourQuadrantsWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -951,7 +935,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "FourQuadrantsWatch Watch App/FourQuadrantsWatch Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -962,7 +945,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = .watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -985,7 +967,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "FourQuadrantsWatch Watch App/FourQuadrantsWatch Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -996,7 +977,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = .watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -1017,10 +997,8 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.fulu.FourQuadrants.FourQuadrantsWatch-Watch-AppTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -1040,10 +1018,8 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.fulu.FourQuadrants.FourQuadrantsWatch-Watch-AppTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -1062,10 +1038,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.fulu.FourQuadrants.FourQuadrantsWatch-Watch-AppUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -1084,10 +1058,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "";
 				DEVELOPMENT_TEAM = 99C72SK45W;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.fulu.FourQuadrants.FourQuadrantsWatch-Watch-AppUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
