@@ -109,7 +109,7 @@ struct DailyTaskFormView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
                             ForEach([15, 30, 60, 90, 120], id: \.self) { min in
-                                Button("\(min) \(String(localized: "daily_minutes", locale: LanguageManager.shared.locale))", locale: LanguageManager.shared.locale) {
+                                Button("\(min) \(String(localized: "daily_minutes", locale: LanguageManager.shared.locale))") {
                                     withAnimation {
                                         endTime = startTime.addingTimeInterval(TimeInterval(min * 60))
                                     }
