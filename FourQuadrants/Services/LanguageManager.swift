@@ -41,6 +41,7 @@ class LanguageManager: ObservableObject {
     @Published var currentLanguage: Language {
         didSet {
             UserDefaults.standard.set(currentLanguage.rawValue, forKey: "selectedLanguage")
+            updateAppleLanguages()
             updateLocale()
         }
     }
@@ -53,6 +54,20 @@ class LanguageManager: ObservableObject {
         let language = Language(rawValue: savedLanguage) ?? .auto
         self.currentLanguage = language
         self.locale = LanguageManager.getLocale(for: language)
+        updateAppleLanguages()
+    }
+    
+    /// 强制更新底层 AppleLanguages (使得 String(localized:) 和系统弹窗如通知也能立刻匹配应用内语言设置)
+    private func updateAppleLanguages() {
+        if currentLanguage == .auto {
+            // "自动" 意味着跟随 iOS 系统的语言设置 (包含系统级多语言和iOS设置中的独立App语言)
+            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+        } else {
+            // 用户在应用内做出了具体的选择，无视 iOS 的设定，覆盖 AppleLanguages
+            // 对于繁简中文我们需要区分，但这里目前只有 zh-Hans
+            UserDefaults.standard.set([currentLanguage.rawValue], forKey: "AppleLanguages")
+        }
+        UserDefaults.standard.synchronize()
     }
     
     /// 获取系统语言
