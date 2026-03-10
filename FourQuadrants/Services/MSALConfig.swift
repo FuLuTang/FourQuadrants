@@ -6,7 +6,11 @@ struct MSALConfig {
     static let clientID = "ENTER_YOUR_CLIENT_ID_HERE"
     
     // 你的 Bundle ID
+    #if DEBUG
+    static let bundleID = "com.fulu.FourQuadrants.dev"
+    #else
     static let bundleID = "com.fulu.FourQuadrants"
+    #endif
     
     // Redirect URI Scheme: msauth.$(PRODUCT_BUNDLE_IDENTIFIER)://auth
     static let redirectUri = "msauth.\(bundleID)://auth"

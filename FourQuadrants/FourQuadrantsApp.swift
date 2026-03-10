@@ -11,8 +11,16 @@ struct FourQuadrantsApp: App {
         // 尝试使用 App Group 共享路径，失败则回退到默认路径
         let container: ModelContainer
         do {
+            #if DEBUG
+            // 开发环境连线调试时，自动用这套
+            let myAppGroupID = "group.fulu.FourQuadrants.dev"
+            #else
+            // 打包上传 TestFlight 时，自动用这套
+            let myAppGroupID = "group.fulu.FourQuadrants"
+            #endif
+            
             let config = ModelConfiguration(
-                groupContainer: .identifier("group.fulu.FourQuadrants")
+                groupContainer: .identifier(myAppGroupID)
             )
             container = try ModelContainer(
                 for: QuadrantTask.self, DailyTask.self,
