@@ -17,7 +17,7 @@ class LanguageManager: ObservableObject {
         var displayName: String {
             switch self {
             case .auto:
-                return String(localized: "language_auto")
+                return String(localized: "language_auto", locale: LanguageManager.shared.locale)
             case .english:
                 return "English"
             case .chinese:

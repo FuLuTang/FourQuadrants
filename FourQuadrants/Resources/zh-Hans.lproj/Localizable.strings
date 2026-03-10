@@ -130,3 +130,30 @@
 "edit" = "编辑";
 "new_task" = "新任务";
 "new_task" = "新任务";
+/* Missing Localizations */
+"category_all" = "所有";
+"category_completed" = "已完成";
+"slogan_char1" = "项";
+"slogan_char2" = "限";
+"daily_task_title" = "任务标题";
+"daily_time_planning" = "时间规划";
+"daily_start_time" = "开始时间";
+"daily_end_time" = "结束时间";
+"daily_cross_day" = "延续至次日";
+"daily_minutes" = "分钟";
+"daily_smart_link_section" = "智能关联 (AI 推荐)";
+"daily_linked_quadrant_task" = "已关联到四象限任务";
+"daily_mock_task_title" = "完成 iOS 开发文档";
+"daily_mock_task_info" = "重要 & 紧急 • 截止: 明天";
+"daily_linked_quadrant_task_title" = "已关联的四象限任务";
+"daily_loading" = "加载中...";
+
+/* Initial Setup Demo Tasks */
+"demo_important_urgent" = "重要且紧急任务";
+"demo_important_not_urgent" = "重要不紧急任务";
+"demo_urgent_not_important" = "紧急不重要任务";
+"demo_not_important_not_urgent" = "不重要不紧急任务";
+"demo_extra_task" = "额外任务";
+"demo_install_plus_1" = "安装日期+1";
+"demo_install_minus_1" = "安装日期-1";
+"demo_pinned" = "置顶";

@@ -41,7 +41,7 @@ struct DailyTaskFormView: View {
             Form {
                 // 1. 标题与颜色
                 Section {
-                    TextField("任务标题", text: $title)
+                    TextField("daily_task_title", text: $title)
                         .font(.title3)
                         .focused($isTitleFocused)
                         .onSubmit {
@@ -78,8 +78,8 @@ struct DailyTaskFormView: View {
                 }
                 
                 // 2. 时间规划
-                Section("时间规划") {
-                    DatePicker("开始时间", selection: $startTime, displayedComponents: .hourAndMinute)
+                Section("daily_time_planning") {
+                    DatePicker("daily_start_time", selection: $startTime, displayedComponents: .hourAndMinute)
                         .onChange(of: startTime) {
                             // 保持 duration 不变，自动推导 endTime
                             if let oldTask = task {
@@ -92,14 +92,14 @@ struct DailyTaskFormView: View {
                             }
                         }
                     
-                    DatePicker("结束时间", selection: $endTime, displayedComponents: .hourAndMinute)
+                    DatePicker("daily_end_time", selection: $endTime, displayedComponents: .hourAndMinute)
                     
                     // 跨天任务提示
                     if endTime <= startTime {
                         HStack {
                             Image(systemName: "moon.fill")
                                 .foregroundColor(.purple)
-                            Text("延续至次日")
+                            Text("daily_cross_day")
                                 .font(.caption)
                                 .foregroundColor(.purple)
                         }
@@ -109,7 +109,7 @@ struct DailyTaskFormView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
                             ForEach([15, 30, 60, 90, 120], id: \.self) { min in
-                                Button("\(min)分钟") {
+                                Button("\(min) \(String(localized: "daily_minutes", locale: LanguageManager.shared.locale))", locale: LanguageManager.shared.locale) {
                                     withAnimation {
                                         endTime = startTime.addingTimeInterval(TimeInterval(min * 60))
                                     }
@@ -122,7 +122,7 @@ struct DailyTaskFormView: View {
                 }
                 
                 // 3. 智能关联 (Placeholder UI)
-                Section("智能关联 (AI 推荐)") {
+                Section("daily_smart_link_section") {
                     if isLinked {
                         // 已关联状态
                         VStack(alignment: .leading, spacing: 12) {
@@ -130,7 +130,7 @@ struct DailyTaskFormView: View {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(.green)
                                     .font(.title3)
-                                Text("已关联到四象限任务")
+                                Text("daily_linked_quadrant_task")
                                     .font(.subheadline.bold())
                                     .foregroundColor(.green)
                             }
@@ -189,9 +189,9 @@ struct DailyTaskFormView: View {
                                     .fill(AppTheme.Colors.urgentImportant)
                                     .frame(width: 8, height: 8)
                                 VStack(alignment: .leading) {
-                                    Text("完成 iOS 开发文档")
+                                    Text("daily_mock_task_title")
                                         .font(.subheadline.bold())
-                                    Text("重要 & 紧急 • 截止: 明天")
+                                    Text("daily_mock_task_info")
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                 }
@@ -200,8 +200,8 @@ struct DailyTaskFormView: View {
                                     // 点击关联
                                     withAnimation {
                                         isLinked = true
-                                        linkedTaskTitle = "完成 iOS 开发文档"
-                                        linkedTaskInfo = "重要 & 紧急 • 截止: 明天"
+                                        linkedTaskTitle = String(localized: "daily_mock_task_title", locale: LanguageManager.shared.locale)
+                                        linkedTaskInfo = String(localized: "daily_mock_task_info", locale: LanguageManager.shared.locale)
                                         showRecommendation = false
                                     }
                                 } label: {
@@ -253,7 +253,7 @@ struct DailyTaskFormView: View {
                     }
                 }
             }
-            .navigationTitle(task == nil ? String(localized: "daily_new_task") : String(localized: "daily_edit_task"))
+            .navigationTitle(task == nil ? String(localized: "daily_new_task", locale: LanguageManager.shared.locale) : String(localized: "daily_edit_task", locale: LanguageManager.shared.locale))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -267,7 +267,7 @@ struct DailyTaskFormView: View {
                     .disabled(title.isEmpty)
                 }
             }
-            .alert(String(localized: "confirm_delete_task_title"), isPresented: $showDeleteAlert) {
+            .alert(String(localized: "confirm_delete_task_title", locale: LanguageManager.shared.locale), isPresented: $showDeleteAlert) {
                 Button("delete", role: .destructive) {
                     deleteTask()
                 }
@@ -289,8 +289,8 @@ struct DailyTaskFormView: View {
                         // Todo: 根据 linkedQuadrantTaskID 查询 QuadrantTask 的信息
                         // 这里先模拟
                         isLinked = true
-                        linkedTaskTitle = "已关联的四象限任务"
-                        linkedTaskInfo = "加载中..."
+                        linkedTaskTitle = String(localized: "daily_linked_quadrant_task_title", locale: LanguageManager.shared.locale)
+                        linkedTaskInfo = String(localized: "daily_loading", locale: LanguageManager.shared.locale)
                     }
                 } else {
                     // 新建模式：设置默认时间

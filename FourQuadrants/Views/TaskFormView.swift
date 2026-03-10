@@ -70,7 +70,7 @@ struct TaskFormView: View {
                         // **只有设置了目标日期才显示紧急阈值选项**
                         Toggle("set_urgent_threshold", isOn: $hasUrgentThreshold)
                         if hasUrgentThreshold {
-                            Stepper(String(format: NSLocalizedString("urgent_threshold_days", comment: ""), urgentThresholdDays), value: $urgentThresholdDays, in: 1...30)
+                            Stepper(String(format: String(localized: "urgent_threshold_days", locale: LanguageManager.shared.locale), urgentThresholdDays), value: $urgentThresholdDays, in: 1...30)
                         }
                     }
                 }
