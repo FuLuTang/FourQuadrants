@@ -130,3 +130,31 @@
 "edit" = "Edit";
 "new_task" = "New Task";
 
+
+/* Missing Localizations */
+"category_all" = "All";
+"category_completed" = "Completed";
+"slogan_char1" = "P";
+"slogan_char2" = "L";
+"daily_task_title" = "Task Title";
+"daily_time_planning" = "Time Planning";
+"daily_start_time" = "Start Time";
+"daily_end_time" = "End Time";
+"daily_cross_day" = "Continues to next day";
+"daily_minutes" = "min";
+"daily_smart_link_section" = "Smart Link (AI)";
+"daily_linked_quadrant_task" = "Linked to Matrix Task";
+"daily_mock_task_title" = "Complete iOS Specs";
+"daily_mock_task_info" = "Urgent & Important • Due: Tomorrow";
+"daily_linked_quadrant_task_title" = "Linked matrix task";
+"daily_loading" = "Loading...";
+
+/* Initial Setup Demo Tasks */
+"demo_important_urgent" = "Important & Urgent Task";
+"demo_important_not_urgent" = "Important & Not Urgent Task";
+"demo_urgent_not_important" = "Urgent & Not Important Task";
+"demo_not_important_not_urgent" = "Not Important & Not Urgent Task";
+"demo_extra_task" = "Extra Task";
+"demo_install_plus_1" = "Install Date +1";
+"demo_install_minus_1" = "Install Date -1";
+"demo_pinned" = "Pinned Task";

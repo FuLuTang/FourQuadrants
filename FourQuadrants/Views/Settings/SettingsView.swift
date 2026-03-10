@@ -161,11 +161,11 @@ struct AboutDetailView: View {
                     
                     // 彩蛋：App 理念
                     HStack(spacing: 0) {
-                        Text("项")
+                        Text("slogan_char1")
                             .foregroundStyle(.blue)
                             .fontWeight(.bold)
                         Text("slogan_part1")
-                        Text("限")
+                        Text("slogan_char2")
                             .foregroundStyle(.purple)
                             .fontWeight(.bold)
                         Text("slogan_part2")
@@ -179,10 +179,10 @@ struct AboutDetailView: View {
             
             // 功能亮点
             Section(header: Text("about_features_title")) {
-                FeatureRow(icon: "square.grid.2x2", title: String(localized: "feature_quadrant_board"), description: String(localized: "feature_quadrant_desc"))
-                FeatureRow(icon: "hand.draw", title: String(localized: "feature_drag_drop"), description: String(localized: "feature_drag_desc"))
-                FeatureRow(icon: "clock.badge.exclamationmark", title: String(localized: "feature_smart_urgent"), description: String(localized: "feature_urgent_desc"))
-                FeatureRow(icon: "arrow.triangle.2.circlepath", title: String(localized: "feature_microsoft_sync"), description: String(localized: "feature_sync_desc"))
+                FeatureRow(icon: "square.grid.2x2", title: String(localized: "feature_quadrant_board", locale: LanguageManager.shared.locale), description: String(localized: "feature_quadrant_desc", locale: LanguageManager.shared.locale))
+                FeatureRow(icon: "hand.draw", title: String(localized: "feature_drag_drop", locale: LanguageManager.shared.locale), description: String(localized: "feature_drag_desc", locale: LanguageManager.shared.locale))
+                FeatureRow(icon: "clock.badge.exclamationmark", title: String(localized: "feature_smart_urgent", locale: LanguageManager.shared.locale), description: String(localized: "feature_urgent_desc", locale: LanguageManager.shared.locale))
+                FeatureRow(icon: "arrow.triangle.2.circlepath", title: String(localized: "feature_microsoft_sync", locale: LanguageManager.shared.locale), description: String(localized: "feature_sync_desc", locale: LanguageManager.shared.locale))
             }
             
             // 开发者
