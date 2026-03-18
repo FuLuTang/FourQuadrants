@@ -51,6 +51,11 @@
 "settings_enable_notifications" = "启用通知";
 "settings_dark_mode" = "深色模式";
 "settings_dark_mode_auto" = "自动（跟随系统）";
+"settings_appearance_section" = "语言与外观";
+"settings_theme" = "外观";
+"theme_auto" = "自动";
+"theme_light" = "日间";
+"theme_dark" = "夜间";
 
 "settings_sync_section" = "同步";
 "sync_connected" = "已连接 Microsoft To Do";
