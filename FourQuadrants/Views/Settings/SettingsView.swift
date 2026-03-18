@@ -3,20 +3,21 @@ import SwiftUI
 struct SettingsView: View {
     // 用户偏好设置
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
-
+    @AppStorage("darkModeEnabled") private var darkModeEnabled = false
+    @AppStorage("darkModeFollowSystem") private var darkModeFollowSystem = true
+    
     // 语言管理器
     @ObservedObject private var languageManager = LanguageManager.shared
-    // 主题管理器
-    @ObservedObject private var themeManager = ThemeManager.shared
-
+    
     // 用于控制 colorScheme
+    @Environment(\.colorScheme) private var systemColorScheme
     @Environment(\.modelContext) private var modelContext
-
+    
     // 定义导航路径类型
     private enum Route: Hashable {
         case about
     }
-
+    
     var body: some View {
         NavigationStack {
             Form {
@@ -27,13 +28,20 @@ struct SettingsView: View {
                         .onChange(of: notificationsEnabled) { _, newValue in
                             handleNotificationToggle(enabled: newValue)
                         }
+                    
+                    // 深色模式 - 跟随系统
+                    Toggle("settings_dark_mode_auto", isOn: $darkModeFollowSystem)
+                    
+                    // 深色模式 - 手动切换（仅在不跟随系统时可用）
+                    if !darkModeFollowSystem {
+                        Toggle("settings_dark_mode", isOn: $darkModeEnabled)
+                    }
                 }
-
-                // 语言与外观区块（顺序固定：语言 → 外观按钮）
-                Section(header: Text("settings_appearance_section")) {
-                    // 语言选择（使用固定顺序列表保证各页一致）
+                
+                // 语言设置
+                Section(header: Text("settings_language_section")) {
                     Picker(selection: $languageManager.currentLanguage) {
-                        ForEach(LanguageManager.orderedLanguages) { language in
+                        ForEach(LanguageManager.Language.allCases) { language in
                             HStack {
                                 Text(language.flag)
                                 Text(language.displayName)
@@ -47,26 +55,13 @@ struct SettingsView: View {
                     } label: {
                         Text("settings_language")
                     }
-
-                    // 外观模式切换按钮（紧邻语言选择）
-                    Button {
-                        themeManager.cycleTheme()
-                    } label: {
-                        HStack {
-                            Label("settings_theme", systemImage: themeManager.currentTheme.icon)
-                            Spacer()
-                            Text(themeManager.currentTheme.displayName)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .tint(.primary)
                 }
-
+                
                 // Sync Settings
                 Section(header: Text("settings_sync_section")) {
                     SyncSettingsView()
                 }
-
+                
                 // 修改后的关于区块
                 Section(header: Text("settings_about_section")) {
                     NavigationLink("settings_details", value: Route.about)
@@ -82,8 +77,17 @@ struct SettingsView: View {
             }
         }
         .environment(\.locale, languageManager.locale)
-        .preferredColorScheme(themeManager.colorScheme)
+        .preferredColorScheme(colorSchemePreference)
     }
+    
+    // 计算当前应该使用的 colorScheme
+    private var colorSchemePreference: ColorScheme? {
+        if darkModeFollowSystem {
+            return nil // nil 表示跟随系统
+        }
+        return darkModeEnabled ? .dark : .light
+    }
+    
     // 处理通知开关变化
     private func handleNotificationToggle(enabled: Bool) {
         if enabled {

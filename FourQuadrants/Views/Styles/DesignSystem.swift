@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AppTheme {
-
+    
     // MARK: - NEXT-GEN Colors
     struct Colors {
         // 使用 Display P3 色域获取更广阔的色彩表现
@@ -9,7 +9,7 @@ struct AppTheme {
         static let importantNotUrgent = Color(red: 0.2, green: 0.5, blue: 1.0) // Electric Blue
         static let urgentNotImportant = Color(red: 0.0, green: 0.9, blue: 0.5) // Cyber Green
         static let normal = Color(red: 0.7, green: 0.7, blue: 0.8) // Holographic Grey
-
+        
         // 动态流体背景
         static let backgroundGradient = LinearGradient(
             gradient: Gradient(colors: [
@@ -20,73 +20,12 @@ struct AppTheme {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
-
+        
         static let darkBackgroundGradient = LinearGradient(
             gradient: Gradient(colors: [
                 Color(hex: "0A0B1E"),
                 Color(hex: "15173B"),
                 Color(hex: "050505")
-            ]),
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    // MARK: - Day / Night Palettes
-    // 两套配色方案，可直接用于 UI 层。同一色族在两套中保持视觉关系一致。
-
-    /// 日间模式配色（温暖、清晰）
-    struct DayPalette {
-        // 文字
-        static let textPrimary   = Color(hex: "1C2B4B") // 深海蓝
-        static let textSecondary = Color(hex: "6B7897") // 石板灰
-
-        // 背景 & 面板
-        static let background    = Color(hex: "F7F9FC") // 冷调白
-        static let surface        = Color(hex: "FFFFFF") // 纯白卡片
-        static let separator      = Color(hex: "E2E8F0") // 浅蓝分隔线
-
-        // 功能色
-        static let accentBlue    = Color(hex: "4A7CF7") // 冷静蓝
-        static let accentGreen   = Color(hex: "34C97E") // 清新绿
-        static let accentAmber   = Color(hex: "F5A623") // 暖琥珀
-        static let accentRed     = Color(hex: "FF5A5A") // 柔红
-
-        // 渐变背景
-        static let backgroundGradient = LinearGradient(
-            gradient: Gradient(colors: [
-                Color(hex: "F7F9FC"),
-                Color(hex: "EDF2FF"),
-                Color(hex: "E6EDFA")
-            ]),
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    /// 夜间模式配色（深邃、专注）
-    struct NightPalette {
-        // 文字
-        static let textPrimary   = Color(hex: "E8EFF9") // 月光银
-        static let textSecondary = Color(hex: "8A9BB5") // 暗钢蓝
-
-        // 背景 & 面板
-        static let background    = Color(hex: "0E1523") // 深夜蓝
-        static let surface        = Color(hex: "1A2236") // 深蓝卡片
-        static let separator      = Color(hex: "2A3548") // 深蓝分隔线
-
-        // 功能色（同色族，亮度上调以适配深色背景）
-        static let accentBlue    = Color(hex: "6B94F7") // 星空蓝
-        static let accentGreen   = Color(hex: "4DD889") // 极光绿
-        static let accentAmber   = Color(hex: "FFC043") // 金色琥珀
-        static let accentRed     = Color(hex: "FF7070") // 柔玫红
-
-        // 渐变背景
-        static let backgroundGradient = LinearGradient(
-            gradient: Gradient(colors: [
-                Color(hex: "0E1523"),
-                Color(hex: "15203A"),
-                Color(hex: "0A1020")
             ]),
             startPoint: .topLeading,
             endPoint: .bottomTrailing
