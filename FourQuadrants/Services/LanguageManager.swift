@@ -37,6 +37,9 @@ class LanguageManager: ObservableObject {
         }
     }
     
+    /// 固定顺序的语言选项（自动 → 简体中文 → 英语）
+    static let orderedLanguages: [Language] = [.auto, .chinese, .english]
+
     /// 当前选择的语言
     @Published var currentLanguage: Language {
         didSet {

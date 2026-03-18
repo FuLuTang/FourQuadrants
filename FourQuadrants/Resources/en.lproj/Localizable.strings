@@ -51,6 +51,11 @@
 "settings_enable_notifications" = "Enable Notifications";
 "settings_dark_mode" = "Dark Mode";
 "settings_dark_mode_auto" = "Auto (Follow System)";
+"settings_appearance_section" = "Language & Appearance";
+"settings_theme" = "Appearance";
+"theme_auto" = "Auto";
+"theme_light" = "Light";
+"theme_dark" = "Dark";
 
 "settings_sync_section" = "Sync";
 "sync_connected" = "Connected to Microsoft To Do";
