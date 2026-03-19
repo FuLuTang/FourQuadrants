@@ -52,7 +52,7 @@ struct QuadrantViewContainer: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button(String(localized: "alert_ok", locale: LanguageManager.shared.locale)) { activeSheetCategory = nil }
+                            Button(String(localized: "alert_ok")) { activeSheetCategory = nil }
                         }
                     }
             }

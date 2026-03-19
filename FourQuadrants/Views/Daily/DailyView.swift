@@ -403,7 +403,7 @@ struct DailyView: View {
         guard let startTime = calendar.date(from: components) else { return }
         
         ghostTask = DailyTask(
-            title: String(localized: "new_task", locale: LanguageManager.shared.locale),
+            title: String(localized: "new_task"),
             scheduledDate: selectedDate,
             startTime: startTime,
             duration: 3600,

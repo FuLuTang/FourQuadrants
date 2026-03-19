@@ -6,8 +6,8 @@ struct SettingsView: View {
     @AppStorage("darkModeEnabled") private var darkModeEnabled = false
     @AppStorage("darkModeFollowSystem") private var darkModeFollowSystem = true
     
-    // 语言管理器
-    @ObservedObject private var languageManager = LanguageManager.shared
+    // 用于打开系统设置
+    @Environment(\.openURL) private var openURL
     
     // 用于控制 colorScheme
     @Environment(\.colorScheme) private var systemColorScheme
@@ -40,20 +40,21 @@ struct SettingsView: View {
                 
                 // 语言设置
                 Section(header: Text("settings_language_section")) {
-                    Picker(selection: $languageManager.currentLanguage) {
-                        ForEach(LanguageManager.Language.allCases) { language in
-                            HStack {
-                                Text(language.flag)
-                                Text(language.displayName)
-                                if language == .auto {
-                                    Text("(\(LanguageManager.systemLanguageDisplayName))")
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .tag(language)
+                    Button {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            openURL(url)
                         }
                     } label: {
-                        Text("settings_language")
+                        HStack {
+                            Text("settings_language")
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Text(Locale.current.localizedString(forLanguageCode: Locale.current.language.languageCode?.identifier ?? "en") ?? "")
+                                .foregroundStyle(.secondary)
+                            Image(systemName: "arrow.up.forward.app")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 
@@ -76,7 +77,6 @@ struct SettingsView: View {
                 }
             }
         }
-        .environment(\.locale, languageManager.locale)
         .preferredColorScheme(colorSchemePreference)
     }
     
@@ -179,10 +179,10 @@ struct AboutDetailView: View {
             
             // 功能亮点
             Section(header: Text("about_features_title")) {
-                FeatureRow(icon: "square.grid.2x2", title: String(localized: "feature_quadrant_board", locale: LanguageManager.shared.locale), description: String(localized: "feature_quadrant_desc", locale: LanguageManager.shared.locale))
-                FeatureRow(icon: "hand.draw", title: String(localized: "feature_drag_drop", locale: LanguageManager.shared.locale), description: String(localized: "feature_drag_desc", locale: LanguageManager.shared.locale))
-                FeatureRow(icon: "clock.badge.exclamationmark", title: String(localized: "feature_smart_urgent", locale: LanguageManager.shared.locale), description: String(localized: "feature_urgent_desc", locale: LanguageManager.shared.locale))
-                FeatureRow(icon: "arrow.triangle.2.circlepath", title: String(localized: "feature_microsoft_sync", locale: LanguageManager.shared.locale), description: String(localized: "feature_sync_desc", locale: LanguageManager.shared.locale))
+                FeatureRow(icon: "square.grid.2x2", title: String(localized: "feature_quadrant_board"), description: String(localized: "feature_quadrant_desc"))
+                FeatureRow(icon: "hand.draw", title: String(localized: "feature_drag_drop"), description: String(localized: "feature_drag_desc"))
+                FeatureRow(icon: "clock.badge.exclamationmark", title: String(localized: "feature_smart_urgent"), description: String(localized: "feature_urgent_desc"))
+                FeatureRow(icon: "arrow.triangle.2.circlepath", title: String(localized: "feature_microsoft_sync"), description: String(localized: "feature_sync_desc"))
             }
             
             // 开发者
