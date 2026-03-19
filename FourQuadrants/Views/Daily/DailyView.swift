@@ -16,6 +16,7 @@ struct DailyView: View {
     @State private var showGhostForm = false
     @State private var lastHapticOffset: CGFloat = 0 // Track for haptic mapping
     @State private var headerWidth: CGFloat = 0 // Track physical width for haptic mapping
+    @State private var isDateTransitioning = false // Guard against tap during transition
     
     // New Gesture States - REMOVED (Replaced by UIKit)
     
@@ -275,7 +276,7 @@ struct DailyView: View {
                                 // 1. Density Mapping (Gap: 20px -> 3px) - User Preferred
                                 let dynamicGap = max(3, 20.0 - (absX / halfWidth) * 22.0)
                                 
-                                // 2. Intensity Mapping (Strength: 0.5 -> 0.8) - User Preferred
+                                // 2. Intensity Mapping (Strength: 0.5 + (absX / halfWidth) * 0.3) - User Preferred
                                 let intensity = 0.5 + (absX / halfWidth) * 0.3
                                 
                                 if abs(currentX - lastHapticOffset) > dynamicGap {
@@ -299,6 +300,7 @@ struct DailyView: View {
                             }
                     )
                     .onTapGesture {
+                        guard !isDateTransitioning else { return }
                         resetToToday()
                     }
                 
@@ -342,10 +344,16 @@ struct DailyView: View {
     // 辅助方法：带动画的日期切换
     private func changeDate(by days: Int) {
         transitionEdge = days > 0 ? .trailing : .leading
+        isDateTransitioning = true
         // 使用 iOS 26 推荐的物理弹簧动画，模拟“推挤”玻璃的感觉
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
             selectedDate = Calendar.current.date(byAdding: .day, value: days, to: selectedDate) ?? selectedDate
             headerDragOffset = 0 // Reset swipe offset
+        }
+        
+        // 动画结束后才恢复 tap 手势，防止过渡期间误触 resetToToday
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            isDateTransitioning = false
         }
     }
     
