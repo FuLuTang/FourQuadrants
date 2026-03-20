@@ -95,7 +95,7 @@ struct DailyTaskBlock: View {
                     showEditSheet = true
                 }
             } label: {
-                Label(String(localized: "edit", locale: LanguageManager.shared.locale), systemImage: "pencil")
+                Label(String(localized: "edit"), systemImage: "pencil")
                     .font(.caption.bold())
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -112,7 +112,7 @@ struct DailyTaskBlock: View {
                     checkLiveActivity()
                 }
             } label: {
-                Label(String(localized: "delete", locale: LanguageManager.shared.locale), systemImage: "trash")
+                Label(String(localized: "delete"), systemImage: "trash")
                     .font(.caption.bold())
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)

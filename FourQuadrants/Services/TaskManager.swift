@@ -19,14 +19,14 @@ class TaskManager: ObservableObject {
             dateFormatter.dateFormat = "yyyy.MM.dd"
             
             let demoTasks = [
-                QuadrantTask(title: String(localized: "demo_important_urgent", locale: LanguageManager.shared.locale), date: dateFormatter.date(from: "2023.01.01")!, isCompleted: false, importance: .high, isUrgent: true),
-                QuadrantTask(title: String(localized: "demo_important_not_urgent", locale: LanguageManager.shared.locale), date: dateFormatter.date(from: "2023.06.01")!, targetDate: dateFormatter.date(from: "2025.01.02")!, isCompleted: false, importance: .high, isUrgent: false),
-                QuadrantTask(title: String(localized: "demo_urgent_not_important", locale: LanguageManager.shared.locale), date: dateFormatter.date(from: "2024.01.01")!, targetDate: dateFormatter.date(from: "2025.03.02")!, isCompleted: false, importance: .normal, isUrgent: true),
-                QuadrantTask(title: String(localized: "demo_not_important_not_urgent", locale: LanguageManager.shared.locale), date: dateFormatter.date(from: "2024.06.01")!, isCompleted: false, isUrgent: false),
-                QuadrantTask(title: String(localized: "demo_extra_task", locale: LanguageManager.shared.locale), date: dateFormatter.date(from: "2025.01.01")!, isCompleted: false, isUrgent: false),
-                QuadrantTask(title: String(localized: "demo_install_plus_1", locale: LanguageManager.shared.locale), date: Date(), targetDate: Date().addingTimeInterval(86400), isCompleted: false, isUrgent: false),
-                QuadrantTask(title: String(localized: "demo_install_minus_1", locale: LanguageManager.shared.locale), date: Date(), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: false),
-                QuadrantTask(title: String(localized: "demo_pinned", locale: LanguageManager.shared.locale), date: Date(), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: false, isTop: true)
+                QuadrantTask(title: String(localized: "demo_important_urgent"), date: dateFormatter.date(from: "2023.01.01")!, isCompleted: false, importance: .high, isUrgent: true),
+                QuadrantTask(title: String(localized: "demo_important_not_urgent"), date: dateFormatter.date(from: "2023.06.01")!, targetDate: dateFormatter.date(from: "2025.01.02")!, isCompleted: false, importance: .high, isUrgent: false),
+                QuadrantTask(title: String(localized: "demo_urgent_not_important"), date: dateFormatter.date(from: "2024.01.01")!, targetDate: dateFormatter.date(from: "2025.03.02")!, isCompleted: false, importance: .normal, isUrgent: true),
+                QuadrantTask(title: String(localized: "demo_not_important_not_urgent"), date: dateFormatter.date(from: "2024.06.01")!, isCompleted: false, isUrgent: false),
+                QuadrantTask(title: String(localized: "demo_extra_task"), date: dateFormatter.date(from: "2025.01.01")!, isCompleted: false, isUrgent: false),
+                QuadrantTask(title: String(localized: "demo_install_plus_1"), date: Date(), targetDate: Date().addingTimeInterval(86400), isCompleted: false, isUrgent: false),
+                QuadrantTask(title: String(localized: "demo_install_minus_1"), date: Date(), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: false),
+                QuadrantTask(title: String(localized: "demo_pinned"), date: Date(), targetDate: Date().addingTimeInterval(-86400), isCompleted: false, isUrgent: false, isTop: true)
             ]
             
             // Batch insert

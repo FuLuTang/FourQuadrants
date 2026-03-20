@@ -19,11 +19,13 @@
 - ~~设置页面~~
   - [x] “通知”开关修复
   - [x] “深色模式”开关修复
-  - [x] 多语言文字补充
+  - [x] 多语言交给 iOS 系统管理，支持跳转到系统设置
 
 - **Microsoft To Do 同步**：通过 Microsoft Graph API 实现与微软待办的双向同步
   - 集成 MSAL 认证，处理 OAuth 流程
   - 同步逻辑开发：处理 `Task` 的 ID 映射与冲突
+  用的是 SwiftData 和 MVVM 架构。这非常适合做微软的同步：
+你可以建一个单独的 MicrosoftSyncService，利用 Combine 或 async/await 在后台静默拉取 todoTask，解析成你的本地模型后，直接写入 SwiftData 的 ModelContext
 - **iOS 桌面小组件 (WidgetKit)**：支持主屏幕 2x2, 4x4 小组件展示各象限任务
 
 ## 第二部分：质感提升 (Premium UX)

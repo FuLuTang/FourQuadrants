@@ -51,6 +51,10 @@
 "settings_enable_notifications" = "Enable Notifications";
 "settings_dark_mode" = "Dark Mode";
 "settings_dark_mode_auto" = "Auto (Follow System)";
+"settings_theme_mode" = "Theme Mode";
+"settings_theme_auto" = "Auto";
+"settings_theme_light" = "Light";
+"settings_theme_dark" = "Dark";
 
 "settings_sync_section" = "Sync";
 "sync_connected" = "Connected to Microsoft To Do";
@@ -61,7 +65,7 @@
 
 "settings_language_section" = "Language";
 "settings_language" = "Language";
-"language_auto" = "Auto (System)";
+
 
 "settings_about_section" = "About";
 "settings_details" = "Details";
@@ -158,3 +162,22 @@
 "demo_install_plus_1" = "Install Date +1";
 "demo_install_minus_1" = "Install Date -1";
 "demo_pinned" = "Pinned Task";
+
+/* Task Preview (Long-Press Detail) */
+"preview_importance" = "Importance";
+"preview_original_importance" = "Original Importance";
+"preview_urgent_status" = "Urgency";
+"preview_urgent" = "Urgent";
+"preview_not_urgent" = "Not Urgent";
+"preview_due_date" = "Due Date";
+"preview_overdue_status" = "Status";
+"preview_overdue" = "Overdue";
+"preview_pinned" = "Pinned";
+"preview_pinned_yes" = "Pinned";
+"preview_threshold" = "Threshold";
+"preview_threshold_days" = "%d days before deadline";
+
+/* Quadrant Preview (Long-Press Panel) */
+"preview_task_count" = "%d tasks";
+"preview_no_tasks" = "No tasks";
+"preview_more_tasks" = "%d more...";

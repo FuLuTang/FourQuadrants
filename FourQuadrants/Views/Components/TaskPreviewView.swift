@@ -38,7 +38,7 @@ struct TaskPreviewView: View {
                 // 重要程度
                 previewRow(
                     icon: "flag.fill",
-                    title: "重要程度",
+                    title: String(localized: "preview_importance"),
                     value: importanceText,
                     color: importanceColor
                 )
@@ -48,7 +48,7 @@ struct TaskPreviewView: View {
                    original != task.importance {
                     previewRow(
                         icon: "flag",
-                        title: "原始重要性",
+                        title: String(localized: "preview_original_importance"),
                         value: originalImportanceText(original),
                         color: .purple
                     )
@@ -57,64 +57,48 @@ struct TaskPreviewView: View {
                 // 紧急状态
                 previewRow(
                     icon: "bolt.fill",
-                    title: "紧急状态",
-                    value: task.isUrgent ? "紧急" : "不紧急",
+                    title: String(localized: "preview_urgent_status"),
+                    value: task.isUrgent ? String(localized: "preview_urgent") : String(localized: "preview_not_urgent"),
                     color: task.isUrgent ? .orange : .gray
                 )
                 
-                // 截止日期
+                // 截止日期（不再附带"已逾期"badge）
                 if let targetDate = task.targetDate {
                     previewRow(
                         icon: "calendar",
-                        title: "截止日期",
+                        title: String(localized: "preview_due_date"),
                         value: formattedFullDate(targetDate),
-                        color: task.isOverdue ? .red : .blue,
-                        badge: task.isOverdue ? "已逾期" : nil
+                        color: task.isOverdue ? .red : .blue
                     )
                 }
                 
-                // 创建日期
-                previewRow(
-                    icon: "clock",
-                    title: "创建时间",
-                    value: formattedFullDate(task.date),
-                    color: .secondary
-                )
-                
-                // 最后修改
-                previewRow(
-                    icon: "pencil.circle",
-                    title: "最后修改",
-                    value: formattedFullDate(task.dateLatestModified),
-                    color: .secondary
-                )
+                // 逾期状态（独立一行）
+                if task.isOverdue {
+                    previewRow(
+                        icon: "exclamationmark.triangle.fill",
+                        title: String(localized: "preview_overdue_status"),
+                        value: String(localized: "preview_overdue"),
+                        color: .red
+                    )
+                }
                 
                 // 置顶状态
                 if task.isTop {
                     previewRow(
                         icon: "pin.fill",
-                        title: "置顶",
-                        value: "已置顶",
+                        title: String(localized: "preview_pinned"),
+                        value: String(localized: "preview_pinned_yes"),
                         color: .blue
                     )
                 }
                 
-                // 紧急阈值信息
-                if let original = task.originalUrgentThresholdDays {
+                // 紧急阈值（显示实际生效的 urgentThresholdDays）
+                if let threshold = task.urgentThresholdDays {
                     previewRow(
                         icon: "timer",
-                        title: "原始阈值",
-                        value: "剩余 \(original) 天时触发",
+                        title: String(localized: "preview_threshold"),
+                        value: String(format: String(localized: "preview_threshold_days"), threshold),
                         color: .orange
-                    )
-                }
-                if let threshold = task.urgentThresholdDays,
-                   threshold != task.originalUrgentThresholdDays {
-                    previewRow(
-                        icon: "timer.circle",
-                        title: "自动阈值",
-                        value: "剩余 \(threshold) 天时触发",
-                        color: .yellow
                     )
                 }
             }
@@ -126,7 +110,7 @@ struct TaskPreviewView: View {
     
     // MARK: - 辅助视图
     
-    private func previewRow(icon: String, title: String, value: String, color: Color, badge: String? = nil) -> some View {
+    private func previewRow(icon: String, title: String, value: String, color: Color) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 14))
@@ -139,21 +123,9 @@ struct TaskPreviewView: View {
             
             Spacer()
             
-            HStack(spacing: 6) {
-                Text(value)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundColor(.primary)
-                
-                if let badge = badge {
-                    Text(badge)
-                        .font(.caption2.bold())
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.red.opacity(0.15))
-                        .foregroundColor(.red)
-                        .clipShape(Capsule())
-                }
-            }
+            Text(value)
+                .font(.subheadline.weight(.medium))
+                .foregroundColor(.primary)
         }
     }
     
@@ -161,9 +133,9 @@ struct TaskPreviewView: View {
     
     private var importanceText: String {
         switch task.importance {
-        case .high: return "高"
-        case .normal: return "普通"
-        case .low: return "低"
+        case .high: return String(localized: "high")
+        case .normal: return String(localized: "normal")
+        case .low: return String(localized: "low")
         }
     }
     
@@ -177,9 +149,9 @@ struct TaskPreviewView: View {
     
     private func originalImportanceText(_ level: ImportanceLevel) -> String {
         switch level {
-        case .high: return "高"
-        case .normal: return "普通"
-        case .low: return "低"
+        case .high: return String(localized: "high")
+        case .normal: return String(localized: "normal")
+        case .low: return String(localized: "low")
         }
     }
     
@@ -209,7 +181,7 @@ struct QuadrantPreviewView: View {
                 
                 Spacer()
                 
-                Text("\(tasks.count) 项任务")
+                Text(String(format: String(localized: "preview_task_count"), tasks.count))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -224,7 +196,7 @@ struct QuadrantPreviewView: View {
                     Image(systemName: "tray")
                         .font(.system(size: 40))
                         .foregroundColor(.secondary.opacity(0.3))
-                    Text("暂无任务")
+                    Text("preview_no_tasks")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -245,7 +217,7 @@ struct QuadrantPreviewView: View {
                         if tasks.count > 10 {
                             HStack {
                                 Spacer()
-                                Text("还有 \(tasks.count - 10) 项...")
+                                Text(String(format: String(localized: "preview_more_tasks"), tasks.count - 10))
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 Spacer()

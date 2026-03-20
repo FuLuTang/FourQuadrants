@@ -12,12 +12,12 @@ enum TaskCategory: String, CaseIterable, Codable, Identifiable {
     
     var displayName: String {
         switch self {
-        case .all: return String(localized: "category_all", locale: LanguageManager.shared.locale)
-        case .importantAndUrgent: return String(localized: "category_important_urgent", locale: LanguageManager.shared.locale)
-        case .importantButNotUrgent: return String(localized: "category_important_not_urgent", locale: LanguageManager.shared.locale)
-        case .urgentButNotImportant: return String(localized: "category_urgent_not_important", locale: LanguageManager.shared.locale)
-        case .notImportantAndNotUrgent: return String(localized: "category_not_important_not_urgent", locale: LanguageManager.shared.locale)
-        case .completed: return String(localized: "category_completed", locale: LanguageManager.shared.locale)
+        case .all: return String(localized: "category_all")
+        case .importantAndUrgent: return String(localized: "category_important_urgent")
+        case .importantButNotUrgent: return String(localized: "category_important_not_urgent")
+        case .urgentButNotImportant: return String(localized: "category_urgent_not_important")
+        case .notImportantAndNotUrgent: return String(localized: "category_not_important_not_urgent")
+        case .completed: return String(localized: "category_completed")
         }
     }
     

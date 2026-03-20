@@ -1,13 +1,64 @@
 import SwiftUI
 
+enum ThemeMode: Int, CaseIterable {
+    case auto = 0
+    case light = 1
+    case dark = 2
+    
+    var colorSchemePreference: ColorScheme? {
+        switch self {
+        case .auto:
+            return nil
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        }
+    }
+    
+    var iconName: String {
+        switch self {
+        case .auto:
+            return "circle.lefthalf.filled"
+        case .light:
+            return "sun.max"
+        case .dark:
+            return "moon.fill"
+        }
+    }
+    
+    var titleKey: String {
+        switch self {
+        case .auto:
+            return "settings_theme_auto"
+        case .light:
+            return "settings_theme_light"
+        case .dark:
+            return "settings_theme_dark"
+        }
+    }
+    
+    func next() -> ThemeMode {
+        switch self {
+        case .auto:
+            return .light
+        case .light:
+            return .dark
+        case .dark:
+            return .auto
+        }
+    }
+}
+
 struct SettingsView: View {
     // 用户偏好设置
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
+    @AppStorage("themeMode") private var themeModeRaw = -1
     @AppStorage("darkModeEnabled") private var darkModeEnabled = false
     @AppStorage("darkModeFollowSystem") private var darkModeFollowSystem = true
     
-    // 语言管理器
-    @ObservedObject private var languageManager = LanguageManager.shared
+    // 用于打开系统设置
+    @Environment(\.openURL) private var openURL
     
     // 用于控制 colorScheme
     @Environment(\.colorScheme) private var systemColorScheme
@@ -29,31 +80,40 @@ struct SettingsView: View {
                             handleNotificationToggle(enabled: newValue)
                         }
                     
-                    // 深色模式 - 跟随系统
-                    Toggle("settings_dark_mode_auto", isOn: $darkModeFollowSystem)
-                    
-                    // 深色模式 - 手动切换（仅在不跟随系统时可用）
-                    if !darkModeFollowSystem {
-                        Toggle("settings_dark_mode", isOn: $darkModeEnabled)
+                    // 主题模式：自动 / 亮色 / 深色（三态按钮）
+                    Button {
+                        themeMode = themeMode.next()
+                    } label: {
+                        HStack {
+                            Image(systemName: themeMode.iconName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text("settings_theme_mode")
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Text(LocalizedStringKey(themeMode.titleKey))
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 
                 // 语言设置
                 Section(header: Text("settings_language_section")) {
-                    Picker(selection: $languageManager.currentLanguage) {
-                        ForEach(LanguageManager.Language.allCases) { language in
-                            HStack {
-                                Text(language.flag)
-                                Text(language.displayName)
-                                if language == .auto {
-                                    Text("(\(LanguageManager.systemLanguageDisplayName))")
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .tag(language)
+                    Button {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            openURL(url)
                         }
                     } label: {
-                        Text("settings_language")
+                        HStack {
+                            Text("settings_language")
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Text(Locale.current.localizedString(forLanguageCode: Locale.current.language.languageCode?.identifier ?? "en") ?? "")
+                                .foregroundStyle(.secondary)
+                            Image(systemName: "arrow.up.forward.app")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 
@@ -76,16 +136,34 @@ struct SettingsView: View {
                 }
             }
         }
-        .environment(\.locale, languageManager.locale)
         .preferredColorScheme(colorSchemePreference)
+        .onAppear {
+            migrateLegacyThemeSettingIfNeeded()
+        }
     }
     
     // 计算当前应该使用的 colorScheme
     private var colorSchemePreference: ColorScheme? {
-        if darkModeFollowSystem {
-            return nil // nil 表示跟随系统
+        themeMode.colorSchemePreference
+    }
+    
+    private var themeMode: ThemeMode {
+        get {
+            ThemeMode(rawValue: themeModeRaw) ?? .auto
         }
-        return darkModeEnabled ? .dark : .light
+        nonmutating set {
+            themeModeRaw = newValue.rawValue
+        }
+    }
+    
+    private func migrateLegacyThemeSettingIfNeeded() {
+        guard themeModeRaw == -1 else { return }
+        
+        if darkModeFollowSystem {
+            themeMode = .auto
+        } else {
+            themeMode = darkModeEnabled ? .dark : .light
+        }
     }
     
     // 处理通知开关变化
@@ -179,10 +257,10 @@ struct AboutDetailView: View {
             
             // 功能亮点
             Section(header: Text("about_features_title")) {
-                FeatureRow(icon: "square.grid.2x2", title: String(localized: "feature_quadrant_board", locale: LanguageManager.shared.locale), description: String(localized: "feature_quadrant_desc", locale: LanguageManager.shared.locale))
-                FeatureRow(icon: "hand.draw", title: String(localized: "feature_drag_drop", locale: LanguageManager.shared.locale), description: String(localized: "feature_drag_desc", locale: LanguageManager.shared.locale))
-                FeatureRow(icon: "clock.badge.exclamationmark", title: String(localized: "feature_smart_urgent", locale: LanguageManager.shared.locale), description: String(localized: "feature_urgent_desc", locale: LanguageManager.shared.locale))
-                FeatureRow(icon: "arrow.triangle.2.circlepath", title: String(localized: "feature_microsoft_sync", locale: LanguageManager.shared.locale), description: String(localized: "feature_sync_desc", locale: LanguageManager.shared.locale))
+                FeatureRow(icon: "square.grid.2x2", title: String(localized: "feature_quadrant_board"), description: String(localized: "feature_quadrant_desc"))
+                FeatureRow(icon: "hand.draw", title: String(localized: "feature_drag_drop"), description: String(localized: "feature_drag_desc"))
+                FeatureRow(icon: "clock.badge.exclamationmark", title: String(localized: "feature_smart_urgent"), description: String(localized: "feature_urgent_desc"))
+                FeatureRow(icon: "arrow.triangle.2.circlepath", title: String(localized: "feature_microsoft_sync"), description: String(localized: "feature_sync_desc"))
             }
             
             // 开发者

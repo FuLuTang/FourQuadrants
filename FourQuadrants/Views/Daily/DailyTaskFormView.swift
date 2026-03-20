@@ -109,7 +109,7 @@ struct DailyTaskFormView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
                             ForEach([15, 30, 60, 90, 120], id: \.self) { min in
-                                Button("\(min) \(String(localized: "daily_minutes", locale: LanguageManager.shared.locale))") {
+                                Button("\(min) \(String(localized: "daily_minutes"))") {
                                     withAnimation {
                                         endTime = startTime.addingTimeInterval(TimeInterval(min * 60))
                                     }
@@ -200,8 +200,8 @@ struct DailyTaskFormView: View {
                                     // 点击关联
                                     withAnimation {
                                         isLinked = true
-                                        linkedTaskTitle = String(localized: "daily_mock_task_title", locale: LanguageManager.shared.locale)
-                                        linkedTaskInfo = String(localized: "daily_mock_task_info", locale: LanguageManager.shared.locale)
+                                        linkedTaskTitle = String(localized: "daily_mock_task_title")
+                                        linkedTaskInfo = String(localized: "daily_mock_task_info")
                                         showRecommendation = false
                                     }
                                 } label: {
@@ -253,7 +253,7 @@ struct DailyTaskFormView: View {
                     }
                 }
             }
-            .navigationTitle(task == nil ? String(localized: "daily_new_task", locale: LanguageManager.shared.locale) : String(localized: "daily_edit_task", locale: LanguageManager.shared.locale))
+            .navigationTitle(task == nil ? String(localized: "daily_new_task") : String(localized: "daily_edit_task"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -267,7 +267,7 @@ struct DailyTaskFormView: View {
                     .disabled(title.isEmpty)
                 }
             }
-            .alert(String(localized: "confirm_delete_task_title", locale: LanguageManager.shared.locale), isPresented: $showDeleteAlert) {
+            .alert(String(localized: "confirm_delete_task_title"), isPresented: $showDeleteAlert) {
                 Button("delete", role: .destructive) {
                     deleteTask()
                 }
@@ -289,8 +289,8 @@ struct DailyTaskFormView: View {
                         // Todo: 根据 linkedQuadrantTaskID 查询 QuadrantTask 的信息
                         // 这里先模拟
                         isLinked = true
-                        linkedTaskTitle = String(localized: "daily_linked_quadrant_task_title", locale: LanguageManager.shared.locale)
-                        linkedTaskInfo = String(localized: "daily_loading", locale: LanguageManager.shared.locale)
+                        linkedTaskTitle = String(localized: "daily_linked_quadrant_task_title")
+                        linkedTaskInfo = String(localized: "daily_loading")
                     }
                 } else {
                     // 新建模式：设置默认时间
