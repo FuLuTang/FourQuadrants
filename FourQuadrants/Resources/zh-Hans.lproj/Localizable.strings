@@ -157,3 +157,22 @@
 "demo_install_plus_1" = "安装日期+1";
 "demo_install_minus_1" = "安装日期-1";
 "demo_pinned" = "置顶";
+
+/* Task Preview (Long-Press Detail) */
+"preview_importance" = "重要程度";
+"preview_original_importance" = "原始重要性";
+"preview_urgent_status" = "紧急状态";
+"preview_urgent" = "紧急";
+"preview_not_urgent" = "不紧急";
+"preview_due_date" = "截止日期";
+"preview_overdue_status" = "逾期状态";
+"preview_overdue" = "已逾期";
+"preview_pinned" = "置顶";
+"preview_pinned_yes" = "已置顶";
+"preview_threshold" = "紧急阈值";
+"preview_threshold_days" = "剩余 %d 天时触发";
+
+/* Quadrant Preview (Long-Press Panel) */
+"preview_task_count" = "%d 项任务";
+"preview_no_tasks" = "暂无任务";
+"preview_more_tasks" = "还有 %d 项...";

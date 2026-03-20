@@ -158,3 +158,22 @@
 "demo_install_plus_1" = "Install Date +1";
 "demo_install_minus_1" = "Install Date -1";
 "demo_pinned" = "Pinned Task";
+
+/* Task Preview (Long-Press Detail) */
+"preview_importance" = "Importance";
+"preview_original_importance" = "Original Importance";
+"preview_urgent_status" = "Urgency";
+"preview_urgent" = "Urgent";
+"preview_not_urgent" = "Not Urgent";
+"preview_due_date" = "Due Date";
+"preview_overdue_status" = "Status";
+"preview_overdue" = "Overdue";
+"preview_pinned" = "Pinned";
+"preview_pinned_yes" = "Pinned";
+"preview_threshold" = "Threshold";
+"preview_threshold_days" = "%d days before deadline";
+
+/* Quadrant Preview (Long-Press Panel) */
+"preview_task_count" = "%d tasks";
+"preview_no_tasks" = "No tasks";
+"preview_more_tasks" = "%d more...";
