@@ -151,7 +151,7 @@ struct SettingsView: View {
         get {
             ThemeMode(rawValue: themeModeRaw) ?? .auto
         }
-        set {
+        nonmutating set {
             themeModeRaw = newValue.rawValue
         }
     }
