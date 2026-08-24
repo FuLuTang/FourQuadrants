@@ -5,7 +5,7 @@ struct DailyTaskBlock: View {
     @Bindable var task: DailyTask
     let hourHeight: CGFloat
     
-    @Environment(\.modelContext) private var modelContext
+    @Environment(TaskStore.self) private var taskStore
     
     @Binding var editingTaskId: PersistentIdentifier?
     
@@ -51,7 +51,10 @@ struct DailyTaskBlock: View {
                     handleResizeBottom(deltaY: deltaY)
                 },
                 onEnd: {
-                    finalizeInteraction()
+                    commitInteraction()
+                },
+                onCancelled: {
+                    cancelInteraction()
                 },
                 onSelect: {
                     if showContextMenu {
@@ -75,9 +78,9 @@ struct DailyTaskBlock: View {
         .overlay(alignment: .bottom) { bottomResizeHandle }
         .contentShape(Rectangle())
         .sheet(isPresented: $showEditSheet) {
-            DailyTaskFormView(task: task, selectedDate: task.scheduledDate)
+            DailyTaskFormView(task: task, selectedDate: task.startAt)
         }
-        .sensoryFeedback(.impact(weight: .light), trigger: task.startTime)
+        .sensoryFeedback(.impact(weight: .light), trigger: task.startAt)
         .sensoryFeedback(.impact(weight: .light), trigger: task.duration)
         .sensoryFeedback(.impact(weight: .medium), trigger: showContextMenu) { _, new in return new }
         .scaleEffect(isDraggingBody ? 1.05 : 1.0)
@@ -108,8 +111,7 @@ struct DailyTaskBlock: View {
             
             Button {
                 withAnimation {
-                    modelContext.delete(task)
-                    checkLiveActivity()
+                    _ = taskStore.removeDailyTask(task)
                 }
             } label: {
                 Label(String(localized: "delete"), systemImage: "trash")
@@ -139,7 +141,7 @@ struct DailyTaskBlock: View {
                         .foregroundColor(.white)
                         .lineLimit(1)
                     
-                    Text("\(task.startTime.formatted(date: .omitted, time: .shortened)) - \(task.startTime.addingTimeInterval(task.duration).formatted(date: .omitted, time: .shortened))")
+                    Text("\(task.startAt.formatted(date: .omitted, time: .shortened)) - \(task.startAt.addingTimeInterval(task.duration).formatted(date: .omitted, time: .shortened))")
                         .font(.caption2)
                         .foregroundColor(.white.opacity(0.8))
                         .lineLimit(1)
@@ -192,7 +194,7 @@ struct DailyTaskBlock: View {
     
     private func handleMove(deltaY: CGFloat) {
         if initialStartTime == nil { 
-            initialStartTime = task.startTime 
+            initialStartTime = task.startAt
             withAnimation { isDraggingBody = true }
         }
         guard let start = initialStartTime else { return }
@@ -201,8 +203,8 @@ struct DailyTaskBlock: View {
         let rawDate = start.addingTimeInterval(deltaHours * 3600)
         let snappedDate = interaction.snapTime(rawDate, intervalMinutes: 15)
         
-        if snappedDate != task.startTime {
-            task.startTime = snappedDate
+        if snappedDate != task.startAt {
+            taskStore.previewDailyTaskLayout(task, startAt: snappedDate, duration: task.duration)
         }
     }
     
@@ -218,13 +220,13 @@ struct DailyTaskBlock: View {
         let snappedDuration = interaction.snapDuration(rawDuration, intervalMinutes: 15)
         
         if snappedDuration != task.duration {
-            task.duration = snappedDuration
+            taskStore.previewDailyTaskLayout(task, startAt: task.startAt, duration: snappedDuration)
         }
     }
     
     private func handleResizeTop(deltaY: CGFloat) {
         if initialStartTime == nil {
-            initialStartTime = task.startTime
+            initialStartTime = task.startAt
             initialDuration = task.duration
             withAnimation { isDraggingBody = true }
         }
@@ -237,21 +239,31 @@ struct DailyTaskBlock: View {
         let originalEnd = start.addingTimeInterval(duration)
         let newDuration = originalEnd.timeIntervalSince(snappedNewStart)
         
-        if newDuration >= 900 && snappedNewStart != task.startTime {
-            task.startTime = snappedNewStart
-            task.duration = newDuration
+        if newDuration >= 900 && snappedNewStart != task.startAt {
+            taskStore.previewDailyTaskLayout(task, startAt: snappedNewStart, duration: newDuration)
         }
     }
     
-    private func finalizeInteraction() {
+    private func commitInteraction() {
+        if initialStartTime != nil || initialDuration != nil {
+            _ = taskStore.commitDailyTaskLayout(task)
+        }
+        resetInteractionState()
+    }
+
+    private func cancelInteraction() {
+        if let initialStartTime {
+            taskStore.restoreDailyTaskLayout(task, startAt: initialStartTime, duration: initialDuration ?? task.duration)
+        } else if let initialDuration {
+            taskStore.restoreDailyTaskLayout(task, startAt: task.startAt, duration: initialDuration)
+        }
+        resetInteractionState()
+    }
+
+    private func resetInteractionState() {
         withAnimation { isDraggingBody = false }
         initialStartTime = nil
         initialDuration = nil
-        checkLiveActivity()
-    }
-    
-    private func checkLiveActivity() {
-        LiveActivityManager.shared.checkTask(context: modelContext)
     }
 }
 

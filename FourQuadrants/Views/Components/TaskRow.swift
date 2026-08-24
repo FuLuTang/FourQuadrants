@@ -21,14 +21,14 @@ struct TaskRow: View {
                     .foregroundColor(task.isCompleted ? .secondary : .primary)
                     .strikethrough(task.isCompleted, color: .secondary.opacity(0.5))
                     // 逻辑：有日期胶囊时显示1行节省空间，没日期时显示2行增加信息量
-                    .lineLimit(task.targetDate == nil ? 2 : 1)
+                    .lineLimit(task.dueAt == nil ? 2 : 1)
                     .fixedSize(horizontal: false, vertical: true)
                 
-                if let targetDate = task.targetDate {
+                if let dueAt = task.dueAt {
                     HStack(spacing: 3) {
                         Image(systemName: "calendar")
                             .font(.system(size: 8, weight: .bold))
-                        Text(formattedDate(targetDate))
+                        Text(formattedDate(dueAt))
                             .font(.system(size: 9, weight: .heavy))
                     }
                     .padding(.horizontal, 6)

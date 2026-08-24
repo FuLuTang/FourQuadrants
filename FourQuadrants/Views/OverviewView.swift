@@ -6,7 +6,12 @@ struct OverviewView: View {
     let title: String
     let color: Color
     let category: TaskCategory
-    @ObservedObject var taskManager: TaskManager
+    let taskStore: TaskStore
+    @Query(
+        filter: #Predicate<QuadrantTask> { task in task.completedAt == nil },
+        sort: \QuadrantTask.updatedAt,
+        order: .reverse
+    ) private var tasks: [QuadrantTask]
     var onZoom: ((TaskCategory) -> Void)? = nil
     @State private var isTargeted: Bool = false
     @State private var selectedTaskForEditing: QuadrantTask? = nil
@@ -53,12 +58,12 @@ struct OverviewView: View {
                         } else {
                             ForEach(filteredTasks) { task in
                                 TaskRow(task: task, onToggle: {
-                                    taskManager.toggleTask(task)
+                                    taskStore.toggleTask(task)
                                 }, onEdit: {
                                     selectedTaskForEditing = task
                                     showingEditTaskView = true
                                 }, onDelete: {
-                                    taskManager.removeTask(by: task.id)
+                                    taskStore.removeTask(task)
                                 })
                                 // iOS 16+ 现代拖拽 API（使用 TaskTransferItem 包装）
                                 .draggable(TaskTransferItem(task: task)) {
@@ -87,8 +92,8 @@ struct OverviewView: View {
         .dropDestination(for: TaskTransferItem.self) { droppedItems, location in
             for item in droppedItems {
                 // 通过 ID 查找实际任务对象
-                if let actualTask = taskManager.tasks.first(where: { $0.id == item.taskId }) {
-                    taskManager.dragTaskChangeCategory(task: actualTask, targetCategory: self.category)
+                if let actualTask = tasks.first(where: { $0.id == item.taskId }) {
+                    taskStore.moveTask(actualTask, to: category)
                 }
             }
             return !droppedItems.isEmpty
@@ -102,12 +107,12 @@ struct OverviewView: View {
             QuadrantPreviewView(category: category, tasks: filteredTasks)
         }
         .sheet(item: $selectedTaskForEditing) { task in
-            TaskFormView(taskManager: taskManager, existingTask: task)
+            TaskFormView(taskStore: taskStore, existingTask: task)
         }
     }
     
     var filteredTasks: [QuadrantTask] {
-        return taskManager.filteredTasks(in: category)
+        taskStore.filteredTasks(tasks, in: category)
     }
 }
 
@@ -168,7 +173,7 @@ struct TaskDragPreview: View {
         title: "重要且紧急",
         color: .red,
         category: .importantAndUrgent,
-        taskManager: TaskManager(modelContext: container.mainContext)
+        taskStore: TaskStore(modelContext: container.mainContext)
     )
     .frame(height: 300)
     .padding()

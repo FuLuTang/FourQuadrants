@@ -63,11 +63,11 @@ struct TaskPreviewView: View {
                 )
                 
                 // 截止日期（不再附带"已逾期"badge）
-                if let targetDate = task.targetDate {
+                if let dueAt = task.dueAt {
                     previewRow(
                         icon: "calendar",
                         title: String(localized: "preview_due_date"),
-                        value: formattedFullDate(targetDate),
+                        value: formattedFullDate(dueAt),
                         color: task.isOverdue ? .red : .blue
                     )
                 }
@@ -246,11 +246,11 @@ struct QuadrantPreviewView: View {
                     .lineLimit(1)
                     .strikethrough(task.isCompleted)
                 
-                if let targetDate = task.targetDate {
+                if let dueAt = task.dueAt {
                     HStack(spacing: 4) {
                         Image(systemName: "calendar")
                             .font(.system(size: 9))
-                        Text(formattedDate(targetDate))
+                        Text(formattedDate(dueAt))
                             .font(.caption2)
                     }
                     .foregroundColor(task.isOverdue ? .red : .secondary)
@@ -279,8 +279,8 @@ struct QuadrantPreviewView: View {
 #Preview("Task Preview") {
     TaskPreviewView(task: QuadrantTask(
         title: "完成项目文档",
-        date: Date(),
-        targetDate: Date().addingTimeInterval(86400 * 3),
+        createdAt: Date(),
+        dueAt: Date().addingTimeInterval(86400 * 3),
         importance: .high,
         isUrgent: true,
         isTop: true
@@ -291,8 +291,8 @@ struct QuadrantPreviewView: View {
     QuadrantPreviewView(
         category: .importantAndUrgent,
         tasks: [
-            QuadrantTask(title: "任务1", date: Date(), importance: .high, isUrgent: true),
-            QuadrantTask(title: "任务2", date: Date(), targetDate: Date(), importance: .high, isUrgent: true)
+            QuadrantTask(title: "任务1", createdAt: Date(), importance: .high, isUrgent: true),
+            QuadrantTask(title: "任务2", createdAt: Date(), dueAt: Date(), importance: .high, isUrgent: true)
         ]
     )
 }

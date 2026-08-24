@@ -1,11 +1,26 @@
 import SwiftUI
 import SwiftData
 
+private enum TaskEditorRoute: Identifiable {
+    case create
+    case edit(QuadrantTask)
+
+    var id: String {
+        switch self {
+        case .create:
+            return "create"
+        case let .edit(task):
+            return task.id.uuidString
+        }
+    }
+}
+
 struct QuadrantViewContainer: View {
-    @ObservedObject var taskManager: TaskManager
+    let taskStore: TaskStore
     @State private var showingTaskFormView = false
-    
     @State private var activeSheetCategory: TaskCategory? = nil
+    @State private var pendingTaskEditor: TaskEditorRoute?
+    @State private var taskEditor: TaskEditorRoute?
     
     var body: some View {
         VStack(spacing: 12) {
@@ -33,9 +48,15 @@ struct QuadrantViewContainer: View {
         .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
         
         // --- 上拉菜单 Sheet ---
-        .sheet(item: $activeSheetCategory) { category in
+        .sheet(item: $activeSheetCategory, onDismiss: presentPendingTaskEditor) { category in
             NavigationStack {
-                TaskListView(category: category, taskManager: taskManager, selectedCategory: .constant(category))
+                TaskListView(
+                    category: category,
+                    taskStore: taskStore,
+                    selectedCategory: .constant(category),
+                    onCreate: { requestTaskEditor(.create) },
+                    onEdit: { requestTaskEditor(.edit($0)) }
+                )
                     .navigationTitle(category.displayName)
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -48,7 +69,15 @@ struct QuadrantViewContainer: View {
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showingTaskFormView) {
-            TaskFormView(taskManager: taskManager)
+            TaskFormView(taskStore: taskStore)
+        }
+        .sheet(item: $taskEditor) { route in
+            switch route {
+            case .create:
+                TaskFormView(taskStore: taskStore)
+            case let .edit(task):
+                TaskFormView(taskStore: taskStore, existingTask: task)
+            }
         }
     }
     
@@ -60,7 +89,7 @@ struct QuadrantViewContainer: View {
             title: String(localized: String.LocalizationValue(title)),
             color: color,
             category: category,
-            taskManager: taskManager,
+            taskStore: taskStore,
             onZoom: { cat in
                 handleExpansion(for: cat)
             }
@@ -102,6 +131,16 @@ struct QuadrantViewContainer: View {
     private func handleExpansion(for category: TaskCategory) {
         activeSheetCategory = category
     }
+
+    private func requestTaskEditor(_ route: TaskEditorRoute) {
+        pendingTaskEditor = route
+        activeSheetCategory = nil
+    }
+
+    private func presentPendingTaskEditor() {
+        taskEditor = pendingTaskEditor
+        pendingTaskEditor = nil
+    }
 }
 
 // MARK: - Preview
@@ -110,6 +149,6 @@ struct QuadrantViewContainer: View {
         for: QuadrantTask.self, DailyTask.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
-    return QuadrantViewContainer(taskManager: TaskManager(modelContext: container.mainContext))
+    return QuadrantViewContainer(taskStore: TaskStore(modelContext: container.mainContext))
         .modelContainer(container)
 }

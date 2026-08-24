@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct ListView: View {
-    @ObservedObject var taskManager: TaskManager
+    let taskStore: TaskStore
     @State private var showingTaskFormView = false
     @State private var selectedCategory: TaskCategory? = .all
     @Environment(\.colorScheme) private var colorScheme
@@ -37,7 +37,7 @@ struct ListView: View {
             .navigationDestination(for: TaskCategory.self) { category in
                 TaskListView(
                     category: category,
-                    taskManager: taskManager,
+                    taskStore: taskStore,
                     selectedCategory: $selectedCategory
                 )
             }
@@ -48,7 +48,7 @@ struct ListView: View {
             if let category = selectedCategory {
                 TaskListView(
                     category: category,
-                    taskManager: taskManager,
+                    taskStore: taskStore,
                     selectedCategory: $selectedCategory
                 )
             } else {
@@ -63,42 +63,36 @@ struct ListView: View {
 
 struct TaskListView: View {
     let category: TaskCategory
-    @ObservedObject var taskManager: TaskManager
+    let taskStore: TaskStore
+    @Query(sort: \QuadrantTask.updatedAt, order: .reverse) private var tasks: [QuadrantTask]
     @Binding var selectedCategory: TaskCategory?
+    var onCreate: (() -> Void)? = nil
+    var onEdit: ((QuadrantTask) -> Void)? = nil
     @State private var showingTaskFormView = false
-    @State private var showingEditTaskView = false
     @State private var selectedTaskForEditing: QuadrantTask?
-    @State private var showingTaskDetailsAlert = false
-    @State private var taskDetails: String = ""
 
     var body: some View {
         List {
-            ForEach(taskManager.filteredTasks(in: category)) { task in
+            ForEach(taskStore.filteredTasks(tasks, in: category)) { task in
                 TaskRow(task: task, onToggle: {
-                    taskManager.toggleTask(task)
+                    taskStore.toggleTask(task)
                 }, onEdit: {
-                    selectedTaskForEditing = task
-                    showingEditTaskView = true
+                    edit(task)
                 }, onDelete: {
-                    taskManager.removeTask(by: task.id)
+                    taskStore.removeTask(task)
                 })
                 .listRowBackground(Color(UIColor.secondarySystemGroupedBackground))
                 .listRowSeparator(.visible)
                 .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12)) // 紧凑的行内边距
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    selectedTaskForEditing = task
-                }
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button(role: .destructive) {
-                        taskManager.removeTask(by: task.id)
+                        taskStore.removeTask(task)
                     } label: {
                         Label("menu_delete", systemImage: "trash")
                     }
                     
                     Button {
-                        selectedTaskForEditing = task
-                        showingEditTaskView = true
+                        edit(task)
                     } label: {
                         Label("menu_edit", systemImage: "pencil")
                     }
@@ -113,30 +107,35 @@ struct TaskListView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    showingTaskFormView = true
+                    createTask()
                 } label: {
                     Image(systemName: "plus")
                 }
             }
         }
         .sheet(item: $selectedTaskForEditing) { task in
-            TaskFormView(taskManager: taskManager, existingTask: task)
+            TaskFormView(taskStore: taskStore, existingTask: task)
         }
         .sheet(isPresented: $showingTaskFormView) {
-            TaskFormView(taskManager: taskManager)
-        }
-        .alert(isPresented: $showingTaskDetailsAlert) {
-            Alert(title: Text("alert_task_details_title"), message: Text(taskDetails), dismissButton: .default(Text("alert_ok")))
+            TaskFormView(taskStore: taskStore)
         }
     }
 
-    func formattedDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter.string(from: date)
+    private func createTask() {
+        if let onCreate {
+            onCreate()
+        } else {
+            showingTaskFormView = true
+        }
     }
 
-
+    private func edit(_ task: QuadrantTask) {
+        if let onEdit {
+            onEdit(task)
+        } else {
+            selectedTaskForEditing = task
+        }
+    }
 }
 
 // MARK: - Preview
@@ -145,6 +144,6 @@ struct TaskListView: View {
         for: QuadrantTask.self, DailyTask.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
-    return ListView(taskManager: TaskManager(modelContext: container.mainContext))
+    return ListView(taskStore: TaskStore(modelContext: container.mainContext))
         .modelContainer(container)
 }

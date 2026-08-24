@@ -14,10 +14,10 @@ struct DailyTaskLayout {
         
         // 1. Sort by start time, then duration (longer first)
         let sortedTasks = tasks.sorted {
-            if $0.startTime == $1.startTime {
+            if $0.startAt == $1.startAt {
                 return $0.duration > $1.duration
             }
-            return $0.startTime < $1.startTime
+            return $0.startAt < $1.startAt
         }
         
         var results: [UUID: LayoutResult] = [:]
@@ -29,23 +29,23 @@ struct DailyTaskLayout {
         
         for task in sortedTasks {
             if let end = clusterEndTime {
-                if task.startTime < end {
+                if task.startAt < end {
                     // Overlaps with the current cluster's time range
                     currentCluster.append(task)
                     // Extend cluster end time if needed
-                    if task.endTime > end {
-                        clusterEndTime = task.endTime
+                    if task.endAt > end {
+                        clusterEndTime = task.endAt
                     }
                 } else {
                     // New cluster
                     clusters.append(currentCluster)
                     currentCluster = [task]
-                    clusterEndTime = task.endTime
+                    clusterEndTime = task.endAt
                 }
             } else {
                 // First task
                 currentCluster = [task]
-                clusterEndTime = task.endTime
+                clusterEndTime = task.endAt
             }
         }
         
@@ -72,9 +72,9 @@ struct DailyTaskLayout {
         for task in tasks {
             var placed = false
             // Find first column where this task fits
-            for (colIndex, endTime) in columns.enumerated() {
-                if task.startTime >= endTime {
-                    columns[colIndex] = task.endTime
+            for (colIndex, endAt) in columns.enumerated() {
+                if task.startAt >= endAt {
+                    columns[colIndex] = task.endAt
                     taskColumns[task.id] = colIndex
                     placed = true
                     break
@@ -83,7 +83,7 @@ struct DailyTaskLayout {
             
             if !placed {
                 // Create new column
-                columns.append(task.endTime)
+                columns.append(task.endAt)
                 taskColumns[task.id] = columns.count - 1
             }
         }
@@ -96,8 +96,8 @@ struct DailyTaskLayout {
             
             // Calculate Vertical Geometry
             let calendar = Calendar.current
-            let hour = CGFloat(calendar.component(.hour, from: task.startTime))
-            let minute = CGFloat(calendar.component(.minute, from: task.startTime))
+            let hour = CGFloat(calendar.component(.hour, from: task.startAt))
+            let minute = CGFloat(calendar.component(.minute, from: task.startAt))
             let startY = ((hour * 60 + minute) / 60) * hourHeight + 10 // +10 padding top
             
             let durationSeconds = task.duration

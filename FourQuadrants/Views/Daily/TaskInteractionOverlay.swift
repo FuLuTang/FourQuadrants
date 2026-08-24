@@ -7,6 +7,7 @@ struct TaskInteractionOverlay: UIViewRepresentable {
     var onResizeTop: (CGFloat) -> Void
     var onResizeBottom: (CGFloat) -> Void
     var onEnd: () -> Void
+    var onCancelled: () -> Void
     var onSelect: () -> Void
 
     func makeUIView(context: Context) -> UIView {
@@ -31,7 +32,9 @@ struct TaskInteractionOverlay: UIViewRepresentable {
         return view
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {}
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.parent = self
+    }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -114,9 +117,18 @@ struct TaskInteractionOverlay: UIViewRepresentable {
                 case .none:
                     break
                 }
-            case .ended, .cancelled, .failed:
+            case .ended:
+                let completedDrag = dragMode != .none
                 dragMode = .none
-                parent.onEnd()
+                if completedDrag {
+                    parent.onEnd()
+                }
+            case .cancelled, .failed:
+                let cancelledDrag = dragMode != .none
+                dragMode = .none
+                if cancelledDrag {
+                    parent.onCancelled()
+                }
             default:
                 break
             }

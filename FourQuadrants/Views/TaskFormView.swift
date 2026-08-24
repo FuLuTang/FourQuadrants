@@ -2,15 +2,16 @@ import SwiftUI
 
 struct TaskFormView: View {
     @Environment(\.dismiss) var dismiss
-    @ObservedObject var taskManager: TaskManager
+    let taskStore: TaskStore
     var existingTask: QuadrantTask?
     
     // 状态变量
     @State private var title: String
+    @State private var notes: String
     @State private var importance: ImportanceLevel
     @State private var isUrgent: Bool
     @State private var hasTargetDate: Bool   // 是否设置目标日期
-    @State private var targetDate: Date      // 目标日期
+    @State private var dueAt: Date      // 目标日期
     // **新增紧急阈值相关变量**
     @State private var hasUrgentThreshold: Bool
     @State private var urgentThresholdDays: Int
@@ -19,15 +20,16 @@ struct TaskFormView: View {
     // 键盘焦点状态 - 修复第三方输入法卡死问题
     @FocusState private var isTitleFocused: Bool
     
-    init(taskManager: TaskManager, existingTask: QuadrantTask? = nil) {
-        self.taskManager = taskManager
+    init(taskStore: TaskStore, existingTask: QuadrantTask? = nil) {
+        self.taskStore = taskStore
         self.existingTask = existingTask
         _title = State(initialValue: existingTask?.title ?? "")
+        _notes = State(initialValue: existingTask?.notes ?? "")
         _importance = State(initialValue: existingTask?.importance ?? .normal)
         _isUrgent = State(initialValue: existingTask?.isUrgent ?? false)
         _isTop = State(initialValue: existingTask?.isTop ?? false)
-        _hasTargetDate = State(initialValue: existingTask?.targetDate != nil)
-        _targetDate = State(initialValue: existingTask?.targetDate ?? Date())
+        _hasTargetDate = State(initialValue: existingTask?.dueAt != nil)
+        _dueAt = State(initialValue: existingTask?.dueAt ?? Date())
         _hasUrgentThreshold = State(initialValue: existingTask?.urgentThresholdDays != nil)
         _urgentThresholdDays = State(initialValue: existingTask?.urgentThresholdDays ?? existingTask?.originalUrgentThresholdDays ?? 3)
     }
@@ -42,16 +44,19 @@ struct TaskFormView: View {
                         .onSubmit {
                             isTitleFocused = false
                         }
-                    Section(header: Text("importance")) {
-                        Picker("importance", selection: $importance) {
-                            Text("low").tag(ImportanceLevel.low)
-                            Text("normal").tag(ImportanceLevel.normal)
-                            Text("high").tag(ImportanceLevel.high)
-                        }
-                        .pickerStyle(SegmentedPickerStyle())
+                    TextEditor(text: $notes)
+                        .frame(minHeight: 80)
+                }
+
+                Section(header: Text("importance")) {
+                    Picker("importance", selection: $importance) {
+                        Text("low").tag(ImportanceLevel.low)
+                        Text("normal").tag(ImportanceLevel.normal)
+                        Text("high").tag(ImportanceLevel.high)
                     }
+                    .pickerStyle(.segmented)
                     Toggle("urgent", isOn: $isUrgent)
-                        .disabled(hasUrgentThreshold) // **紧急阈值开启时禁用紧急开关**
+                        .disabled(hasUrgentThreshold)
                     Toggle("top", isOn: $isTop)
                 }
                 
@@ -62,7 +67,7 @@ struct TaskFormView: View {
                     if hasTargetDate {
                         DatePicker(
                             "select_date",
-                            selection: $targetDate,
+                            selection: $dueAt,
                             displayedComponents: .date
                         )
                         .datePickerStyle(.graphical)
@@ -80,11 +85,8 @@ struct TaskFormView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("cancel") {
-                        // 先关闭键盘，再 dismiss，避免手势冲突
                         isTitleFocused = false
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            dismiss()
-                        }
+                        dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -110,34 +112,32 @@ struct TaskFormView: View {
         // 先关闭键盘
         isTitleFocused = false
         
-        let finalTargetDate = hasTargetDate ? targetDate : nil
+        let finalTargetDate = hasTargetDate ? dueAt : nil
         let finalUrgentThreshold = (hasTargetDate && hasUrgentThreshold) ? urgentThresholdDays : nil
-        let now = Date()  // 获取当前时间
-
         if let task = existingTask {
-            taskManager.updateTask(
+            taskStore.updateTask(
                 task,
                 title: title,
+                notes: notes.isEmpty ? nil : notes,
                 importance: importance,
                 isUrgent: isUrgent,
                 isTop: isTop,
-                targetDate: finalTargetDate,
+                dueAt: finalTargetDate,
                 urgentThresholdDays: finalUrgentThreshold,
                 originalUrgentThresholdDays: finalUrgentThreshold,
-                originalImportance: importance,
-                dateLatestModified: now
+                originalImportance: importance
             )
         } else {
-            taskManager.addTask(
+            taskStore.addTask(
                 title: title,
+                notes: notes.isEmpty ? nil : notes,
                 importance: importance,
                 isUrgent: isUrgent,
                 isTop: isTop,
-                targetDate: finalTargetDate,
+                dueAt: finalTargetDate,
                 urgentThresholdDays: finalUrgentThreshold,
                 originalUrgentThresholdDays: finalUrgentThreshold,
-                originalImportance: importance,
-                dateLatestModified: now
+                originalImportance: importance
             )
         }
         dismiss()

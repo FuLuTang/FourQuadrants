@@ -3,7 +3,7 @@ import SwiftData
 
 struct DailyTaskFormView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
+    @Environment(TaskStore.self) private var taskStore
     @FocusState private var isTitleFocused: Bool
     
     // 编辑模式传入 task，新建模式为 nil
@@ -14,8 +14,8 @@ struct DailyTaskFormView: View {
     
     // Form States
     @State private var title: String = ""
-    @State private var startTime: Date = Date()
-    @State private var endTime: Date = Date().addingTimeInterval(3600)
+    @State private var startAt: Date = Date()
+    @State private var endAt: Date = Date().addingTimeInterval(3600)
     @State private var colorHex: String = "#5E81F4"
     @State private var notes: String = ""
     
@@ -79,23 +79,23 @@ struct DailyTaskFormView: View {
                 
                 // 2. 时间规划
                 Section("daily_time_planning") {
-                    DatePicker("daily_start_time", selection: $startTime, displayedComponents: .hourAndMinute)
-                        .onChange(of: startTime) {
-                            // 保持 duration 不变，自动推导 endTime
+                    DatePicker("daily_start_time", selection: $startAt, displayedComponents: .hourAndMinute)
+                        .onChange(of: startAt) {
+                            // 保持 duration 不变，自动推导 endAt
                             if let oldTask = task {
-                                endTime = startTime.addingTimeInterval(oldTask.duration)
+                                endAt = startAt.addingTimeInterval(oldTask.duration)
                             } else {
                                 // 新建时默认 1 小时
-                                if endTime <= startTime {
-                                     endTime = startTime.addingTimeInterval(3600)
+                                if endAt <= startAt {
+                                     endAt = startAt.addingTimeInterval(3600)
                                 }
                             }
                         }
                     
-                    DatePicker("daily_end_time", selection: $endTime, displayedComponents: .hourAndMinute)
+                    DatePicker("daily_end_time", selection: $endAt, displayedComponents: .hourAndMinute)
                     
                     // 跨天任务提示
-                    if endTime <= startTime {
+                    if endAt <= startAt {
                         HStack {
                             Image(systemName: "moon.fill")
                                 .foregroundColor(.purple)
@@ -111,7 +111,7 @@ struct DailyTaskFormView: View {
                             ForEach([15, 30, 60, 90, 120], id: \.self) { min in
                                 Button("\(min) \(String(localized: "daily_minutes"))") {
                                     withAnimation {
-                                        endTime = startTime.addingTimeInterval(TimeInterval(min * 60))
+                                        endAt = startAt.addingTimeInterval(TimeInterval(min * 60))
                                     }
                                 }
                                 .buttonStyle(.bordered)
@@ -279,13 +279,13 @@ struct DailyTaskFormView: View {
                 if let task = task {
                     // 编辑模式：填充数据
                     title = task.title
-                    startTime = task.startTime
-                    endTime = task.startTime.addingTimeInterval(task.duration)
+                    startAt = task.startAt
+                    endAt = task.startAt.addingTimeInterval(task.duration)
                     colorHex = task.colorHex ?? "#5E81F4"
                     notes = task.notes ?? ""
                     
                     // 检查是否已有关联
-                    if task.linkedQuadrantTaskID != nil {
+                    if task.quadrantTask != nil {
                         // Todo: 根据 linkedQuadrantTaskID 查询 QuadrantTask 的信息
                         // 这里先模拟
                         isLinked = true
@@ -300,8 +300,8 @@ struct DailyTaskFormView: View {
                     if let hour = components.hour {
                         components.hour = hour + 1
                     }
-                    startTime = calendar.date(from: components) ?? now
-                    endTime = startTime.addingTimeInterval(3600)
+                    startAt = calendar.date(from: components) ?? now
+                    endAt = startAt.addingTimeInterval(3600)
                     
                     // 设置颜色为随机
                     colorHex = colors.randomElement() ?? "#5E81F4"
@@ -322,7 +322,7 @@ struct DailyTaskFormView: View {
     ]
     
     private func saveTask() {
-        var duration = endTime.timeIntervalSince(startTime)
+        var duration = endAt.timeIntervalSince(startAt)
         
         // 处理跨天任务：如果结束时间早于开始时间，说明跨越午夜
         // 例如 23:15 → 2:30，需要加 24 小时
@@ -330,49 +330,16 @@ struct DailyTaskFormView: View {
             duration += 24 * 3600  // +24小时
         }
         
-        if let existingTask = task {
-            // 更新
-            existingTask.title = title
-            existingTask.startTime = startTime
-            existingTask.duration = duration
-            existingTask.colorHex = colorHex
-            existingTask.notes = notes
-            
-            if isNew, let onSave = onSave {
-                // Return the configured task to parent
-                onSave(existingTask)
-            } else if isNew {
-                 // Fallback: direct insert if no callback
-                 modelContext.insert(existingTask)
-            }
-            // else: regular update, already modified reference
-            
-        } else {
-            // 新建 (Legacy path or fallback)
-            let newTask = DailyTask(
-                title: title,
-                scheduledDate: selectedDate,
-                startTime: startTime,
-                duration: duration,
-                colorHex: colorHex
-            )
-            newTask.notes = notes
-            
-            if let onSave = onSave {
-                onSave(newTask)
-            } else {
-                modelContext.insert(newTask)
-            }
+        if let existingTask = task, !isNew {
+            _ = taskStore.updateDailyTask(existingTask, title: title, startAt: startAt, duration: duration, colorHex: colorHex, notes: notes, quadrantTask: existingTask.quadrantTask)
+        } else if let savedTask = taskStore.createDailyTask(title: title, startAt: startAt, duration: duration, colorHex: colorHex, notes: notes) {
+            onSave?(savedTask)
         }
-        
-        // 立即触发灵动岛检查，确保新建/编辑后及时更新
-        LiveActivityManager.shared.checkTask(context: modelContext)
     }
     
     private func deleteTask() {
         guard let task = task else { return }
-        modelContext.delete(task)
-        LiveActivityManager.shared.checkTask(context: modelContext)
+        _ = taskStore.removeDailyTask(task)
         dismiss()
     }
     

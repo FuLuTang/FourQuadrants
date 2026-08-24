@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 enum ThemeMode: Int, CaseIterable {
     case auto = 0
@@ -254,7 +255,7 @@ struct AboutDetailView: View {
                 }
                 .padding(.vertical, 8)
             }
-            
+
             // 功能亮点
             Section(header: Text("about_features_title")) {
                 FeatureRow(icon: "square.grid.2x2", title: String(localized: "feature_quadrant_board"), description: String(localized: "feature_quadrant_desc"))
@@ -413,17 +414,25 @@ struct TermsOfServiceView: View {
 }
 struct SyncSettingsView: View {
     @ObservedObject var syncService = SyncService.shared
-    
+    @State private var showsDisconnectConfirmation = false
+
     var body: some View {
-        if syncService.isAuthenticated {
-            VStack(alignment: .leading, spacing: 10) {
+        Group {
+            if syncService.isAuthenticated {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                    Text("sync_connected")
-                        .font(.headline)
+                        .foregroundStyle(.green)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("sync_connected")
+                        if let accountName = syncService.accountName {
+                            Text(accountName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
                 }
-                
+
                 if let lastSync = syncService.lastSyncTime {
                     Text("sync_last_time \(lastSync.formatted())")
                         .font(.caption)
@@ -435,33 +444,80 @@ struct SyncSettingsView: View {
                 }
                 
                 if syncService.isSyncing {
-                    ProgressView()
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("正在同步")
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                
-                Button(role: .destructive) {
-                    syncService.signOut()
+
+                Toggle("自动同步", isOn: Binding(
+                    get: { syncService.isSyncEnabled },
+                    set: { syncService.setSyncEnabled($0) }
+                ))
+
+                Button {
+                    Task { await syncService.synchronize() }
                 } label: {
-                    Text("sync_disconnect")
+                    Label("立即同步", systemImage: "arrow.clockwise")
+                }
+                .disabled(syncService.isSyncing || !syncService.isSyncEnabled)
+
+                Button(role: .destructive) {
+                    showsDisconnectConfirmation = true
+                } label: {
+                    Label("sync_disconnect", systemImage: "person.crop.circle.badge.xmark")
+                }
+            } else {
+                Button {
+                    Task {
+                        await syncService.signIn()
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                        Text("sync_connect_microsoft")
+                    }
+                }
+                .disabled(syncService.isSigningIn)
+
+                if syncService.isSigningIn {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("正在打开 Microsoft 登录页面")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Button("取消本次连接", role: .cancel) {
+                        syncService.cancelSignIn()
+                    }
+                    .font(.caption)
                 }
             }
-            .padding(.vertical, 4)
-        } else {
-            Button {
-                Task {
-                    await syncService.signIn()
-                }
-            } label: {
-                HStack {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                    Text("sync_connect_microsoft")
-                }
+            if let error = syncService.errorMessage {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
             }
         }
-        
-        if let error = syncService.errorMessage {
-            Text(error)
-                .font(.caption)
-                .foregroundStyle(.red)
+        .sheet(isPresented: Binding(
+            get: { syncService.needsInitialMerge },
+            set: { if !$0 { syncService.cancelInitialMerge() } }
+        )) {
+            MicrosoftTodoInitialMergeView(syncService: syncService)
+        }
+        .confirmationDialog(
+            "断开 Microsoft To Do？",
+            isPresented: $showsDisconnectConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("断开账户", role: .destructive) {
+                syncService.signOut()
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("这会停止此设备的同步并移除本机登录令牌。本地任务和 Microsoft To Do 中的任务都不会被删除。")
         }
     }
 }

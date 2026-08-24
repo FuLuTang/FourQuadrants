@@ -1,4 +1,5 @@
 import Testing
+import CoreGraphics
 import Foundation
 @testable import FourQuadrants
 
@@ -18,8 +19,7 @@ struct DailyTaskLayoutTests {
         
         return DailyTask(
             title: "Test Task",
-            scheduledDate: start,
-            startTime: start,
+            startAt: start,
             duration: durationHours * 3600,
             colorHex: "#000000"
         )
@@ -79,16 +79,12 @@ struct DailyTaskLayoutTests {
         // All three overlap at 10:00-10:30 window
         // Should share width (1/3 each roughly, or depending on column packing)
         
-        let taskA = createTask(startHour: 9, durationHours: 3)
-        let taskB = createTask(id: UUID(), startHour: 9, durationHours: 0.5) // Starts at 9:00 actually in helper, let's adjust manuall if needed but helper is hour based.
-        // Let's stick to simple hour blocks for helper simplicity or adjust helper.
-        // Re-using helper:
         let calendar = Calendar.current
         let baseDate = calendar.date(from: DateComponents(year: 2024, month: 1, day: 1, hour: 9, minute: 0))!
         
-        let task1 = DailyTask(title: "1", scheduledDate: baseDate, startTime: baseDate, duration: 3600*3, colorHex: "") // 9-12
-        let task2 = DailyTask(title: "2", scheduledDate: baseDate, startTime: baseDate.addingTimeInterval(1800), duration: 3600, colorHex: "") // 9:30-10:30
-        let task3 = DailyTask(title: "3", scheduledDate: baseDate, startTime: baseDate.addingTimeInterval(3600), duration: 3600, colorHex: "") // 10:00-11:00
+        let task1 = DailyTask(title: "1", startAt: baseDate, duration: 3600*3, colorHex: "") // 9-12
+        let task2 = DailyTask(title: "2", startAt: baseDate.addingTimeInterval(1800), duration: 3600, colorHex: "") // 9:30-10:30
+        let task3 = DailyTask(title: "3", startAt: baseDate.addingTimeInterval(3600), duration: 3600, colorHex: "") // 10:00-11:00
         
         let tasks = [task1, task2, task3]
         let layout = DailyTaskLayout.calculateLayout(for: tasks, hourHeight: 60)

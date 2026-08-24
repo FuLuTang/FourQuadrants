@@ -1,4 +1,4 @@
-import ActivityKit
+@preconcurrency import ActivityKit
 import SwiftData
 import Foundation
 
@@ -25,13 +25,12 @@ class LiveActivityManager {
     func startTimerIfNeeded(container: ModelContainer) {
         self.modelContainer = container
         guard timer == nil else { return }
-        
-        // 立即检查一次
+
+        reconcileExistingActivities()
         checkTask(context: container.mainContext)
         
         // 每60秒检查一次
-        timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            guard let self = self, let container = self.modelContainer else { return }
+        timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self, container] _ in
             Task { @MainActor [weak self] in
                 self?.checkTask(context: container.mainContext)
             }
@@ -41,6 +40,23 @@ class LiveActivityManager {
     func stopTimer() {
         timer?.invalidate()
         timer = nil
+    }
+
+    /// Reconnect to activities that outlive this process and remove stale duplicates.
+    private func reconcileExistingActivities() {
+        let activities = Activity<FourQuadrantsWidgetAttributes>.activities
+        guard let primaryActivity = activities.first else { return }
+
+        currentActivity = primaryActivity
+
+        for duplicateActivity in activities.dropFirst() {
+            Task {
+                await duplicateActivity.end(
+                    duplicateActivity.content,
+                    dismissalPolicy: .immediate
+                )
+            }
+        }
     }
     
     // MARK: - 核心逻辑 (基于伪代码)
@@ -75,7 +91,7 @@ class LiveActivityManager {
         }
         
         // 3. 选择主任务（最先结束的优先）
-        let selected = activeTasks.min { $0.endTime < $1.endTime }!
+        let selected = activeTasks.min { $0.endAt < $1.endAt }!
         let overlapCount = activeTasks.count - 1
         
         // 4. 构建显示名称
@@ -87,26 +103,26 @@ class LiveActivityManager {
         let newState = FourQuadrantsWidgetAttributes.ContentState(
             taskId: selected.id.uuidString,
             taskName: displayName,
-            startTime: selected.startTime,
-            endTime: selected.endTime,
+            startAt: selected.startAt,
+            endAt: selected.endAt,
             colorHex: selected.colorHex
         )
         
         // 5. 没有活动就启动，有活动就更新（仅变化时）
         if currentActivity == nil {
-            startActivity(state: newState, staleDate: selected.endTime.addingTimeInterval(600))
+            startActivity(state: newState, staleDate: selected.endAt.addingTimeInterval(600))
         } else if lastTaskId != newState.taskId 
                     || lastTaskName != newState.taskName
-                    || lastStartTime != newState.startTime
-                    || lastEndTime != newState.endTime
+                    || lastStartTime != newState.startAt
+                    || lastEndTime != newState.endAt
                     || lastColorHex != newState.colorHex {
-            updateActivity(state: newState, staleDate: selected.endTime.addingTimeInterval(600))
+            updateActivity(state: newState, staleDate: selected.endAt.addingTimeInterval(600))
         }
         
         lastTaskId = newState.taskId
         lastTaskName = newState.taskName
-        lastStartTime = newState.startTime
-        lastEndTime = newState.endTime
+        lastStartTime = newState.startAt
+        lastEndTime = newState.endAt
         lastColorHex = newState.colorHex
     }
     
@@ -118,18 +134,18 @@ class LiveActivityManager {
         let todayEnd = calendar.date(byAdding: .day, value: 1, to: todayStart)!
         
         let predicate = #Predicate<DailyTask> { task in
-            task.scheduledDate >= todayStart &&
-            task.scheduledDate < todayEnd &&
-            task.isCompleted == false &&
-            task.startTime <= now
+            task.startAt >= todayStart &&
+            task.startAt < todayEnd &&
+            task.completedAt == nil &&
+            task.startAt <= now
         }
         
         let descriptor = FetchDescriptor<DailyTask>(predicate: predicate)
         
         do {
             let tasks = try context.fetch(descriptor)
-            // 过滤：endTime > now (计算属性无法放入 Predicate)
-            return tasks.filter { $0.endTime > now }
+            // 过滤：endAt > now (计算属性无法放入 Predicate)
+            return tasks.filter { $0.endAt > now }
         } catch {
             print("❌ LiveActivityManager fetch error: \(error)")
             return []
@@ -158,7 +174,6 @@ class LiveActivityManager {
         Task {
             let content = ActivityContent(state: state, staleDate: staleDate)
             await currentActivity?.update(content)
-            print("🔄 LiveActivity updated: \(state.taskName)")
         }
     }
     
@@ -167,7 +182,6 @@ class LiveActivityManager {
         
         Task {
             await activity.end(activity.content, dismissalPolicy: .immediate)
-            print("⏹️ LiveActivity ended")
         }
         
         currentActivity = nil

@@ -3,7 +3,7 @@ import SwiftData
 import Combine
 
 struct DailyView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(TaskStore.self) private var taskStore
     @State private var selectedDate: Date = Date()
     @State private var scrollProxy: ScrollViewProxy?
     @State private var showAddTaskSheet = false // Add Sheet State
@@ -55,6 +55,9 @@ struct DailyView: View {
                                     if let ghost = ghostTask {
                                         commitGhostTask(ghost)
                                     }
+                                },
+                                onCancelled: {
+                                    resetGhostTask()
                                 }
                             )
                         )
@@ -134,8 +137,7 @@ struct DailyView: View {
                 // Create a "Draft" task for the sheet
                 let draft = DailyTask(
                     title: "",
-                    scheduledDate: selectedDate,
-                    startTime: rounded,
+                    startAt: rounded,
                     duration: 3600,
                     colorHex: "#5E81F4"
                 )
@@ -161,13 +163,7 @@ struct DailyView: View {
             resetGhostTask()
         }) {
             if let task = ghostTask {
-                DailyTaskFormView(task: task, selectedDate: selectedDate, isNew: true) { savedTask in
-                    // Callback when saved (inserted)
-                    modelContext.insert(savedTask)
-                    try? modelContext.save()
-                    // Immediately enter edit mode or just finish?
-                    // User said: "松手后会自动弹出来编辑页" -> which is this sheet.
-                }
+                DailyTaskFormView(task: task, selectedDate: selectedDate, isNew: true)
             } else {
                 // Fallback
                 DailyTaskFormView(selectedDate: selectedDate)
@@ -400,12 +396,11 @@ struct DailyView: View {
         components.minute = minute
         components.second = 0
         
-        guard let startTime = calendar.date(from: components) else { return }
+        guard let startAt = calendar.date(from: components) else { return }
         
         ghostTask = DailyTask(
             title: String(localized: "new_task"),
-            scheduledDate: selectedDate,
-            startTime: startTime,
+            startAt: startAt,
             duration: 3600,
             colorHex: "#5E81F4"
         )
@@ -425,12 +420,12 @@ struct DailyView: View {
          components.minute = minute
          components.second = 0
          
-         guard let startTime = calendar.date(from: components) else { return }
+         guard let startAt = calendar.date(from: components) else { return }
          
-         if task.startTime != startTime {
+         if task.startAt != startAt {
              let feedback = UISelectionFeedbackGenerator()
              feedback.selectionChanged()
-             task.startTime = startTime
+             taskStore.previewDailyTaskLayout(task, startAt: startAt, duration: task.duration)
          }
     }
     
@@ -459,8 +454,8 @@ struct DailyView: View {
     // Modified to use the new calculation if needed, but keeping the old one for offsets
     private func calculateYOffset(for task: DailyTask) -> CGFloat {
         let calendar = Calendar.current
-        let hour = CGFloat(calendar.component(.hour, from: task.startTime))
-        let minute = CGFloat(calendar.component(.minute, from: task.startTime))
+        let hour = CGFloat(calendar.component(.hour, from: task.startAt))
+        let minute = CGFloat(calendar.component(.minute, from: task.startAt))
         return ((hour * 60 + minute) / 60) * hourHeight + 10
     }
     
@@ -537,8 +532,8 @@ struct DailyView: View {
             let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay)!
             
             self._tasks = Query(filter: #Predicate<DailyTask> { task in
-                task.scheduledDate >= startOfDay && task.scheduledDate < endOfDay
-            }, sort: \.startTime)
+                task.startAt >= startOfDay && task.startAt < endOfDay
+            }, sort: \.startAt)
         }
         
         var body: some View {
