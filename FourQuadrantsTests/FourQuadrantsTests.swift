@@ -237,7 +237,7 @@ struct FourQuadrantsTests {
         let payload = MicrosoftTodoTaskPayload(
             title: "Local task",
             body: .init(content: "Local notes"),
-            importance: "high",
+            importance: "low",
             status: "completed",
             dueDateTime: .init(dateTime: "2026-08-17T09:00:00Z"),
             extensions: nil
@@ -247,7 +247,7 @@ struct FourQuadrantsTests {
         let body = try #require(object?["body"] as? [String: String])
         #expect(body["content"] == "Local notes")
         #expect(body["contentType"] == "text")
-        #expect(object?["importance"] as? String == "high")
+        #expect(object?["importance"] as? String == "low")
         #expect(object?["status"] as? String == "completed")
         #expect(object?["extensions"] == nil)
 

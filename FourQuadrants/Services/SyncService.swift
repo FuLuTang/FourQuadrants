@@ -7,6 +7,7 @@ import UIKit
 @MainActor
 final class SyncService: ObservableObject {
     static let shared = SyncService()
+    private static let taskDeltaQueryVersion = 1
 
     @Published private(set) var isSyncing = false
     @Published private(set) var isSigningIn = false
@@ -173,7 +174,8 @@ final class SyncService: ObservableObject {
     }
 
     private func pullRemoteChanges(profile: MicrosoftTodoSyncProfile, token: String) async throws {
-        var nextURL = profile.deltaLink.flatMap(URL.init(string:))
+        let needsDeltaQueryUpgrade = UserDefaults.standard.integer(forKey: deltaQueryVersionKey(for: profile)) < Self.taskDeltaQueryVersion
+        var nextURL = needsDeltaQueryUpgrade ? nil : profile.deltaLink.flatMap(URL.init(string:))
         var finalDeltaLink: String?
         repeat {
             let page = try await graph.taskDeltaPage(listID: profile.defaultListIdentifier, url: nextURL, token: token)
@@ -184,6 +186,7 @@ final class SyncService: ObservableObject {
         } while nextURL != nil
         if let finalDeltaLink {
             profile.deltaLink = finalDeltaLink
+            UserDefaults.standard.set(Self.taskDeltaQueryVersion, forKey: deltaQueryVersionKey(for: profile))
         }
     }
 
@@ -316,7 +319,7 @@ final class SyncService: ObservableObject {
             updatedAt: modifiedAt,
             dueAt: parseDate(remote.dueDateTime?.dateTime),
             completedAt: remote.status == "completed" ? (parseDate(remote.completedDateTime?.dateTime) ?? modifiedAt) : nil,
-            importance: remote.importance == "high" ? .high : .normal,
+            importance: importance(from: remote.importance),
             isUrgent: metadata?.manualIsUrgent ?? false,
             urgentThresholdDays: metadata?.hasUrgentThresholdDays == true ? metadata?.urgentThresholdDays : nil,
             originalUrgentThresholdDays: metadata?.hasOriginalUrgentThresholdDays == true ? metadata?.originalUrgentThresholdDays : nil,
@@ -331,7 +334,7 @@ final class SyncService: ObservableObject {
         task.notes = remote.body?.content
         task.dueAt = parseDate(remote.dueDateTime?.dateTime)
         task.completedAt = remote.status == "completed" ? (parseDate(remote.completedDateTime?.dateTime) ?? modifiedAt) : nil
-        task.importance = remote.importance == "high" ? .high : .normal
+        task.importance = importance(from: remote.importance)
         if let metadata = remote.fourQuadrantsMetadata {
             task.manualIsUrgent = metadata.manualIsUrgent ?? task.manualIsUrgent
             task.urgentThresholdDays = metadata.hasUrgentThresholdDays == true ? metadata.urgentThresholdDays : nil
@@ -346,7 +349,7 @@ final class SyncService: ObservableObject {
         MicrosoftTodoTaskPayload(
             title: task.title,
             body: .init(content: task.notes ?? ""),
-            importance: task.importance == .high ? "high" : "normal",
+            importance: task.importance.rawValue,
             status: task.isCompleted ? "completed" : "notStarted",
             dueDateTime: task.dueAt.map { .init(dateTime: ISO8601DateFormatter().string(from: $0)) },
             extensions: metadata.map { [$0] }
@@ -362,6 +365,14 @@ final class SyncService: ObservableObject {
             originalImportance: task.originalImportance?.rawValue,
             isTop: task.isTop
         )
+    }
+
+    private func importance(from remoteValue: String?) -> ImportanceLevel {
+        ImportanceLevel(rawValue: remoteValue ?? "") ?? .normal
+    }
+
+    private func deltaQueryVersionKey(for profile: MicrosoftTodoSyncProfile) -> String {
+        "MicrosoftTodo.taskDeltaQueryVersion.\(profile.id.uuidString)"
     }
 
     private func restoreCachedAccount() {
