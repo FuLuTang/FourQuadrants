@@ -199,7 +199,7 @@ nonisolated struct MicrosoftGraphClient {
     func taskDeltaPage(listID: String, url: URL? = nil, token: String) async throws -> MicrosoftGraphDeltaPage<MicrosoftTodoTask> {
         let initialURL = graphURL(
             pathComponents: ["me", "todo", "lists", listID, "tasks", "delta"],
-            queryItems: [URLQueryItem(name: "$expand", value: "extensions($filter=id eq 'microsoft.graph.openTypeExtension.\(MicrosoftTodoTaskMetadata.extensionName)')")]
+            queryItems: [URLQueryItem(name: "$expand", value: "extensions")]
         )
         return try await request(url: url ?? initialURL, token: token, method: "GET")
     }

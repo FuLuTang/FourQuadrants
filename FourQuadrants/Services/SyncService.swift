@@ -8,6 +8,7 @@ import UIKit
 final class SyncService: ObservableObject {
     static let shared = SyncService()
     private static let taskDeltaQueryVersion = 1
+    private static let automaticSyncDelay: Duration = .seconds(1)
 
     @Published private(set) var isSyncing = false
     @Published private(set) var isSigningIn = false
@@ -25,6 +26,8 @@ final class SyncService: ObservableObject {
     private var application: MSALPublicClientApplication?
     private var currentAccount: MSALAccount?
     private var signInAttemptID: UUID?
+    private var scheduledSyncTask: Task<Void, Never>?
+    private var requiresAnotherSync = false
 
     private init() {}
 
@@ -99,10 +102,32 @@ final class SyncService: ObservableObject {
     }
 
     func synchronize() async {
-        guard let profile = activeProfile, profile.isEnabled, !isSyncing else { return }
+        scheduledSyncTask?.cancel()
+        scheduledSyncTask = nil
+        guard let profile = activeProfile, profile.isEnabled else { return }
+        guard !isSyncing else {
+            requiresAnotherSync = true
+            return
+        }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        var didRetryAfterDeltaReset = false
+        repeat {
+            requiresAnotherSync = false
+            let shouldRetryAfterDeltaReset = await synchronize(profile: profile)
+            if shouldRetryAfterDeltaReset, didRetryAfterDeltaReset {
+                errorMessage = "Microsoft To Do 同步游标重置后仍然失败，请稍后重试。"
+                break
+            }
+            didRetryAfterDeltaReset = didRetryAfterDeltaReset || shouldRetryAfterDeltaReset
+            requiresAnotherSync = requiresAnotherSync || shouldRetryAfterDeltaReset
+        } while requiresAnotherSync
+    }
+
+    private func synchronize(profile: MicrosoftTodoSyncProfile) async -> Bool {
         do {
-            isSyncing = true
-            defer { isSyncing = false }
             errorMessage = nil
             let token = try await acquireSilentToken()
             try await pullRemoteChanges(profile: profile, token: token)
@@ -111,17 +136,19 @@ final class SyncService: ObservableObject {
             profile.updatedAt = Date()
             try modelContext?.save()
             lastSyncTime = profile.lastSuccessfulSyncAt
+            return false
         } catch let error as MicrosoftGraphError {
             if requiresDeltaReset(error) {
                 profile.deltaLink = nil
                 saveContext()
-                isSyncing = false
-                await synchronize()
+                return true
             } else {
                 errorMessage = userFacingError(error)
+                return false
             }
         } catch {
             errorMessage = userFacingError(error)
+            return false
         }
     }
 
@@ -294,9 +321,23 @@ final class SyncService: ObservableObject {
                 }
             }
             try context.save()
-            Task { await self.synchronize() }
+            scheduleAutomaticSync()
         } catch {
             errorMessage = userFacingError(error)
+        }
+    }
+
+    private func scheduleAutomaticSync() {
+        scheduledSyncTask?.cancel()
+        scheduledSyncTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: Self.automaticSyncDelay)
+            } catch is CancellationError {
+                return
+            } catch {
+                return
+            }
+            await self?.synchronize()
         }
     }
 
