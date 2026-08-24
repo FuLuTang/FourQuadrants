@@ -202,7 +202,22 @@ struct FourQuadrantsTests {
               "createdDateTime": "2026-08-16T09:00:00Z",
               "lastModifiedDateTime": "2026-08-16T10:00:00Z",
               "dueDateTime": { "dateTime": "2026-08-17T09:00:00Z" },
-              "completedDateTime": { "dateTime": "2026-08-16T10:00:00Z" }
+              "completedDateTime": { "dateTime": "2026-08-16T10:00:00Z" },
+              "extensions": [
+                {
+                  "extensionName": "com.fulu.FourQuadrants.taskMetadata",
+                  "schemaVersion": 1,
+                  "localTaskIdentifier": "26B2D16B-32B6-4928-B0A7-1D5B5FC8A427",
+                  "manualIsUrgent": true,
+                  "hasUrgentThresholdDays": true,
+                  "urgentThresholdDays": 3,
+                  "hasOriginalUrgentThresholdDays": true,
+                  "originalUrgentThresholdDays": 5,
+                  "hasOriginalImportance": true,
+                  "originalImportance": "normal",
+                  "isTop": true
+                }
+              ]
             }
           ],
           "@odata.deltaLink": "https://graph.microsoft.com/v1.0/opaque-delta-link"
@@ -214,13 +229,18 @@ struct FourQuadrantsTests {
         #expect(page.value[0].id == "task/with+reserved=characters")
         #expect(page.value[0].eTag == "W/\"etag-1\"")
         #expect(page.deltaLink?.contains("opaque-delta-link") == true)
+        let metadata = try #require(page.value[0].fourQuadrantsMetadata)
+        #expect(metadata.localTaskIdentifier == "26B2D16B-32B6-4928-B0A7-1D5B5FC8A427")
+        #expect(metadata.manualIsUrgent == true)
+        #expect(metadata.isTop == true)
 
         let payload = MicrosoftTodoTaskPayload(
             title: "Local task",
             body: .init(content: "Local notes"),
             importance: "high",
             status: "completed",
-            dueDateTime: .init(dateTime: "2026-08-17T09:00:00Z")
+            dueDateTime: .init(dateTime: "2026-08-17T09:00:00Z"),
+            extensions: nil
         )
         let encoded = try JSONEncoder().encode(payload)
         let object = try JSONSerialization.jsonObject(with: encoded) as? [String: Any]
@@ -229,5 +249,32 @@ struct FourQuadrantsTests {
         #expect(body["contentType"] == "text")
         #expect(object?["importance"] as? String == "high")
         #expect(object?["status"] as? String == "completed")
+        #expect(object?["extensions"] == nil)
+
+        let localTask = QuadrantTask(
+            id: UUID(uuidString: "26B2D16B-32B6-4928-B0A7-1D5B5FC8A427")!,
+            title: "FourQuadrants metadata",
+            importance: .normal,
+            isUrgent: true,
+            urgentThresholdDays: 3,
+            originalUrgentThresholdDays: 5,
+            originalImportance: .normal,
+            isTop: true
+        )
+        let metadataPayload = MicrosoftTodoTaskMetadata(
+            localTaskIdentifier: localTask.id.uuidString,
+            manualIsUrgent: localTask.manualIsUrgent,
+            urgentThresholdDays: localTask.urgentThresholdDays,
+            originalUrgentThresholdDays: localTask.originalUrgentThresholdDays,
+            originalImportance: localTask.originalImportance?.rawValue,
+            isTop: localTask.isTop
+        )
+        let encodedMetadata = try JSONEncoder().encode(metadataPayload)
+        let metadataObject = try #require(JSONSerialization.jsonObject(with: encodedMetadata) as? [String: Any])
+        #expect(metadataObject["@odata.type"] as? String == "microsoft.graph.openTypeExtension")
+        #expect(metadataObject["extensionName"] as? String == MicrosoftTodoTaskMetadata.extensionName)
+        #expect(metadataObject["manualIsUrgent"] as? Bool == true)
+        #expect(metadataObject["hasUrgentThresholdDays"] as? Bool == true)
+        #expect(metadataObject["isTop"] as? Bool == true)
     }
 }

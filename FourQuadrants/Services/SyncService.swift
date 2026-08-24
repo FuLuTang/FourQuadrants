@@ -247,12 +247,18 @@ final class SyncService: ObservableObject {
                 continue
             }
             guard let task = tasksByID[link.localTaskIdentifier] else { continue }
-            let payload = payload(for: task)
+            let metadata = metadata(for: task)
             let remote: MicrosoftTodoTask
             if let remoteID = link.remoteTaskIdentifier {
-                remote = try await graph.updateTask(listID: profile.defaultListIdentifier, taskID: remoteID, payload: payload, eTag: link.remoteETag, token: token)
+                remote = try await graph.updateTask(listID: profile.defaultListIdentifier, taskID: remoteID, payload: payload(for: task), eTag: link.remoteETag, token: token)
+                do {
+                    try await graph.updateTaskMetadata(listID: profile.defaultListIdentifier, taskID: remoteID, metadata: metadata, token: token)
+                } catch let error as MicrosoftGraphError {
+                    guard case .httpStatus(404, _) = error else { throw error }
+                    try await graph.createTaskMetadata(listID: profile.defaultListIdentifier, taskID: remoteID, metadata: metadata, token: token)
+                }
             } else {
-                remote = try await graph.createTask(listID: profile.defaultListIdentifier, payload: payload, token: token)
+                remote = try await graph.createTask(listID: profile.defaultListIdentifier, payload: payload(for: task, includingMetadata: metadata), token: token)
             }
             link.remoteTaskIdentifier = remote.id
             link.remoteETag = remote.eTag
@@ -301,7 +307,9 @@ final class SyncService: ObservableObject {
 
     private func makeLocalTask(from remote: MicrosoftTodoTask) -> QuadrantTask {
         let modifiedAt = parseDate(remote.lastModifiedDateTime) ?? Date()
+        let metadata = remote.fourQuadrantsMetadata
         return QuadrantTask(
+            id: metadata.flatMap { UUID(uuidString: $0.localTaskIdentifier ?? "") } ?? UUID(),
             title: remote.title ?? "",
             notes: remote.body?.content,
             createdAt: parseDate(remote.createdDateTime) ?? modifiedAt,
@@ -309,7 +317,11 @@ final class SyncService: ObservableObject {
             dueAt: parseDate(remote.dueDateTime?.dateTime),
             completedAt: remote.status == "completed" ? (parseDate(remote.completedDateTime?.dateTime) ?? modifiedAt) : nil,
             importance: remote.importance == "high" ? .high : .normal,
-            isUrgent: false
+            isUrgent: metadata?.manualIsUrgent ?? false,
+            urgentThresholdDays: metadata?.hasUrgentThresholdDays == true ? metadata?.urgentThresholdDays : nil,
+            originalUrgentThresholdDays: metadata?.hasOriginalUrgentThresholdDays == true ? metadata?.originalUrgentThresholdDays : nil,
+            originalImportance: metadata?.hasOriginalImportance == true ? metadata.flatMap { ImportanceLevel(rawValue: $0.originalImportance ?? "") } : nil,
+            isTop: metadata?.isTop ?? false
         )
     }
 
@@ -320,17 +332,35 @@ final class SyncService: ObservableObject {
         task.dueAt = parseDate(remote.dueDateTime?.dateTime)
         task.completedAt = remote.status == "completed" ? (parseDate(remote.completedDateTime?.dateTime) ?? modifiedAt) : nil
         task.importance = remote.importance == "high" ? .high : .normal
-        task.manualIsUrgent = false
+        if let metadata = remote.fourQuadrantsMetadata {
+            task.manualIsUrgent = metadata.manualIsUrgent ?? task.manualIsUrgent
+            task.urgentThresholdDays = metadata.hasUrgentThresholdDays == true ? metadata.urgentThresholdDays : nil
+            task.originalUrgentThresholdDays = metadata.hasOriginalUrgentThresholdDays == true ? metadata.originalUrgentThresholdDays : nil
+            task.originalImportance = metadata.hasOriginalImportance == true ? ImportanceLevel(rawValue: metadata.originalImportance ?? "") : nil
+            task.isTop = metadata.isTop ?? task.isTop
+        }
         task.updatedAt = modifiedAt
     }
 
-    private func payload(for task: QuadrantTask) -> MicrosoftTodoTaskPayload {
+    private func payload(for task: QuadrantTask, includingMetadata metadata: MicrosoftTodoTaskMetadata? = nil) -> MicrosoftTodoTaskPayload {
         MicrosoftTodoTaskPayload(
             title: task.title,
             body: .init(content: task.notes ?? ""),
             importance: task.importance == .high ? "high" : "normal",
             status: task.isCompleted ? "completed" : "notStarted",
-            dueDateTime: task.dueAt.map { .init(dateTime: ISO8601DateFormatter().string(from: $0)) }
+            dueDateTime: task.dueAt.map { .init(dateTime: ISO8601DateFormatter().string(from: $0)) },
+            extensions: metadata.map { [$0] }
+        )
+    }
+
+    private func metadata(for task: QuadrantTask) -> MicrosoftTodoTaskMetadata {
+        MicrosoftTodoTaskMetadata(
+            localTaskIdentifier: task.id.uuidString,
+            manualIsUrgent: task.manualIsUrgent,
+            urgentThresholdDays: task.urgentThresholdDays,
+            originalUrgentThresholdDays: task.originalUrgentThresholdDays,
+            originalImportance: task.originalImportance?.rawValue,
+            isTop: task.isTop
         )
     }
 

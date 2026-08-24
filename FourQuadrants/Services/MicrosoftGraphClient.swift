@@ -24,6 +24,19 @@ nonisolated struct MicrosoftTodoTask: Decodable, Sendable {
     nonisolated struct Body: Codable, Sendable { let content: String? }
     nonisolated struct DateTimeValue: Codable, Sendable { let dateTime: String? }
     nonisolated struct Removed: Decodable, Sendable {}
+    nonisolated struct FourQuadrantsMetadata: Decodable, Sendable {
+        let extensionName: String?
+        let schemaVersion: Int?
+        let localTaskIdentifier: String?
+        let manualIsUrgent: Bool?
+        let hasUrgentThresholdDays: Bool?
+        let urgentThresholdDays: Int?
+        let hasOriginalUrgentThresholdDays: Bool?
+        let originalUrgentThresholdDays: Int?
+        let hasOriginalImportance: Bool?
+        let originalImportance: String?
+        let isTop: Bool?
+    }
 
     let id: String
     let eTag: String?
@@ -36,11 +49,18 @@ nonisolated struct MicrosoftTodoTask: Decodable, Sendable {
     let dueDateTime: DateTimeValue?
     let completedDateTime: DateTimeValue?
     let removed: Removed?
+    let extensions: [FourQuadrantsMetadata]?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, body, importance, status, createdDateTime, lastModifiedDateTime, dueDateTime, completedDateTime
+        case id, title, body, importance, status, createdDateTime, lastModifiedDateTime, dueDateTime, completedDateTime, extensions
         case eTag = "@odata.etag"
         case removed = "@removed"
+    }
+}
+
+nonisolated extension MicrosoftTodoTask {
+    var fourQuadrantsMetadata: FourQuadrantsMetadata? {
+        extensions?.first { $0.extensionName == MicrosoftTodoTaskMetadata.extensionName }
     }
 }
 
@@ -71,6 +91,94 @@ nonisolated struct MicrosoftTodoTaskPayload: Encodable, Sendable {
     let importance: String
     let status: String
     let dueDateTime: DateTimeValue?
+    let extensions: [MicrosoftTodoTaskMetadata]?
+
+    enum CodingKeys: String, CodingKey {
+        case title, body, importance, status, dueDateTime, extensions
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(title, forKey: .title)
+        try container.encode(body, forKey: .body)
+        try container.encode(importance, forKey: .importance)
+        try container.encode(status, forKey: .status)
+        try container.encodeIfPresent(dueDateTime, forKey: .dueDateTime)
+        try container.encodeIfPresent(extensions, forKey: .extensions)
+    }
+}
+
+nonisolated struct MicrosoftTodoTaskMetadata: Codable, Sendable {
+    static let extensionName = "com.fulu.FourQuadrants.taskMetadata"
+
+    let extensionName: String
+    let schemaVersion: Int
+    let localTaskIdentifier: String
+    let manualIsUrgent: Bool
+    let hasUrgentThresholdDays: Bool
+    let urgentThresholdDays: Int
+    let hasOriginalUrgentThresholdDays: Bool
+    let originalUrgentThresholdDays: Int
+    let hasOriginalImportance: Bool
+    let originalImportance: String
+    let isTop: Bool
+
+    init(
+        localTaskIdentifier: String,
+        manualIsUrgent: Bool,
+        urgentThresholdDays: Int?,
+        originalUrgentThresholdDays: Int?,
+        originalImportance: String?,
+        isTop: Bool
+    ) {
+        extensionName = Self.extensionName
+        schemaVersion = 1
+        self.localTaskIdentifier = localTaskIdentifier
+        self.manualIsUrgent = manualIsUrgent
+        hasUrgentThresholdDays = urgentThresholdDays != nil
+        self.urgentThresholdDays = urgentThresholdDays ?? 0
+        hasOriginalUrgentThresholdDays = originalUrgentThresholdDays != nil
+        self.originalUrgentThresholdDays = originalUrgentThresholdDays ?? 0
+        hasOriginalImportance = originalImportance != nil
+        self.originalImportance = originalImportance ?? ""
+        self.isTop = isTop
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case extensionName, schemaVersion, localTaskIdentifier, manualIsUrgent, hasUrgentThresholdDays, urgentThresholdDays, hasOriginalUrgentThresholdDays, originalUrgentThresholdDays, hasOriginalImportance, originalImportance, isTop
+        case odataType = "@odata.type"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        extensionName = try container.decode(String.self, forKey: .extensionName)
+        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        localTaskIdentifier = try container.decode(String.self, forKey: .localTaskIdentifier)
+        manualIsUrgent = try container.decode(Bool.self, forKey: .manualIsUrgent)
+        hasUrgentThresholdDays = try container.decode(Bool.self, forKey: .hasUrgentThresholdDays)
+        urgentThresholdDays = try container.decode(Int.self, forKey: .urgentThresholdDays)
+        hasOriginalUrgentThresholdDays = try container.decode(Bool.self, forKey: .hasOriginalUrgentThresholdDays)
+        originalUrgentThresholdDays = try container.decode(Int.self, forKey: .originalUrgentThresholdDays)
+        hasOriginalImportance = try container.decode(Bool.self, forKey: .hasOriginalImportance)
+        originalImportance = try container.decode(String.self, forKey: .originalImportance)
+        isTop = try container.decode(Bool.self, forKey: .isTop)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode("microsoft.graph.openTypeExtension", forKey: .odataType)
+        try container.encode(extensionName, forKey: .extensionName)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encode(localTaskIdentifier, forKey: .localTaskIdentifier)
+        try container.encode(manualIsUrgent, forKey: .manualIsUrgent)
+        try container.encode(hasUrgentThresholdDays, forKey: .hasUrgentThresholdDays)
+        try container.encode(urgentThresholdDays, forKey: .urgentThresholdDays)
+        try container.encode(hasOriginalUrgentThresholdDays, forKey: .hasOriginalUrgentThresholdDays)
+        try container.encode(originalUrgentThresholdDays, forKey: .originalUrgentThresholdDays)
+        try container.encode(hasOriginalImportance, forKey: .hasOriginalImportance)
+        try container.encode(originalImportance, forKey: .originalImportance)
+        try container.encode(isTop, forKey: .isTop)
+    }
 }
 
 nonisolated struct MicrosoftGraphClient {
@@ -89,7 +197,11 @@ nonisolated struct MicrosoftGraphClient {
     }
 
     func taskDeltaPage(listID: String, url: URL? = nil, token: String) async throws -> MicrosoftGraphDeltaPage<MicrosoftTodoTask> {
-        try await request(url: url ?? graphURL(pathComponents: ["me", "todo", "lists", listID, "tasks", "delta"]), token: token, method: "GET")
+        let initialURL = graphURL(
+            pathComponents: ["me", "todo", "lists", listID, "tasks", "delta"],
+            queryItems: [URLQueryItem(name: "$expand", value: "extensions($filter=id eq 'microsoft.graph.openTypeExtension.\(MicrosoftTodoTaskMetadata.extensionName)')")]
+        )
+        return try await request(url: url ?? initialURL, token: token, method: "GET")
     }
 
     func createTask(listID: String, payload: MicrosoftTodoTaskPayload, token: String) async throws -> MicrosoftTodoTask {
@@ -100,14 +212,28 @@ nonisolated struct MicrosoftGraphClient {
         try await request(url: graphURL(pathComponents: ["me", "todo", "lists", listID, "tasks", taskID]), token: token, method: "PATCH", payload: payload, eTag: eTag)
     }
 
+    func updateTaskMetadata(listID: String, taskID: String, metadata: MicrosoftTodoTaskMetadata, token: String) async throws {
+        let url = graphURL(pathComponents: ["me", "todo", "lists", listID, "tasks", taskID, "extensions", "microsoft.graph.openTypeExtension.\(MicrosoftTodoTaskMetadata.extensionName)"])
+        let _: MicrosoftTodoTaskMetadata = try await request(url: url, token: token, method: "PATCH", payload: metadata)
+    }
+
+    func createTaskMetadata(listID: String, taskID: String, metadata: MicrosoftTodoTaskMetadata, token: String) async throws {
+        let url = graphURL(pathComponents: ["me", "todo", "lists", listID, "tasks", taskID, "extensions"])
+        let _: MicrosoftTodoTaskMetadata = try await request(url: url, token: token, method: "POST", payload: metadata)
+    }
+
     func deleteTask(listID: String, taskID: String, eTag: String?, token: String) async throws {
         let _: EmptyResponse = try await request(url: graphURL(pathComponents: ["me", "todo", "lists", listID, "tasks", taskID]), token: token, method: "DELETE", eTag: eTag)
     }
 
-    private func graphURL(pathComponents: [String]) -> URL {
-        pathComponents.reduce(URL(string: "https://graph.microsoft.com/v1.0")!) { url, component in
+    private func graphURL(pathComponents: [String], queryItems: [URLQueryItem] = []) -> URL {
+        let url = pathComponents.reduce(URL(string: "https://graph.microsoft.com/v1.0")!) { url, component in
             url.appendingPathComponent(component)
         }
+        guard !queryItems.isEmpty else { return url }
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+        components.queryItems = queryItems
+        return components.url!
     }
 
     private func request<Response: Decodable>(url: URL, token: String, method: String, payload: (any Encodable)? = nil, eTag: String? = nil) async throws -> Response {
