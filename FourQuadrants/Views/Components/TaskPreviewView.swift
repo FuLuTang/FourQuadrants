@@ -32,6 +32,12 @@ struct TaskPreviewView: View {
             }
             
             Divider()
+
+            if let notes = task.notes, !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                MarkdownTaskNotesView(text: notes)
+                    .font(.subheadline)
+                Divider()
+            }
             
             // 参数列表
             VStack(spacing: 12) {
@@ -63,7 +69,7 @@ struct TaskPreviewView: View {
                 )
                 
                 // 截止日期（不再附带"已逾期"badge）
-                if let dueAt = task.dueAt {
+                if let dueAt = task.displayDueDate {
                     previewRow(
                         icon: "calendar",
                         title: String(localized: "preview_due_date"),
@@ -246,7 +252,7 @@ struct QuadrantPreviewView: View {
                     .lineLimit(1)
                     .strikethrough(task.isCompleted)
                 
-                if let dueAt = task.dueAt {
+                if let dueAt = task.displayDueDate {
                     HStack(spacing: 4) {
                         Image(systemName: "calendar")
                             .font(.system(size: 9))

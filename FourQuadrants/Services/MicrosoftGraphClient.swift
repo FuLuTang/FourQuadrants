@@ -22,7 +22,10 @@ nonisolated struct MicrosoftTodoList: Decodable, Sendable {
 
 nonisolated struct MicrosoftTodoTask: Decodable, Sendable {
     nonisolated struct Body: Codable, Sendable { let content: String? }
-    nonisolated struct DateTimeValue: Codable, Sendable { let dateTime: String? }
+    nonisolated struct DateTimeValue: Codable, Sendable {
+        let dateTime: String?
+        let timeZone: String?
+    }
     nonisolated struct Removed: Decodable, Sendable {}
     nonisolated struct FourQuadrantsMetadata: Decodable, Sendable {
         let extensionName: String?
@@ -36,6 +39,7 @@ nonisolated struct MicrosoftTodoTask: Decodable, Sendable {
         let hasOriginalImportance: Bool?
         let originalImportance: String?
         let isTop: Bool?
+        let operationIdentifier: String?
     }
 
     let id: String
@@ -62,6 +66,23 @@ nonisolated extension MicrosoftTodoTask {
     var fourQuadrantsMetadata: FourQuadrantsMetadata? {
         extensions?.first { $0.extensionName == MicrosoftTodoTaskMetadata.extensionName }
     }
+
+    func replacingExtensions(_ extensions: [FourQuadrantsMetadata]) -> MicrosoftTodoTask {
+        MicrosoftTodoTask(
+            id: id,
+            eTag: eTag,
+            title: title,
+            body: body,
+            importance: importance,
+            status: status,
+            createdDateTime: createdDateTime,
+            lastModifiedDateTime: lastModifiedDateTime,
+            dueDateTime: dueDateTime,
+            completedDateTime: completedDateTime,
+            removed: removed,
+            extensions: extensions
+        )
+    }
 }
 
 nonisolated struct MicrosoftGraphDeltaPage<Value: Decodable & Sendable>: Decodable, Sendable {
@@ -83,7 +104,21 @@ nonisolated struct MicrosoftTodoTaskPayload: Encodable, Sendable {
     }
     nonisolated struct DateTimeValue: Encodable, Sendable {
         let dateTime: String
-        let timeZone = "UTC"
+        let timeZone: String
+
+        init(date: Date, timeZone: TimeZone = .current) {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = timeZone
+            formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+            dateTime = formatter.string(from: date)
+            self.timeZone = timeZone.identifier
+        }
+
+        init(dueDateKey: String, timeZoneIdentifier: String) {
+            dateTime = "\(dueDateKey)T00:00:00"
+            timeZone = MicrosoftGraphTimeZone.graphIdentifier(for: timeZoneIdentifier)
+        }
     }
 
     let title: String
@@ -92,6 +127,22 @@ nonisolated struct MicrosoftTodoTaskPayload: Encodable, Sendable {
     let status: String
     let dueDateTime: DateTimeValue?
     let extensions: [MicrosoftTodoTaskMetadata]?
+
+    init(
+        title: String,
+        body: Body,
+        importance: String,
+        status: String,
+        dueDateTime: DateTimeValue?,
+        extensions: [MicrosoftTodoTaskMetadata]? = nil
+    ) {
+        self.title = title
+        self.body = body
+        self.importance = importance
+        self.status = status
+        self.dueDateTime = dueDateTime
+        self.extensions = extensions
+    }
 
     enum CodingKeys: String, CodingKey {
         case title, body, importance, status, dueDateTime, extensions
@@ -103,7 +154,8 @@ nonisolated struct MicrosoftTodoTaskPayload: Encodable, Sendable {
         try container.encode(body, forKey: .body)
         try container.encode(importance, forKey: .importance)
         try container.encode(status, forKey: .status)
-        try container.encodeIfPresent(dueDateTime, forKey: .dueDateTime)
+        // A missing due date must clear the Graph field during PATCH instead of leaving it stale.
+        try container.encode(dueDateTime, forKey: .dueDateTime)
         try container.encodeIfPresent(extensions, forKey: .extensions)
     }
 }
@@ -122,6 +174,7 @@ nonisolated struct MicrosoftTodoTaskMetadata: Codable, Sendable {
     let hasOriginalImportance: Bool
     let originalImportance: String
     let isTop: Bool
+    let operationIdentifier: String?
 
     init(
         localTaskIdentifier: String,
@@ -129,7 +182,8 @@ nonisolated struct MicrosoftTodoTaskMetadata: Codable, Sendable {
         urgentThresholdDays: Int?,
         originalUrgentThresholdDays: Int?,
         originalImportance: String?,
-        isTop: Bool
+        isTop: Bool,
+        operationIdentifier: UUID? = nil
     ) {
         extensionName = Self.extensionName
         schemaVersion = 1
@@ -142,17 +196,19 @@ nonisolated struct MicrosoftTodoTaskMetadata: Codable, Sendable {
         hasOriginalImportance = originalImportance != nil
         self.originalImportance = originalImportance ?? ""
         self.isTop = isTop
+        self.operationIdentifier = operationIdentifier?.uuidString
     }
 
     enum CodingKeys: String, CodingKey {
-        case extensionName, schemaVersion, localTaskIdentifier, manualIsUrgent, hasUrgentThresholdDays, urgentThresholdDays, hasOriginalUrgentThresholdDays, originalUrgentThresholdDays, hasOriginalImportance, originalImportance, isTop
+        case extensionName, schemaVersion, localTaskIdentifier, manualIsUrgent, hasUrgentThresholdDays, urgentThresholdDays, hasOriginalUrgentThresholdDays, originalUrgentThresholdDays, hasOriginalImportance, originalImportance, isTop, operationIdentifier
         case odataType = "@odata.type"
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         extensionName = try container.decode(String.self, forKey: .extensionName)
-        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        operationIdentifier = try container.decodeIfPresent(String.self, forKey: .operationIdentifier)
         localTaskIdentifier = try container.decode(String.self, forKey: .localTaskIdentifier)
         manualIsUrgent = try container.decode(Bool.self, forKey: .manualIsUrgent)
         hasUrgentThresholdDays = try container.decode(Bool.self, forKey: .hasUrgentThresholdDays)
@@ -178,6 +234,33 @@ nonisolated struct MicrosoftTodoTaskMetadata: Codable, Sendable {
         try container.encode(hasOriginalImportance, forKey: .hasOriginalImportance)
         try container.encode(originalImportance, forKey: .originalImportance)
         try container.encode(isTop, forKey: .isTop)
+        try container.encodeIfPresent(operationIdentifier, forKey: .operationIdentifier)
+    }
+}
+
+nonisolated enum MicrosoftGraphTimeZone {
+    private static let windowsIdentifiers: [String: String] = [
+        "Asia/Shanghai": "China Standard Time",
+        "Europe/Paris": "Romance Standard Time",
+        "America/New_York": "Eastern Standard Time",
+        "America/Los_Angeles": "Pacific Standard Time",
+        "UTC": "UTC"
+    ]
+
+    private static let foundationIdentifiers: [String: String] = [
+        "China Standard Time": "Asia/Shanghai",
+        "Romance Standard Time": "Europe/Paris",
+        "Eastern Standard Time": "America/New_York",
+        "Pacific Standard Time": "America/Los_Angeles",
+        "UTC": "UTC"
+    ]
+
+    static func graphIdentifier(for identifier: String) -> String {
+        windowsIdentifiers[identifier] ?? identifier
+    }
+
+    static func foundationIdentifier(for identifier: String) -> String {
+        foundationIdentifiers[identifier] ?? identifier
     }
 }
 
@@ -208,18 +291,34 @@ nonisolated struct MicrosoftGraphClient {
         try await request(url: graphURL(pathComponents: ["me", "todo", "lists", listID, "tasks"]), token: token, method: "POST", payload: payload)
     }
 
+    func fetchTask(listID: String, taskID: String, token: String) async throws -> MicrosoftTodoTask {
+        return try await request(
+            url: graphURL(pathComponents: ["me", "todo", "lists", listID, "tasks", taskID]),
+            token: token,
+            method: "GET"
+        )
+    }
+
     func updateTask(listID: String, taskID: String, payload: MicrosoftTodoTaskPayload, eTag: String?, token: String) async throws -> MicrosoftTodoTask {
         try await request(url: graphURL(pathComponents: ["me", "todo", "lists", listID, "tasks", taskID]), token: token, method: "PATCH", payload: payload, eTag: eTag)
     }
 
     func updateTaskMetadata(listID: String, taskID: String, metadata: MicrosoftTodoTaskMetadata, token: String) async throws {
-        let url = graphURL(pathComponents: ["me", "todo", "lists", listID, "tasks", taskID, "extensions", "microsoft.graph.openTypeExtension.\(MicrosoftTodoTaskMetadata.extensionName)"])
+        let url = graphURL(pathComponents: ["me", "todo", "lists", listID, "tasks", taskID, "extensions", MicrosoftTodoTaskMetadata.extensionName])
         let _: MicrosoftTodoTaskMetadata = try await request(url: url, token: token, method: "PATCH", payload: metadata)
     }
 
     func createTaskMetadata(listID: String, taskID: String, metadata: MicrosoftTodoTaskMetadata, token: String) async throws {
         let url = graphURL(pathComponents: ["me", "todo", "lists", listID, "tasks", taskID, "extensions"])
         let _: MicrosoftTodoTaskMetadata = try await request(url: url, token: token, method: "POST", payload: metadata)
+    }
+
+    func fetchTaskMetadata(listID: String, taskID: String, token: String) async throws -> MicrosoftTodoTask.FourQuadrantsMetadata {
+        try await request(
+            url: graphURL(pathComponents: ["me", "todo", "lists", listID, "tasks", taskID, "extensions", MicrosoftTodoTaskMetadata.extensionName]),
+            token: token,
+            method: "GET"
+        )
     }
 
     func deleteTask(listID: String, taskID: String, eTag: String?, token: String) async throws {

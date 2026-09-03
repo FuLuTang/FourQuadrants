@@ -14,7 +14,10 @@ final class TaskStore {
     private let saveOperation: () throws -> Void
 
     var lastErrorMessage: String?
-    var quadrantTaskMutationHandler: ((QuadrantTaskMutation) -> Void)?
+    /// Records a durable Microsoft operation before the task context is committed.
+    var quadrantTaskMutationRecorder: ((QuadrantTaskMutation) throws -> Void)?
+    /// Starts background delivery only after the local task and its outbox record are durable.
+    var quadrantTaskMutationDidCommit: (() -> Void)?
 
     init(modelContext: ModelContext, saveOperation: (() throws -> Void)? = nil) {
         self.modelContext = modelContext
@@ -44,10 +47,10 @@ final class TaskStore {
             originalImportance: originalImportance,
             isTop: isTop
         )
-        modelContext.insert(task)
-        let saved = saveChanges()
-        if saved { quadrantTaskMutationHandler?(.upsert(task.id)) }
-        return saved
+        return commitQuadrantTaskMutation(.upsert(task.id)) {
+            task.setDueDate(dueAt)
+            modelContext.insert(task)
+        }
     }
 
     @discardableResult
@@ -63,37 +66,33 @@ final class TaskStore {
         originalUrgentThresholdDays: Int? = nil,
         originalImportance: ImportanceLevel? = nil
     ) -> Bool {
-        task.title = title
-        task.notes = notes
-        task.importance = importance
-        task.manualIsUrgent = isUrgent
-        task.dueAt = dueAt
-        task.urgentThresholdDays = urgentThresholdDays
-        task.originalUrgentThresholdDays = originalUrgentThresholdDays
-        task.originalImportance = originalImportance
-        task.isTop = isTop
-        task.updatedAt = Date()
-        let saved = saveChanges()
-        if saved { quadrantTaskMutationHandler?(.upsert(task.id)) }
-        return saved
+        commitQuadrantTaskMutation(.upsert(task.id)) {
+            task.title = title
+            task.notes = notes
+            task.importance = importance
+            task.manualIsUrgent = isUrgent
+            task.setDueDate(dueAt)
+            task.urgentThresholdDays = urgentThresholdDays
+            task.originalUrgentThresholdDays = originalUrgentThresholdDays
+            task.originalImportance = originalImportance
+            task.isTop = isTop
+            task.updatedAt = Date()
+        }
     }
 
     @discardableResult
     func toggleTask(_ task: QuadrantTask) -> Bool {
-        task.isCompleted.toggle()
-        task.updatedAt = Date()
-        let saved = saveChanges()
-        if saved { quadrantTaskMutationHandler?(.upsert(task.id)) }
-        return saved
+        commitQuadrantTaskMutation(.upsert(task.id)) {
+            task.isCompleted.toggle()
+            task.updatedAt = Date()
+        }
     }
 
     @discardableResult
     func removeTask(_ task: QuadrantTask) -> Bool {
-        let taskID = task.id
-        modelContext.delete(task)
-        let saved = saveChanges()
-        if saved { quadrantTaskMutationHandler?(.delete(taskID)) }
-        return saved
+        commitQuadrantTaskMutation(.delete(task.id)) {
+            modelContext.delete(task)
+        }
     }
 
     @discardableResult
@@ -165,7 +164,7 @@ final class TaskStore {
         }
 
         if expectsUrgent && !task.isUrgent {
-            if let dueAt = task.dueAt {
+            if let dueAt = task.displayDueDate {
                 let remaining = daysRemaining(to: dueAt)
                 task.urgentThresholdDays = task.originalUrgentThresholdDays.flatMap { remaining <= $0 ? $0 : nil } ?? max(remaining, 0)
             }
@@ -180,10 +179,9 @@ final class TaskStore {
         } else if !expectsImportant && task.isImportantQuadrant {
             task.importance = task.originalImportance.map { $0 == .high ? .normal : $0 } ?? .normal
         }
-        task.updatedAt = Date()
-        let saved = saveChanges()
-        if saved { quadrantTaskMutationHandler?(.upsert(task.id)) }
-        return saved
+        return commitQuadrantTaskMutation(.upsert(task.id)) {
+            task.updatedAt = Date()
+        }
     }
 
     func filteredTasks(_ tasks: [QuadrantTask], in category: TaskCategory, now: Date = Date()) -> [QuadrantTask] {
@@ -206,11 +204,13 @@ final class TaskStore {
             switch method {
             case .intelligence:
                 if first.isTop != second.isTop { return first.isTop }
-                if first.dueAt != second.dueAt { return (first.dueAt ?? .distantFuture) < (second.dueAt ?? .distantFuture) }
+                if first.effectiveDueDateKey != second.effectiveDueDateKey {
+                    return (first.effectiveDueDateKey ?? "9999-12-31") < (second.effectiveDueDateKey ?? "9999-12-31")
+                }
                 let priority: [ImportanceLevel] = [.high, .normal, .low]
                 if first.importance != second.importance { return priority.firstIndex(of: first.importance)! < priority.firstIndex(of: second.importance)! }
                 return first.updatedAt < second.updatedAt
-            case .byDueDate: return (first.dueAt ?? .distantFuture) < (second.dueAt ?? .distantFuture)
+            case .byDueDate: return (first.effectiveDueDateKey ?? "9999-12-31") < (second.effectiveDueDateKey ?? "9999-12-31")
             case .byCreationDate: return first.createdAt < second.createdAt
             case .byName: return first.title.localizedCaseInsensitiveCompare(second.title) == .orderedAscending
             }
@@ -218,6 +218,24 @@ final class TaskStore {
     }
 
     func dismissLastError() { lastErrorMessage = nil }
+
+    private func commitQuadrantTaskMutation(
+        _ mutation: QuadrantTaskMutation,
+        changes: () throws -> Void
+    ) -> Bool {
+        do {
+            try changes()
+            try quadrantTaskMutationRecorder?(mutation)
+            try saveOperation()
+            lastErrorMessage = nil
+            quadrantTaskMutationDidCommit?()
+            return true
+        } catch {
+            modelContext.rollback()
+            lastErrorMessage = "保存失败，请重试。"
+            return false
+        }
+    }
 
     private func saveChanges() -> Bool {
         do {

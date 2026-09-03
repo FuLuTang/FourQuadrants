@@ -122,6 +122,16 @@ struct SettingsView: View {
                 Section(header: Text("settings_sync_section")) {
                     SyncSettingsView()
                 }
+
+                #if DEBUG
+                Section("开发") {
+                    NavigationLink {
+                        MicrosoftTodoSyncDiagnosticsView()
+                    } label: {
+                        Label("Microsoft To Do 同步诊断", systemImage: "stethoscope")
+                    }
+                }
+                #endif
                 
                 // 修改后的关于区块
                 Section(header: Text("settings_about_section")) {
@@ -462,6 +472,14 @@ struct SyncSettingsView: View {
                     Label("立即同步", systemImage: "arrow.clockwise")
                 }
                 .disabled(syncService.isSyncing || !syncService.isSyncEnabled)
+
+                if syncService.hasDeferredInitialMerge {
+                    Button {
+                        syncService.resumeInitialMerge()
+                    } label: {
+                        Label("继续首次合并", systemImage: "arrow.triangle.merge")
+                    }
+                }
 
                 Button(role: .destructive) {
                     showsDisconnectConfirmation = true

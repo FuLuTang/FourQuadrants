@@ -28,8 +28,8 @@ struct TaskFormView: View {
         _importance = State(initialValue: existingTask?.importance ?? .normal)
         _isUrgent = State(initialValue: existingTask?.isUrgent ?? false)
         _isTop = State(initialValue: existingTask?.isTop ?? false)
-        _hasTargetDate = State(initialValue: existingTask?.dueAt != nil)
-        _dueAt = State(initialValue: existingTask?.dueAt ?? Date())
+        _hasTargetDate = State(initialValue: existingTask?.effectiveDueDateKey != nil)
+        _dueAt = State(initialValue: existingTask?.displayDueDate ?? Date())
         _hasUrgentThreshold = State(initialValue: existingTask?.urgentThresholdDays != nil)
         _urgentThresholdDays = State(initialValue: existingTask?.urgentThresholdDays ?? existingTask?.originalUrgentThresholdDays ?? 3)
     }
@@ -44,8 +44,7 @@ struct TaskFormView: View {
                         .onSubmit {
                             isTitleFocused = false
                         }
-                    TextEditor(text: $notes)
-                        .frame(minHeight: 80)
+                    MarkdownTaskNotesEditor(text: $notes)
                 }
 
                 Section(header: Text("importance")) {
@@ -91,7 +90,9 @@ struct TaskFormView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(existingTask == nil ? "add" : "save") {
-                        saveTask()
+                        if saveTask() {
+                            dismiss()
+                        }
                     }
                     .disabled(title.isEmpty)
                 }
@@ -108,14 +109,15 @@ struct TaskFormView: View {
     }
     
     // **统一保存逻辑**
-    private func saveTask() {
+    @discardableResult
+    private func saveTask() -> Bool {
         // 先关闭键盘
         isTitleFocused = false
         
         let finalTargetDate = hasTargetDate ? dueAt : nil
         let finalUrgentThreshold = (hasTargetDate && hasUrgentThreshold) ? urgentThresholdDays : nil
         if let task = existingTask {
-            taskStore.updateTask(
+            return taskStore.updateTask(
                 task,
                 title: title,
                 notes: notes.isEmpty ? nil : notes,
@@ -128,7 +130,7 @@ struct TaskFormView: View {
                 originalImportance: importance
             )
         } else {
-            taskStore.addTask(
+            return taskStore.addTask(
                 title: title,
                 notes: notes.isEmpty ? nil : notes,
                 importance: importance,
@@ -140,6 +142,5 @@ struct TaskFormView: View {
                 originalImportance: importance
             )
         }
-        dismiss()
     }
 }
