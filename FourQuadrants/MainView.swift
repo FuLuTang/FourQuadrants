@@ -27,10 +27,14 @@ struct MainView: View {
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarBackground(Color(.systemGray6), for: .tabBar)
         .ignoresSafeArea(.container, edges: [.bottom])
-        .onAppear { LiveActivityManager.shared.startTimerIfNeeded(container: modelContext.container) }
+        .onAppear {
+            LiveActivityManager.shared.startTimerIfNeeded(container: modelContext.container)
+            WidgetSnapshotService.write(context: modelContext)
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 LiveActivityManager.shared.checkTask(context: modelContext)
+                WidgetSnapshotService.write(context: modelContext)
                 Task { await SyncService.shared.synchronize() }
             }
         }
