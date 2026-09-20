@@ -2,6 +2,14 @@
 "task_details" = "Task Details";
 "task_name" = "Task Name";
 "importance" = "Importance";
+"control_mode" = "Control Mode";
+"detailed_control" = "Detailed Control";
+"quick_control" = "Quick Control";
+"quick_control_current" = "Current quadrant";
+"quick_control_select_hint" = "Double tap to select this quadrant";
+"quick_control_important" = "Important";
+"quick_control_not_important" = "Not Important";
+"quick_control_auto_urgency_note" = "Urgency follows the target date threshold.";
 "low" = "Low";
 "normal" = "Normal";
 "high" = "High";
@@ -30,6 +38,8 @@
 "category_important_not_urgent" = "Important, Not Urgent";
 "category_urgent_not_important" = "Urgent, Not Important";
 "category_not_important_not_urgent" = "Not Important & Not Urgent";
+"quadrant_card_important" = "Important";
+"quadrant_card_urgent" = "Urgent";
 "no_tasks" = "No tasks";
 
 /* List View */

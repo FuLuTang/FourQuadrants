@@ -16,6 +16,7 @@ struct TaskFormView: View {
     @State private var hasUrgentThreshold: Bool
     @State private var urgentThresholdDays: Int
     @State private var isTop: Bool = false
+    @State private var controlMode: TaskControlMode
     
     // 键盘焦点状态 - 修复第三方输入法卡死问题
     @FocusState private var isTitleFocused: Bool
@@ -26,12 +27,13 @@ struct TaskFormView: View {
         _title = State(initialValue: existingTask?.title ?? "")
         _notes = State(initialValue: existingTask?.notes ?? "")
         _importance = State(initialValue: existingTask?.importance ?? .normal)
-        _isUrgent = State(initialValue: existingTask?.isUrgent ?? false)
+        _isUrgent = State(initialValue: existingTask?.manualIsUrgent ?? false)
         _isTop = State(initialValue: existingTask?.isTop ?? false)
         _hasTargetDate = State(initialValue: existingTask?.effectiveDueDateKey != nil)
         _dueAt = State(initialValue: existingTask?.displayDueDate ?? Date())
         _hasUrgentThreshold = State(initialValue: existingTask?.urgentThresholdDays != nil)
         _urgentThresholdDays = State(initialValue: existingTask?.urgentThresholdDays ?? existingTask?.originalUrgentThresholdDays ?? 3)
+        _controlMode = State(initialValue: existingTask?.importance == .low ? .detailed : .quick)
     }
     
     var body: some View {
@@ -48,14 +50,33 @@ struct TaskFormView: View {
                 }
 
                 Section(header: Text("importance")) {
-                    Picker("importance", selection: $importance) {
-                        Text("low").tag(ImportanceLevel.low)
-                        Text("normal").tag(ImportanceLevel.normal)
-                        Text("high").tag(ImportanceLevel.high)
+                    Picker("control_mode", selection: $controlMode) {
+                        Text("detailed_control").tag(TaskControlMode.detailed)
+                        Text("quick_control").tag(TaskControlMode.quick)
                     }
                     .pickerStyle(.segmented)
-                    Toggle("urgent", isOn: $isUrgent)
-                        .disabled(hasUrgentThreshold)
+
+                    if controlMode == .detailed {
+                        Picker("importance", selection: $importance) {
+                            Text("low").tag(ImportanceLevel.low)
+                            Text("normal").tag(ImportanceLevel.normal)
+                            Text("high").tag(ImportanceLevel.high)
+                        }
+                        .pickerStyle(.segmented)
+                        if hasAutomaticUrgency {
+                            Toggle("urgent", isOn: .constant(quickControlEffectiveUrgency ?? isUrgent))
+                                .disabled(true)
+                        } else {
+                            Toggle("urgent", isOn: $isUrgent)
+                        }
+                    } else {
+                        QuickQuadrantControl(
+                            importance: $importance,
+                            isUrgent: $isUrgent,
+                            effectiveUrgency: quickControlEffectiveUrgency
+                        )
+                    }
+
                     Toggle("top", isOn: $isTop)
                 }
                 
@@ -107,6 +128,19 @@ struct TaskFormView: View {
         }
         .presentationDetents([.large]) // 使用 .large 避免键盘冲突
     }
+
+    private var hasAutomaticUrgency: Bool {
+        hasTargetDate && hasUrgentThreshold
+    }
+
+    private var quickControlEffectiveUrgency: Bool? {
+        guard hasAutomaticUrgency else { return nil }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let dueDate = calendar.startOfDay(for: dueAt)
+        let remaining = calendar.dateComponents([.day], from: today, to: dueDate).day ?? .max
+        return remaining <= urgentThresholdDays
+    }
     
     // **统一保存逻辑**
     @discardableResult
@@ -143,4 +177,9 @@ struct TaskFormView: View {
             )
         }
     }
+}
+
+private enum TaskControlMode: String, CaseIterable {
+    case detailed
+    case quick
 }

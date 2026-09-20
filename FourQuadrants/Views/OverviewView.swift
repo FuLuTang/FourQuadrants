@@ -22,10 +22,10 @@ struct OverviewView: View {
         VStack(spacing: 0) {
             // Header - 仿照初始版本的黑字+简单布局
             HStack {
-                Text(title)
+                styledTitle
                     .font(.system(.headline, design: .rounded))
-                    .fontWeight(.bold)
                     .foregroundColor(.primary) // 恢复黑字/深色字
+                    .accessibilityLabel(title)
                 
                 Spacer()
                 
@@ -113,6 +113,25 @@ struct OverviewView: View {
     
     var filteredTasks: [QuadrantTask] {
         taskStore.filteredTasks(tasks, in: category)
+    }
+
+    private var styledTitle: Text {
+        let important = Text(String(localized: "quadrant_card_important"))
+        let urgent = Text(String(localized: "quadrant_card_urgent"))
+        let separator = Text(" & ")
+
+        switch category {
+        case .importantAndUrgent:
+            return important.bold() + separator + urgent.bold()
+        case .importantButNotUrgent:
+            return important.bold() + separator + urgent.strikethrough()
+        case .urgentButNotImportant:
+            return important.strikethrough() + separator + urgent.bold()
+        case .notImportantAndNotUrgent:
+            return important.strikethrough() + separator + urgent.strikethrough()
+        case .all, .completed:
+            return Text(title)
+        }
     }
 }
 

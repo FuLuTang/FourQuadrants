@@ -2,6 +2,14 @@
 "task_details" = "任务详情";
 "task_name" = "任务名称";
 "importance" = "重要性";
+"control_mode" = "控制方式";
+"detailed_control" = "详细控制";
+"quick_control" = "快速控制";
+"quick_control_current" = "当前象限";
+"quick_control_select_hint" = "轻点两下选择此象限";
+"quick_control_important" = "重要";
+"quick_control_not_important" = "不重要";
+"quick_control_auto_urgency_note" = "紧急程度跟随目标日期阈值自动变化。";
 "low" = "低";
 "normal" = "普通";
 "high" = "高";
@@ -30,6 +38,8 @@
 "category_important_not_urgent" = "重要不紧急";
 "category_urgent_not_important" = "紧急不重要";
 "category_not_important_not_urgent" = "不重要不紧急";
+"quadrant_card_important" = "重要";
+"quadrant_card_urgent" = "紧急";
 "no_tasks" = "无任务";
 
 /* List View */
