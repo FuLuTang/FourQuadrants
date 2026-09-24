@@ -1,5 +1,72 @@
 import SwiftUI
 
+private struct QuickQuadrantSelectionLabel: View {
+    let title: String
+    let color: Color
+    let icon: String?
+
+    var body: some View {
+        Group {
+            if let icon {
+                Label(title, systemImage: icon)
+            } else {
+                Text(title)
+            }
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(color)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .accessibilityLabel(Text("quick_control_current"))
+        .accessibilityValue(Text(title))
+    }
+}
+
+private struct QuickQuadrantHandle: View {
+    let isTouchActive: Bool
+    let reduceMotion: Bool
+
+    var body: some View {
+        let diameter = isTouchActive && !reduceMotion ? 78.0 : 26.0
+
+        return ZStack {
+            if isTouchActive {
+                Circle()
+                    .fill(.white.opacity(0.18))
+                    .frame(width: 92, height: 92)
+                    .blur(radius: 13)
+            }
+
+            Circle()
+                .fill(.white.opacity(isTouchActive ? 0.22 : 0.14))
+                .overlay {
+                    Circle()
+                        .strokeBorder(.white.opacity(isTouchActive ? 0.94 : 0.78), lineWidth: 1.5)
+                }
+                .overlay {
+                    RadialGradient(
+                        colors: [.white.opacity(isTouchActive ? 0.62 : 0.34), .clear],
+                        center: .init(x: 0.3, y: 0.22),
+                        startRadius: 0,
+                        endRadius: diameter * 0.7
+                    )
+                }
+                .frame(width: diameter, height: diameter)
+                .glassEffect(.regular, in: .circle)
+                .shadow(color: .black.opacity(0.2), radius: isTouchActive ? 4 : 1.5, y: 1)
+
+            Circle()
+                .fill(.white.opacity(0.92))
+                .frame(width: isTouchActive ? 7 : 5, height: isTouchActive ? 7 : 5)
+        }
+        .frame(width: 100, height: 100)
+        .accessibilityHidden(true)
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.2, dampingFraction: 0.86),
+            value: isTouchActive
+        )
+    }
+}
+
 /// A compact two-by-two quadrant selector for the task form.
 ///
 /// The four regions form one continuous colored touch surface.
@@ -73,18 +140,11 @@ struct QuickQuadrantControl: View {
                 value: effectiveUrgency != nil
             )
 
-            Group {
-                if let selectionIcon {
-                    Label(selectionTitle, systemImage: selectionIcon)
-                } else {
-                    Text(selectionTitle)
-                }
-            }
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(selectionColor)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .accessibilityLabel(Text("quick_control_current"))
-                .accessibilityValue(Text(selectionTitle))
+            QuickQuadrantSelectionLabel(
+                title: selectionTitle,
+                color: selectionColor,
+                icon: selectionIcon
+            )
         }
     }
 
@@ -115,7 +175,10 @@ struct QuickQuadrantControl: View {
                 landingPoint(at: layout.center(for: quadrant))
             }
 
-            handle()
+            QuickQuadrantHandle(
+                isTouchActive: isTouchActive,
+                reduceMotion: reduceMotion
+            )
                 .position(presentationPosition)
         }
         .clipShape(panelShape)
@@ -153,7 +216,10 @@ struct QuickQuadrantControl: View {
                 landingPoint(at: layout.center(for: option))
             }
 
-            handle()
+            QuickQuadrantHandle(
+                isTouchActive: isTouchActive,
+                reduceMotion: reduceMotion
+            )
                 .position(presentationPosition)
         }
         .clipShape(panelShape)
@@ -173,44 +239,6 @@ struct QuickQuadrantControl: View {
                     .accessibilityAddTraits(option == selectedOption ? .isSelected : [])
             }
         }
-    }
-
-    @ViewBuilder
-    private func handle() -> some View {
-        let diameter = isTouchActive && !reduceMotion ? 78.0 : 26.0
-        ZStack {
-            if isTouchActive {
-                Circle()
-                    .fill(.white.opacity(0.18))
-                    .frame(width: 92, height: 92)
-                    .blur(radius: 13)
-            }
-
-            Circle()
-                .fill(.white.opacity(isTouchActive ? 0.22 : 0.14))
-                .overlay {
-                    Circle()
-                        .strokeBorder(.white.opacity(isTouchActive ? 0.94 : 0.78), lineWidth: 1.5)
-                }
-                .overlay {
-                    RadialGradient(
-                        colors: [.white.opacity(isTouchActive ? 0.62 : 0.34), .clear],
-                        center: .init(x: 0.3, y: 0.22),
-                        startRadius: 0,
-                        endRadius: diameter * 0.7
-                    )
-                }
-                .frame(width: diameter, height: diameter)
-                .glassEffect(.regular, in: .circle)
-                .shadow(color: .black.opacity(0.2), radius: isTouchActive ? 4 : 1.5, y: 1)
-
-            Circle()
-                .fill(.white.opacity(0.92))
-                .frame(width: isTouchActive ? 7 : 5, height: isTouchActive ? 7 : 5)
-        }
-        .frame(width: 100, height: 100)
-            .accessibilityHidden(true)
-            .animation(pressAnimation, value: isTouchActive)
     }
 
     private func landingPoint(at position: CGPoint) -> some View {
@@ -301,10 +329,6 @@ struct QuickQuadrantControl: View {
         withAnimation(reduceMotion ? .easeOut(duration: 0.1) : .spring(response: 0.32, dampingFraction: 0.9)) {
             importance = option.importance
         }
-    }
-
-    private var pressAnimation: Animation? {
-        reduceMotion ? nil : .spring(response: 0.2, dampingFraction: 0.86)
     }
 
     /// One recognizer owns the complete colored field. The handle remains

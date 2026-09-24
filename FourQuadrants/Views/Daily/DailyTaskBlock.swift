@@ -4,6 +4,23 @@ import SwiftData
 struct DailyTaskBlock: View {
     @Bindable var task: DailyTask
     let hourHeight: CGFloat
+    /// Optional visible interval used when a task is clipped at midnight.
+    let displayStartAt: Date?
+    let displayDuration: TimeInterval?
+
+    init(
+        task: DailyTask,
+        hourHeight: CGFloat,
+        editingTaskId: Binding<PersistentIdentifier?>,
+        displayStartAt: Date? = nil,
+        displayDuration: TimeInterval? = nil
+    ) {
+        self._task = Bindable(task)
+        self.hourHeight = hourHeight
+        self._editingTaskId = editingTaskId
+        self.displayStartAt = displayStartAt
+        self.displayDuration = displayDuration
+    }
     
     @Environment(TaskStore.self) private var taskStore
     
@@ -25,7 +42,7 @@ struct DailyTaskBlock: View {
     private let interaction = TaskInteractionManager.shared
     
     var body: some View {
-        let height = (CGFloat(task.duration) / 3600.0) * hourHeight
+        let height = (CGFloat(displayDuration ?? task.duration) / 3600.0) * hourHeight
         
         ZStack(alignment: .topLeading) {
             taskCard
@@ -67,9 +84,27 @@ struct DailyTaskBlock: View {
             .zIndex(5)
         }
         .frame(height: max(height, 30))
+        .overlay(alignment: .topTrailing) {
+            DailyCompletionButton(isCompleted: task.isCompleted) {
+                _ = taskStore.toggleDailyTask(task)
+            }
+                .zIndex(10)
+        }
         .overlay(alignment: .top) { 
             if showContextMenu && !isDraggingBody {
-                contextMenu
+                DailyTaskContextMenu(
+                    onEdit: {
+                        withAnimation {
+                            showContextMenu = false
+                            showEditSheet = true
+                        }
+                    },
+                    onDelete: {
+                        withAnimation {
+                            _ = taskStore.removeDailyTask(task)
+                        }
+                    }
+                )
                     .offset(y: -45)
                     .transition(.scale.combined(with: .opacity))
             }
@@ -89,83 +124,17 @@ struct DailyTaskBlock: View {
     }
     
     // MARK: - Subviews
-    
-    private var contextMenu: some View {
-        HStack(spacing: 0) {
-            Button {
-                withAnimation {
-                    showContextMenu = false
-                    showEditSheet = true
-                }
-            } label: {
-                Label(String(localized: "edit"), systemImage: "pencil")
-                    .font(.caption.bold())
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .contentShape(Rectangle())
-            }
-            .foregroundStyle(.primary)
-
-            Divider()
-                .frame(height: 20)
-            
-            Button {
-                withAnimation {
-                    _ = taskStore.removeDailyTask(task)
-                }
-            } label: {
-                Label(String(localized: "delete"), systemImage: "trash")
-                    .font(.caption.bold())
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .contentShape(Rectangle())
-            }
-            .foregroundStyle(.red)
-        }
-        .background(.regularMaterial)
-        .clipShape(Capsule())
-        .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 2)
-    }
-    
     private var taskCard: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .fill(Color(hex: task.colorHex ?? "#5E81F4").opacity(editMode == .editing ? 0.9 : 0.8))
-            .glassEffect(
-                .clear.tint(Color(hex: task.colorHex ?? "#5E81F4").opacity(0.1)).interactive(),
-                in: .rect(cornerRadius: 12)
-            )
-            .overlay(alignment: .topLeading) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(task.title)
-                        .font(.caption.bold())
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                    
-                    Text("\(task.startAt.formatted(date: .omitted, time: .shortened)) - \(task.startAt.addingTimeInterval(task.duration).formatted(date: .omitted, time: .shortened))")
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.8))
-                        .lineLimit(1)
-                        
-                    // Notes Display
-                    if let notes = task.notes, !notes.isEmpty, (CGFloat(task.duration) / 3600.0) * hourHeight > 50 {
-                        Text(notes)
-                            .font(.caption2)
-                            .foregroundColor(.white.opacity(0.7))
-                            .lineLimit(2)
-                            .padding(.top, 2)
-                    }
-                }
-                .padding(8)
-            }
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.white.opacity(0.8), lineWidth: editMode == .editing ? 2 : 0)
-            )
-            .shadow(
-                color: editMode == .editing ? .black.opacity(0.3) : .black.opacity(0.1),
-                radius: editMode == .editing ? 10 : 4,
-                y: editMode == .editing ? 5 : 2
-            )
+        DailyTaskCard(
+            title: task.title,
+            colorHex: task.colorHex,
+            isCompleted: task.isCompleted,
+            isEditing: editMode == .editing,
+            visibleStartAt: displayStartAt ?? task.startAt,
+            visibleDuration: displayDuration ?? task.duration,
+            notes: task.notes,
+            hourHeight: hourHeight
+        )
     }
     
     @ViewBuilder
@@ -264,6 +233,123 @@ struct DailyTaskBlock: View {
         withAnimation { isDraggingBody = false }
         initialStartTime = nil
         initialDuration = nil
+    }
+}
+
+private struct DailyCompletionButton: View {
+    let isCompleted: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 34, height: 34)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            String(localized: isCompleted ? "menu_mark_incomplete" : "menu_complete_task")
+        )
+        .accessibilityHint(String(localized: "daily_toggle_completion_hint"))
+    }
+}
+
+private struct DailyTaskContextMenu: View {
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Button(action: onEdit) {
+                Label(String(localized: "edit"), systemImage: "pencil")
+                    .font(.caption.bold())
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+            }
+            .foregroundStyle(.primary)
+
+            Divider()
+                .frame(height: 20)
+
+            Button(action: onDelete) {
+                Label(String(localized: "delete"), systemImage: "trash")
+                    .font(.caption.bold())
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+            }
+            .foregroundStyle(.red)
+        }
+        .background(.regularMaterial)
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 2)
+    }
+}
+
+private struct DailyTaskCard: View {
+    let title: String
+    let colorHex: String?
+    let isCompleted: Bool
+    let isEditing: Bool
+    let visibleStartAt: Date
+    let visibleDuration: TimeInterval
+    let notes: String?
+    let hourHeight: CGFloat
+
+    var body: some View {
+        let color = Color(hex: colorHex ?? "#5E81F4")
+        let visibleEndAt = visibleStartAt.addingTimeInterval(visibleDuration)
+
+        return RoundedRectangle(cornerRadius: 12)
+            .fill(color.opacity(isCompleted ? 0.45 : (isEditing ? 0.9 : 0.8)))
+            .glassEffect(
+                .clear.tint(color.opacity(0.1)).interactive(),
+                in: .rect(cornerRadius: 12)
+            )
+            .overlay(alignment: .topLeading) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.caption.bold())
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .strikethrough(isCompleted, color: .white)
+
+                    Text("\(visibleStartAt.formatted(date: .omitted, time: .shortened)) - \(visibleEndAt.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.8))
+                        .lineLimit(1)
+
+                    if let notes, !notes.isEmpty, (CGFloat(visibleDuration) / 3600.0) * hourHeight > 50 {
+                        Text(notes)
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.7))
+                            .lineLimit(2)
+                            .padding(.top, 2)
+                    }
+                }
+                .padding(8)
+            }
+            .overlay(alignment: .bottomLeading) {
+                if isCompleted {
+                    Label("category_completed", systemImage: "checkmark")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.white.opacity(0.9))
+                        .padding(.leading, 8)
+                        .padding(.bottom, 6)
+                }
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.8), lineWidth: isEditing ? 2 : 0)
+            )
+            .shadow(
+                color: isEditing ? .black.opacity(0.3) : .black.opacity(0.1),
+                radius: isEditing ? 10 : 4,
+                y: isEditing ? 5 : 2
+            )
     }
 }
 
