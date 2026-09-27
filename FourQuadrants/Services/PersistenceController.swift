@@ -65,10 +65,23 @@ struct PersistenceController {
     }
 
     func storeURL() throws -> URL {
+        #if os(macOS)
+        guard let supportDirectory = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            throw PersistenceError.storeCreationFailed("无法访问当前应用的 Application Support 目录。")
+        }
+        let directory = supportDirectory.appendingPathComponent("FourQuadrantsMac", isDirectory: true)
+        do {
+            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        } catch {
+            throw PersistenceError.storeCreationFailed(error.localizedDescription)
+        }
+        return directory.appendingPathComponent(Self.storeFilename, isDirectory: false)
+        #else
         guard let directory = fileManager.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
             throw PersistenceError.appGroupUnavailable(appGroupIdentifier)
         }
         return directory.appendingPathComponent(Self.storeFilename, isDirectory: false)
+        #endif
     }
 
     func resetStore() throws {

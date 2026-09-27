@@ -4,9 +4,13 @@ struct MSALConfig {
     static let clientID = "e39c7bc1-88ee-4a9f-9e02-b41078368e03"
     
     // 你的 Bundle ID
-    #if DEBUG
+#if os(macOS) && DEBUG
+    static let bundleID = "com.fulu.FourQuadrants.macOS.dev"
+#elseif os(macOS)
+    static let bundleID = "com.fulu.FourQuadrants.macOS"
+#elseif DEBUG
     static let bundleID = "com.fulu.FourQuadrants.dev"
-    #else
+#else
     static let bundleID = "com.fulu.FourQuadrants"
     #endif
     

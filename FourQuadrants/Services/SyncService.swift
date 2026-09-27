@@ -2,7 +2,11 @@ import Combine
 import Foundation
 import MSAL
 import SwiftData
+#if os(iOS)
 import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 @MainActor
 final class SyncService: ObservableObject {
@@ -1531,6 +1535,7 @@ final class SyncService: ObservableObject {
         return application
     }
 
+    #if os(iOS)
     private func presentationViewController() throws -> UIViewController {
         guard let scene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
@@ -1555,6 +1560,14 @@ final class SyncService: ObservableObject {
         }
         return controller
     }
+    #elseif os(macOS)
+    private func presentationViewController() throws -> NSViewController {
+        guard let controller = MacAuthenticationPresentation.viewController() else {
+            throw SyncError.presentationUnavailable
+        }
+        return controller
+    }
+    #endif
 
     private func parseDate(_ value: String?) -> Date? {
         guard let value else { return nil }

@@ -28,6 +28,17 @@ final class AppDataController {
         openStore()
     }
 
+    /// Supplies an isolated store for previews and UI validation. Disabling sync
+    /// keeps sample mutations away from the authenticated Microsoft account.
+    init(container: ModelContainer, configureSync: Bool) {
+        persistence = PersistenceController()
+        let taskStore = TaskStore(modelContext: container.mainContext)
+        if configureSync {
+            SyncService.shared.configure(modelContext: container.mainContext, taskStore: taskStore)
+        }
+        state = .ready(AppDataSession(container: container, taskStore: taskStore))
+    }
+
     func retry() {
         openStore()
     }

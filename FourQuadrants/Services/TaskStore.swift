@@ -26,6 +26,7 @@ final class TaskStore {
 
     @discardableResult
     func addTask(
+        id: UUID = UUID(),
         title: String,
         notes: String? = nil,
         importance: ImportanceLevel,
@@ -37,6 +38,7 @@ final class TaskStore {
         originalImportance: ImportanceLevel? = nil
     ) -> Bool {
         let task = QuadrantTask(
+            id: id,
             title: title,
             notes: notes,
             dueAt: dueAt,
