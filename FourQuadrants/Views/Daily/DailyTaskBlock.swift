@@ -302,6 +302,10 @@ private struct DailyTaskCard: View {
     var body: some View {
         let color = Color(hex: colorHex ?? "#5E81F4")
         let visibleEndAt = visibleStartAt.addingTimeInterval(visibleDuration)
+        let blockHeight = (CGFloat(visibleDuration) / 3600.0) * hourHeight
+        let showsTime = blockHeight >= 48
+        let showsNotes = blockHeight >= 72
+        let compactTime = "\(visibleStartAt.formatted(date: .omitted, time: .shortened))-\(visibleEndAt.formatted(date: .omitted, time: .shortened))"
 
         return RoundedRectangle(cornerRadius: 12)
             .fill(color.opacity(isCompleted ? 0.45 : (isEditing ? 0.9 : 0.8)))
@@ -310,27 +314,47 @@ private struct DailyTaskCard: View {
                 in: .rect(cornerRadius: 12)
             )
             .overlay(alignment: .topLeading) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.caption.bold())
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                        .strikethrough(isCompleted, color: .white)
+                if showsTime {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.caption.bold())
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .strikethrough(isCompleted, color: .white)
 
-                    Text("\(visibleStartAt.formatted(date: .omitted, time: .shortened)) - \(visibleEndAt.formatted(date: .omitted, time: .shortened))")
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.8))
-                        .lineLimit(1)
-
-                    if let notes, !notes.isEmpty, (CGFloat(visibleDuration) / 3600.0) * hourHeight > 50 {
-                        Text(notes)
+                        Text("\(visibleStartAt.formatted(date: .omitted, time: .shortened)) - \(visibleEndAt.formatted(date: .omitted, time: .shortened))")
                             .font(.caption2)
-                            .foregroundColor(.white.opacity(0.7))
-                            .lineLimit(2)
-                            .padding(.top, 2)
+                            .foregroundColor(.white.opacity(0.8))
+                            .lineLimit(1)
+
+                        if let notes, !notes.isEmpty, showsNotes {
+                            Text(notes)
+                                .font(.caption2)
+                                .foregroundColor(.white.opacity(0.7))
+                                .lineLimit(2)
+                                .padding(.top, 2)
+                        }
                     }
+                    .padding(8)
+                } else {
+                    HStack(spacing: 4) {
+                        Text(title)
+                            .font(.caption.bold())
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .layoutPriority(1)
+                            .strikethrough(isCompleted, color: .white)
+
+                        Text(compactTime)
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.85))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
                 }
-                .padding(8)
             }
             .overlay(alignment: .bottomLeading) {
                 if isCompleted {

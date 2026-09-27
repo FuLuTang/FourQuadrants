@@ -448,6 +448,7 @@ struct DailyView: View {
     struct CurrentTimeLine: View {
         let hourHeight: CGFloat
         let timeColumnWidth: CGFloat
+        private let indicatorHeight: CGFloat = 32
         
         var body: some View {
             TimelineView(.periodic(from: .now, by: 60)) { context in
@@ -489,8 +490,13 @@ struct DailyView: View {
                         )
                         .frame(height: 1.5)
                 }
+                // `yOffset` is the time coordinate of the line itself. The
+                // capsule makes this HStack taller than the line, so place
+                // the whole indicator by its center instead of its top edge.
+                .frame(height: indicatorHeight, alignment: .center)
                 .padding(.leading, 4)
                 .offset(y: yOffset)
+                .offset(y: -indicatorHeight / 2)
                 .zIndex(999)
             }
         }
