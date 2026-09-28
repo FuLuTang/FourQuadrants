@@ -191,6 +191,11 @@
 "preview_task_count" = "%d tasks";
 "preview_no_tasks" = "No tasks";
 "preview_more_tasks" = "%d more...";
+"widget_no_due_date" = "No due date";
+"widget_no_open_tasks" = "No open tasks";
+"widget_today_focus" = "Today focus";
+"widget_open_count" = "%d open";
+"widget_more_tasks" = "+%d more";
 
 /* Native macOS interface */
 "四象限" = "Four Quadrants";

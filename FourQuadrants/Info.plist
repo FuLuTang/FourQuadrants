@@ -8,6 +8,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>msauth.com.fulu.FourQuadrants$(BUNDLE_ID_SUFFIX)</string>
+				<string>fourquadrants</string>
 			</array>
 		</dict>
 	</array>

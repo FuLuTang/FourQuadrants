@@ -17,6 +17,7 @@
 		A92600000000000000000007 /* DailyTaskLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000008 /* DailyTaskLayout.swift */; };
 		A92600000000000000000009 /* FourQuadrant项限.icon in Resources */ = {isa = PBXBuildFile; fileRef = 2AEFEE992F3C078B003F94BB /* FourQuadrant项限.icon */; };
 		A92600000000000000000018 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000019 /* DesignSystem.swift */; };
+		A92600000000000000000070 /* CompleteWidgetTaskIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000071 /* CompleteWidgetTaskIntent.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -94,6 +95,7 @@
 		A92600000000000000000004 /* FourQuadrantsMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FourQuadrantsMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A92600000000000000000008 /* DailyTaskLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Views/Daily/DailyTaskLayout.swift; sourceTree = SOURCE_ROOT; };
 		A92600000000000000000019 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Views/Styles/DesignSystem.swift; sourceTree = SOURCE_ROOT; };
+		A92600000000000000000071 /* CompleteWidgetTaskIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Services/CompleteWidgetTaskIntent.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -311,6 +313,7 @@
 				A92600000000000000000014 /* FourQuadrantsMacTests */,
 				A92600000000000000000008 /* DailyTaskLayout.swift */,
 				A92600000000000000000019 /* DesignSystem.swift */,
+				A92600000000000000000071 /* CompleteWidgetTaskIntent.swift */,
 				2A9656FC2F297C8300F5C0F7 /* Frameworks */,
 				2A9656AF2F2978E900F5C0F7 /* Products */,
 			);
@@ -696,6 +699,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A92600000000000000000070 /* CompleteWidgetTaskIntent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

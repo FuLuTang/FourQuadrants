@@ -38,6 +38,15 @@ struct MainView: View {
                 Task { await SyncService.shared.synchronize() }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .widgetRoute)) { notification in
+            guard let route = notification.object as? WidgetRoute else { return }
+            switch route {
+            case .today:
+                selectedTab = .daily
+            case .quadrant, .task:
+                selectedTab = .quadrant
+            }
+        }
         .alert("保存失败", isPresented: Binding(
             get: { taskStore.lastErrorMessage != nil },
             set: { if !$0 { taskStore.dismissLastError() } }

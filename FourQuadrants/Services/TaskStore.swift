@@ -226,6 +226,7 @@ final class TaskStore {
             try quadrantTaskMutationRecorder?(mutation)
             try saveOperation()
             lastErrorMessage = nil
+            WidgetSnapshotService.write(context: modelContext)
             quadrantTaskMutationDidCommit?()
             return true
         } catch {

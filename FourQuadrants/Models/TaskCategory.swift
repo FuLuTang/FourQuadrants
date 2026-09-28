@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-enum TaskCategory: String, CaseIterable, Codable, Identifiable {
+enum TaskCategory: String, CaseIterable, Codable, Identifiable, Hashable {
     var id: String { rawValue }
     case all = "all"
     case importantAndUrgent = "important_urgent"

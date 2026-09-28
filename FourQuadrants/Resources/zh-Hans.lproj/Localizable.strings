@@ -190,6 +190,11 @@
 "preview_task_count" = "%d 项任务";
 "preview_no_tasks" = "暂无任务";
 "preview_more_tasks" = "还有 %d 项...";
+"widget_no_due_date" = "无截止日期";
+"widget_no_open_tasks" = "暂无未完成任务";
+"widget_today_focus" = "今日重点";
+"widget_open_count" = "%d 项未完成";
+"widget_more_tasks" = "还有 %d 项";
 
 /* Native macOS interface */
 "四象限" = "四象限";

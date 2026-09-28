@@ -17,6 +17,7 @@ private enum TaskEditorRoute: Identifiable {
 
 struct QuadrantViewContainer: View {
     let taskStore: TaskStore
+    @Environment(\.modelContext) private var modelContext
     @State private var showingTaskFormView = false
     @State private var activeSheetCategory: TaskCategory? = nil
     @State private var pendingTaskEditor: TaskEditorRoute?
@@ -77,6 +78,20 @@ struct QuadrantViewContainer: View {
                 TaskFormView(taskStore: taskStore)
             case let .edit(task):
                 TaskFormView(taskStore: taskStore, existingTask: task)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .widgetRoute)) { notification in
+            guard let route = notification.object as? WidgetRoute else { return }
+            switch route {
+            case let .quadrant(category):
+                activeSheetCategory = category
+            case let .task(id):
+                let descriptor = FetchDescriptor<QuadrantTask>(predicate: #Predicate { $0.id == id })
+                if let task = try? modelContext.fetch(descriptor).first {
+                    taskEditor = .edit(task)
+                }
+            case .today:
+                break
             }
         }
     }
