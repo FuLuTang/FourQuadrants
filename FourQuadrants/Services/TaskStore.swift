@@ -186,7 +186,13 @@ final class TaskStore {
         }
     }
 
-    func filteredTasks(_ tasks: [QuadrantTask], in category: TaskCategory, now: Date = Date()) -> [QuadrantTask] {
+    func filteredTasks(
+        _ tasks: [QuadrantTask],
+        in category: TaskCategory,
+        now: Date = Date(),
+        sortBy method: TaskSortMethod = .intelligence,
+        direction: TaskSortDirection = .ascending
+    ) -> [QuadrantTask] {
         let visible = tasks.filter { task in
             let isVisible = !task.isCompleted || now.timeIntervalSince(task.completedAt ?? now) <= 3
             switch category {
@@ -198,25 +204,15 @@ final class TaskStore {
             case .completed: return task.isCompleted
             }
         }
-        return sortTasks(visible, by: .intelligence)
+        return TaskOrdering.sorted(visible, by: method, direction: direction)
     }
 
-    func sortTasks(_ tasks: [QuadrantTask], by method: TaskSortMethod) -> [QuadrantTask] {
-        tasks.sorted { first, second in
-            switch method {
-            case .intelligence:
-                if first.isTop != second.isTop { return first.isTop }
-                if first.effectiveDueDateKey != second.effectiveDueDateKey {
-                    return (first.effectiveDueDateKey ?? "9999-12-31") < (second.effectiveDueDateKey ?? "9999-12-31")
-                }
-                let priority: [ImportanceLevel] = [.high, .normal, .low]
-                if first.importance != second.importance { return priority.firstIndex(of: first.importance)! < priority.firstIndex(of: second.importance)! }
-                return first.updatedAt < second.updatedAt
-            case .byDueDate: return (first.effectiveDueDateKey ?? "9999-12-31") < (second.effectiveDueDateKey ?? "9999-12-31")
-            case .byCreationDate: return first.createdAt < second.createdAt
-            case .byName: return first.title.localizedCaseInsensitiveCompare(second.title) == .orderedAscending
-            }
-        }
+    func sortTasks(
+        _ tasks: [QuadrantTask],
+        by method: TaskSortMethod,
+        direction: TaskSortDirection = .ascending
+    ) -> [QuadrantTask] {
+        TaskOrdering.sorted(tasks, by: method, direction: direction)
     }
 
     func dismissLastError() { lastErrorMessage = nil }
@@ -256,5 +252,115 @@ final class TaskStore {
         return calendar.dateComponents([.day], from: calendar.startOfDay(for: Date()), to: calendar.startOfDay(for: dueAt)).day ?? 0
     }
 
-    enum TaskSortMethod { case intelligence, byDueDate, byCreationDate, byName }
+    enum TaskSortMethod: Hashable, CaseIterable {
+        case intelligence, byDueDate, byCreationDate, byName
+
+        var supportsDirection: Bool { self != .intelligence }
+    }
+    enum TaskSortDirection: Hashable { case ascending, descending }
+}
+
+enum TaskOrdering {
+    static func sorted(
+        _ tasks: [QuadrantTask],
+        by method: TaskStore.TaskSortMethod,
+        direction: TaskStore.TaskSortDirection = .ascending
+    ) -> [QuadrantTask] {
+        tasks.sorted { first, second in
+            let comparison: ComparisonResult
+            switch method {
+            case .intelligence:
+                let firstImportance = importanceRank(first.importance)
+                let secondImportance = importanceRank(second.importance)
+                if firstImportance != secondImportance { comparison = firstImportance < secondImportance ? .orderedAscending : .orderedDescending }
+                else if first.isTop != second.isTop { comparison = first.isTop ? .orderedAscending : .orderedDescending }
+                else if let result = compareDueDates(first, second) { comparison = result }
+                else if first.updatedAt != second.updatedAt { comparison = first.updatedAt < second.updatedAt ? .orderedAscending : .orderedDescending }
+                else { comparison = .orderedSame }
+            case .byDueDate:
+                comparison = compareDueDates(first, second, direction: direction) ?? .orderedSame
+            case .byCreationDate:
+                comparison = directedComparison(
+                    first.createdAt == second.createdAt ? .orderedSame : (first.createdAt < second.createdAt ? .orderedAscending : .orderedDescending),
+                    direction: direction
+                )
+            case .byName:
+                comparison = directedComparison(
+                    first.title.localizedCaseInsensitiveCompare(second.title),
+                    direction: direction
+                )
+            }
+
+            if comparison != .orderedSame { return comparison == .orderedAscending }
+            return first.id.uuidString < second.id.uuidString
+        }
+    }
+
+    static func recommended(_ tasks: [QuadrantTask], limit: Int) -> [QuadrantTask] {
+        guard limit > 0 else { return [] }
+
+        let orderedTasks = sorted(tasks, by: .intelligence)
+        var selected: [QuadrantTask] = []
+        var selectedIDs = Set<UUID>()
+
+        func append(_ task: QuadrantTask) {
+            guard selected.count < limit, selectedIDs.insert(task.id).inserted else { return }
+            selected.append(task)
+        }
+
+        for task in orderedTasks where task.category == .importantAndUrgent {
+            append(task)
+            if selected.count == limit { return selected }
+        }
+
+        for category in [TaskCategory.urgentButNotImportant, .importantButNotUrgent] {
+            guard let first = orderedTasks.first(where: { $0.category == category && !selectedIDs.contains($0.id) }) else { continue }
+            append(first)
+            if selected.count == limit { return selected }
+        }
+
+        for task in orderedTasks where !selectedIDs.contains(task.id) {
+            append(task)
+            if selected.count == limit { return selected }
+        }
+
+        return selected
+    }
+
+    private static func importanceRank(_ importance: ImportanceLevel) -> Int {
+        switch importance {
+        case .high: 0
+        case .normal: 1
+        case .low: 2
+        }
+    }
+
+    private static func compareDueDates(
+        _ first: QuadrantTask,
+        _ second: QuadrantTask,
+        direction: TaskStore.TaskSortDirection = .ascending
+    ) -> ComparisonResult? {
+        let firstKey = first.effectiveDueDateKey.flatMap { TaskDueDate.isValid($0) ? $0 : nil }
+        let secondKey = second.effectiveDueDateKey.flatMap { TaskDueDate.isValid($0) ? $0 : nil }
+        switch (firstKey, secondKey) {
+        case let (left?, right?) where left != right:
+            return directedComparison(left < right ? .orderedAscending : .orderedDescending, direction: direction)
+        case (.some, nil): return .orderedAscending
+        case (nil, .some): return .orderedDescending
+        default: return nil
+        }
+    }
+
+    private static func directedComparison(
+        _ comparison: ComparisonResult,
+        direction: TaskStore.TaskSortDirection
+    ) -> ComparisonResult {
+        guard direction == .descending else { return comparison }
+        switch comparison {
+        case .orderedAscending: return .orderedDescending
+        case .orderedDescending: return .orderedAscending
+        case .orderedSame: return .orderedSame
+        @unknown default: return .orderedSame
+        }
+    }
 }

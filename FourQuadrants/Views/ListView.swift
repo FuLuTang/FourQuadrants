@@ -70,10 +70,17 @@ struct TaskListView: View {
     var onEdit: ((QuadrantTask) -> Void)? = nil
     @State private var showingTaskFormView = false
     @State private var selectedTaskForEditing: QuadrantTask?
+    @State private var sortMethod: TaskStore.TaskSortMethod = .intelligence
+    @State private var sortDirection: TaskStore.TaskSortDirection = .ascending
 
     var body: some View {
         List {
-            ForEach(taskStore.filteredTasks(tasks, in: category)) { task in
+            ForEach(taskStore.filteredTasks(
+                tasks,
+                in: category,
+                sortBy: sortMethod,
+                direction: sortDirection
+            )) { task in
                 TaskRow(task: task, onToggle: {
                     taskStore.toggleTask(task)
                 }, onEdit: {
@@ -81,7 +88,11 @@ struct TaskListView: View {
                 }, onDelete: {
                     taskStore.removeTask(task)
                 })
-                .listRowBackground(Color(UIColor.secondarySystemGroupedBackground))
+                .listRowBackground(
+                    category == .all
+                        ? task.category.themeColor.opacity(0.10)
+                        : Color(UIColor.secondarySystemGroupedBackground)
+                )
                 .listRowSeparator(.visible)
                 .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12)) // 紧凑的行内边距
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -105,7 +116,19 @@ struct TaskListView: View {
         .scrollContentBackground(.hidden)
         .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Menu {
+                    ForEach(TaskStore.TaskSortMethod.allCases, id: \.self) { method in
+                        Button(method.localizationKey, systemImage: menuSymbol(for: method)) {
+                            selectSortMethod(method)
+                        }
+                        .tint(sortMethod == method ? .accentColor : .secondary)
+                    }
+                } label: {
+                    Image(systemName: "line.3.horizontal.decrease")
+                }
+                .accessibilityLabel("sort_by")
+
                 Button {
                     createTask()
                 } label: {
@@ -136,6 +159,38 @@ struct TaskListView: View {
             selectedTaskForEditing = task
         }
     }
+
+    private func selectSortMethod(_ method: TaskStore.TaskSortMethod) {
+        guard method.supportsDirection else {
+            sortMethod = method
+            return
+        }
+
+        if sortMethod == method {
+            sortDirection = sortDirection == .ascending ? .descending : .ascending
+        } else {
+            sortMethod = method
+            sortDirection = .ascending
+        }
+    }
+
+    private func menuSymbol(for method: TaskStore.TaskSortMethod) -> String {
+        guard method.supportsDirection else { return "sparkles" }
+        guard sortMethod == method else { return "arrow.up" }
+        return sortDirection == .ascending ? "arrow.up" : "arrow.down"
+    }
+}
+
+private extension TaskStore.TaskSortMethod {
+    var localizationKey: LocalizedStringKey {
+        switch self {
+        case .intelligence: "sort_intelligence"
+        case .byDueDate: "sort_due_date"
+        case .byCreationDate: "sort_creation_date"
+        case .byName: "sort_name"
+        }
+    }
+
 }
 
 // MARK: - Preview

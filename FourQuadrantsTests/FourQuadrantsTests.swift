@@ -4,6 +4,73 @@ import Testing
 @testable import FourQuadrants
 
 struct FourQuadrantsTests {
+    @Test @MainActor func intelligenceOrderingIsUnaffectedByDirection() {
+        let base = Date(timeIntervalSince1970: 1_700_000_000)
+        func task(_ id: Int, importance: ImportanceLevel, isTop: Bool, dueOffset: TimeInterval?) -> QuadrantTask {
+            QuadrantTask(
+                id: UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", id))!,
+                title: "Task \(id)",
+                createdAt: base,
+                dueAt: dueOffset.map { base.addingTimeInterval($0) },
+                importance: importance,
+                isTop: isTop
+            )
+        }
+
+        let importantTopSoon = task(1, importance: .high, isTop: true, dueOffset: 86_400)
+        let importantTopLater = task(2, importance: .high, isTop: true, dueOffset: 172_800)
+        let importantNotTop = task(3, importance: .high, isTop: false, dueOffset: nil)
+        let normalTop = task(4, importance: .normal, isTop: true, dueOffset: nil)
+        let input = [normalTop, importantNotTop, importantTopLater, importantTopSoon]
+        let expected = [importantTopSoon, importantTopLater, importantNotTop, normalTop]
+
+        #expect(TaskOrdering.sorted(input, by: .intelligence).map(\.id) == expected.map(\.id))
+        #expect(TaskOrdering.sorted(input, by: .intelligence, direction: .descending).map(\.id) == expected.map(\.id))
+        #expect(TaskStore.TaskSortMethod.intelligence.supportsDirection == false)
+    }
+
+    @Test @MainActor func dueDateDirectionReversesDatedTasksAndKeepsUndatedLast() {
+        let base = Date(timeIntervalSince1970: 1_700_000_000)
+        func task(_ id: Int, dueOffset: TimeInterval?) -> QuadrantTask {
+            QuadrantTask(
+                id: UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", id))!,
+                title: "Task \(id)",
+                createdAt: base,
+                dueAt: dueOffset.map { base.addingTimeInterval($0) }
+            )
+        }
+
+        let early1 = task(1, dueOffset: 86_400)
+        let early2 = task(2, dueOffset: 86_400)
+        let late = task(3, dueOffset: 172_800)
+        let undated = task(4, dueOffset: nil)
+        let input = [undated, late, early2, early1]
+
+        #expect(TaskOrdering.sorted(input, by: .byDueDate).map(\.id) == [early1.id, early2.id, late.id, undated.id])
+        #expect(TaskOrdering.sorted(input, by: .byDueDate, direction: .descending).map(\.id) == [late.id, early1.id, early2.id, undated.id])
+    }
+
+    @Test @MainActor func creationDateAndNameDirectionsKeepStableIDTieBreaks() {
+        let base = Date(timeIntervalSince1970: 1_700_000_000)
+        func task(_ id: Int, title: String, createdOffset: TimeInterval) -> QuadrantTask {
+            QuadrantTask(
+                id: UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", id))!,
+                title: title,
+                createdAt: base.addingTimeInterval(createdOffset)
+            )
+        }
+
+        let older1 = task(1, title: "Bravo", createdOffset: 0)
+        let older2 = task(2, title: "Bravo", createdOffset: 0)
+        let newer = task(3, title: "Alpha", createdOffset: 86_400)
+        let input = [newer, older2, older1]
+
+        #expect(TaskOrdering.sorted(input, by: .byCreationDate).map(\.id) == [older1.id, older2.id, newer.id])
+        #expect(TaskOrdering.sorted(input, by: .byCreationDate, direction: .descending).map(\.id) == [newer.id, older1.id, older2.id])
+        #expect(TaskOrdering.sorted(input, by: .byName).map(\.id) == [newer.id, older1.id, older2.id])
+        #expect(TaskOrdering.sorted(input, by: .byName, direction: .descending).map(\.id) == [older1.id, older2.id, newer.id])
+    }
+
     @Test @MainActor func taskStoreCRUDCompletionAndTimestamps() throws {
         let container = try PersistenceController.inMemoryContainer()
         let store = TaskStore(modelContext: container.mainContext)
