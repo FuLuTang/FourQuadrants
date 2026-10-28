@@ -57,6 +57,12 @@ final class MacApplicationRuntime {
     func restoreWindowsIfNeeded() {
         guard !didRestoreWindows else { return }
         didRestoreWindows = true
+        #if DEBUG
+        if isPreview, ProcessInfo.processInfo.arguments.contains("--preview-stickies") {
+            stickies?.createPreviewNotes()
+            return
+        }
+        #endif
         stickies?.restoreWindows()
         if !isPreview { _ = AppLifecycleManager.shared.performUpdateIfNeeded() }
     }

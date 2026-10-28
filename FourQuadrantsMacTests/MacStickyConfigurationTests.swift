@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftData
 import Testing
@@ -19,14 +20,12 @@ struct MacStickyConfigurationTests {
     @Test func configurationEncodingPreservesSourceAndWindowPreferences() throws {
         let taskID = UUID()
         let original = MacStickyConfiguration(
-            title: "工作便笺",
             source: .selectedTaskIDs([taskID]),
-            paper: .blue,
             frame: MacStickyWindowFrame(x: 80, y: 420, width: 310, height: 360),
             isCollapsed: true,
             isVisible: true,
-            isFloating: true,
-            opacity: 0.82
+            isFloating: false,
+            showDetails: true
         )
 
         let data = try JSONEncoder().encode([original])
@@ -35,7 +34,7 @@ struct MacStickyConfigurationTests {
         #expect(decoded == [original])
     }
 
-    @Test func legacyConfigurationWithoutDetailsPreferenceUsesDefault() throws {
+    @Test func legacyConfigurationIgnoresRemovedFieldsAndKeepsPreferences() throws {
         let id = UUID()
         let legacyJSON = """
         [{
@@ -46,7 +45,7 @@ struct MacStickyConfigurationTests {
           "frame": { "x": 12, "y": 34, "width": 280, "height": 320 },
           "isCollapsed": true,
           "isVisible": false,
-          "isFloating": true,
+          "isFloating": false,
           "opacity": 0.78
         }]
         """
@@ -56,16 +55,125 @@ struct MacStickyConfigurationTests {
 
         #expect(decoded == [MacStickyConfiguration(
             id: id,
-            title: "旧便笺",
             source: .selectedTaskIDs([]),
-            paper: .green,
             frame: MacStickyWindowFrame(x: 12, y: 34, width: 280, height: 320),
             isCollapsed: true,
             isVisible: false,
-            isFloating: true,
-            opacity: 0.78,
+            isFloating: false,
             showDetails: false
         )])
+        #expect(decoded.first?.displayTitle == "智能排列")
+    }
+
+    @Test func minimalLegacyConfigurationFillsMissingFieldsWithDefaults() throws {
+        let id = UUID()
+        let data = try #require("[{\"id\": \"\(id.uuidString)\"}]".data(using: .utf8))
+
+        let decoded = try JSONDecoder().decode([MacStickyConfiguration].self, from: data)
+
+        #expect(decoded == [MacStickyConfiguration(id: id)])
+        #expect(decoded.first?.isFloating == true)
+    }
+
+    @Test func newConfigurationFloatsByDefault() {
+        #expect(MacStickyConfiguration().isFloating)
+    }
+
+    @Test func collapsedWindowFrameUsesTitleBarHeightAndKeepsTopEdge() {
+        let expanded = MacStickyWindowFrame(x: 100, y: 200, width: 220, height: 260)
+
+        let window = expanded.windowFrame(isCollapsed: true)
+
+        #expect(window.height == MacStickyLayout.titleBarHeight)
+        #expect(window.x == 100 && window.width == 220)
+        #expect(window.y + window.height == expanded.y + expanded.height)
+        #expect(expanded.windowFrame(isCollapsed: false) == expanded)
+    }
+
+    @Test func expandingAfterDraggingCollapsedWindowUsesMovedTopEdge() {
+        let expanded = MacStickyWindowFrame(x: 100, y: 200, width: 220, height: 260)
+        let collapsedWindow = expanded.windowFrame(isCollapsed: true)
+        // 收起态窗口整体向右 50、向下 80。
+        let dragged = MacStickyWindowFrame(x: collapsedWindow.x + 50, y: collapsedWindow.y - 80, width: collapsedWindow.width, height: collapsedWindow.height)
+
+        let updated = expanded.updated(fromWindow: dragged, isCollapsed: true)
+
+        #expect(updated.x == 150)
+        #expect(updated.width == 220 && updated.height == 260)
+        #expect(updated.y + updated.height == expanded.y + expanded.height - 80)
+        #expect(updated.windowFrame(isCollapsed: true) == dragged)
+    }
+
+    @Test func expandedWindowFrameIsRecordedAsIs() {
+        let expanded = MacStickyWindowFrame(x: 100, y: 200, width: 220, height: 260)
+        let resized = MacStickyWindowFrame(x: 90, y: 180, width: 300, height: 280)
+
+        #expect(expanded.updated(fromWindow: resized, isCollapsed: false) == resized)
+    }
+
+    @Test func widenedExpandsToTheRightKeepingLeftEdge() {
+        let narrow = MacStickyWindowFrame(x: 100, y: 200, width: 220, height: 260)
+
+        let widened = narrow.widened(toAtLeast: MacStickyLayout.combinedMinimumWidth)
+
+        #expect(widened.x == 100)
+        #expect(widened.width == MacStickyLayout.combinedMinimumWidth)
+        #expect(widened.y == 200 && widened.height == 260)
+        let wide = MacStickyWindowFrame(x: 0, y: 0, width: 500, height: 300)
+        #expect(wide.widened(toAtLeast: MacStickyLayout.combinedMinimumWidth) == wide)
+    }
+
+    @Test func switchingToCombinedWidensNarrowNoteIncludingCollapsedOnes() throws {
+        let container = try PersistenceController.inMemoryContainer()
+        let coordinator = MacStickyCoordinator(container: container, taskStore: TaskStore(modelContext: container.mainContext), defaults: try makeDefaults())
+        let id = coordinator.createNote(source: .category(.importantAndUrgent), frame: MacStickyWindowFrame(x: 100, y: 200, width: 220, height: 260))
+        coordinator.setCollapsed(true, id: id)
+
+        coordinator.setSource(.combined, for: id)
+
+        let frame = try #require(coordinator.configurations.first?.frame)
+        #expect(frame.x == 100)
+        #expect(frame.width == MacStickyLayout.combinedMinimumWidth)
+        #expect(coordinator.configurations.first?.isCollapsed == true)
+        coordinator.closeAllWindows()
+    }
+
+    @Test func combinedDefaultSizeIsWiderThanSingleQuadrant() {
+        #expect(MacStickyLayout.defaultSize(for: .combined) == (360, 300))
+        #expect(MacStickyLayout.defaultSize(for: .smart) == (220, 260))
+        #expect(MacStickyLayout.defaultSize(for: .category(.importantAndUrgent)) == (220, 260))
+    }
+
+    @Test func frameChangesAreDebouncedAndFlushedOnDemand() throws {
+        let container = try PersistenceController.inMemoryContainer()
+        let defaults = try makeDefaults()
+        let coordinator = MacStickyCoordinator(container: container, taskStore: TaskStore(modelContext: container.mainContext), defaults: defaults, saveDebounce: 60)
+        let id = coordinator.createNote(source: .smart, frame: MacStickyWindowFrame(x: 10, y: 20, width: 220, height: 260))
+
+        for step in 1...20 {
+            coordinator.recordWindowFrame(NSRect(x: 10 + Double(step), y: 20, width: 220, height: 260), id: id)
+        }
+
+        #expect(coordinator.configurations.first?.frame.x == 30)
+        #expect(try MacStickyCoordinator.loadConfigurations(from: defaults).first?.frame.x == 10)
+
+        coordinator.flushPendingChanges()
+
+        #expect(try MacStickyCoordinator.loadConfigurations(from: defaults).first?.frame.x == 30)
+        coordinator.closeAllWindows()
+    }
+
+    @Test func debouncedFrameChangesEventuallyPersistWithoutFlush() async throws {
+        let container = try PersistenceController.inMemoryContainer()
+        let defaults = try makeDefaults()
+        let coordinator = MacStickyCoordinator(container: container, taskStore: TaskStore(modelContext: container.mainContext), defaults: defaults, saveDebounce: 0.05)
+        let id = coordinator.createNote(source: .smart, frame: MacStickyWindowFrame(x: 10, y: 20, width: 220, height: 260))
+
+        coordinator.recordWindowFrame(NSRect(x: 77, y: 20, width: 220, height: 260), id: id)
+        try await Task.sleep(for: .milliseconds(400))
+
+        #expect(try MacStickyCoordinator.loadConfigurations(from: defaults).first?.frame.x == 77)
+        coordinator.closeAllWindows()
     }
 
     @Test func allSixCategoryConfigurationsRoundTripThroughPersistenceCodec() throws {
@@ -78,7 +186,7 @@ struct MacStickyConfigurationTests {
             .smart
         ]
         let configurations = sources.map { source in
-            MacStickyConfiguration(title: source.title, source: source)
+            MacStickyConfiguration(source: source)
         }
 
         let data = try MacStickyCoordinator.encode(configurations)
@@ -137,27 +245,6 @@ struct MacStickyConfigurationTests {
         }
     }
 
-    @Test func updatingConfigurationSettingsPersistsNormalizedValues() throws {
-        let container = try PersistenceController.inMemoryContainer()
-        let defaults = try makeDefaults()
-        let coordinator = MacStickyCoordinator(
-            container: container,
-            taskStore: TaskStore(modelContext: container.mainContext),
-            defaults: defaults
-        )
-        let id = coordinator.createNote(source: .smart)
-
-        coordinator.updateConfiguration(id, title: "  新标题  ", paper: .pink, isFloating: true, opacity: 0.4)
-
-        let updated = try #require(coordinator.configurations.first)
-        #expect(updated.title == "新标题")
-        #expect(updated.paper == .pink)
-        #expect(updated.isFloating)
-        #expect(updated.opacity == 0.65)
-        let reloaded = try MacStickyCoordinator.loadConfigurations(from: defaults)
-        #expect(reloaded == [updated])
-    }
-
     @Test func closingAllWindowsKeepsConfigurationVisibility() throws {
         let container = try PersistenceController.inMemoryContainer()
         let defaults = try makeDefaults()
@@ -174,20 +261,6 @@ struct MacStickyConfigurationTests {
 
         #expect(coordinator.configurations.first?.isVisible == true)
         #expect(try MacStickyCoordinator.loadConfigurations(from: defaults).first?.isVisible == true)
-    }
-
-    @Test func updatingConfigurationTrimsTitleAndFallsBackWhenEmpty() throws {
-        let container = try PersistenceController.inMemoryContainer()
-        let coordinator = MacStickyCoordinator(
-            container: container,
-            taskStore: TaskStore(modelContext: container.mainContext),
-            defaults: try makeDefaults()
-        )
-        let id = coordinator.createNote(source: .smart)
-
-        coordinator.updateConfiguration(id, title: "   ", paper: .pink, isFloating: false, opacity: 1)
-
-        #expect(coordinator.configurations.first?.title == "便笺")
     }
 
     @Test func removingConfigurationPersistsDeletion() throws {
