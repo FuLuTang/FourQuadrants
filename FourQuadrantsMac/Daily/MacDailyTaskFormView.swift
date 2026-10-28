@@ -1,6 +1,5 @@
 import SwiftData
 import SwiftUI
-import AppKit
 
 struct MacDailyTaskFormView: View {
     @Environment(TaskStore.self) private var taskStore
@@ -19,6 +18,17 @@ struct MacDailyTaskFormView: View {
     @State private var selectedQuadrantTaskID: UUID?
     @State private var isShowingQuadrantPicker = false
     @State private var isShowingDeleteConfirmation = false
+    @State private var suggestionIndex = MacDailyTaskSuggestions.Index(tasks: [])
+    @State private var suggestions: [MacDailyTaskSuggestions.Suggestion] = []
+
+    private static let visibleSuggestionCount = 3
+    private static let suggestionDebounce: Duration = .milliseconds(250)
+
+    private struct SuggestionKey: Equatable {
+        let title: String
+        let notes: String
+        let taskStamp: [MacDailyTaskSuggestions.Stamp]
+    }
 
     init(task: DailyTask?, selectedDate: Date, initialStartAt: Date, onSave: ((DailyTask?) -> Void)? = nil) {
         self.task = task
@@ -38,20 +48,16 @@ struct MacDailyTaskFormView: View {
         quadrantTasks.first { $0.id == selectedQuadrantTaskID }
     }
 
-    private var suggestions: [MacDailyTaskSuggestions.Suggestion] {
-        MacDailyTaskSuggestions.ranked(title: title, notes: notes, among: quadrantTasks)
+    /// Suggestions shown under the link section, never including the linked task.
+    private var visibleSuggestions: [MacDailyTaskSuggestions.Suggestion] {
+        suggestions
             .filter { $0.task.id != selectedQuadrantTaskID }
-            .prefix(3)
+            .prefix(Self.visibleSuggestionCount)
             .map { $0 }
     }
 
-    private var durationDescription: String {
-        let totalMinutes = Int(duration / 60)
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
-        if hours == 0 { return "\(minutes) 分钟" }
-        if minutes == 0 { return "\(hours) 小时" }
-        return "\(hours) 小时 \(minutes) 分钟"
+    private var suggestionKey: SuggestionKey {
+        SuggestionKey(title: title, notes: notes, taskStamp: MacDailyTaskSuggestions.stamp(of: quadrantTasks))
     }
 
     var body: some View {
@@ -97,11 +103,11 @@ struct MacDailyTaskFormView: View {
                     }
 
                     HStack(spacing: 8) {
-                        Text("时长：\(durationDescription)")
+                        Text("时长：\(MacDailyTimeMath.durationText(minutes: Int(duration / 60)))")
                             .foregroundStyle(.secondary)
                         Spacer()
                         ForEach([15, 30, 45, 60, 90, 120], id: \.self) { minutes in
-                            Button(durationTitle(minutes)) {
+                            Button(MacDailyTimeMath.durationText(minutes: minutes)) {
                                 duration = TimeInterval(minutes * 60)
                             }
                             .buttonStyle(.bordered)
@@ -157,7 +163,7 @@ struct MacDailyTaskFormView: View {
                 Section {
                     MacDailyLinkedTaskSection(
                         linkedTask: linkedTask,
-                        suggestions: suggestions,
+                        suggestions: visibleSuggestions,
                         hasSearchableTasks: !quadrantTasks.isEmpty,
                         onChoose: { selectedQuadrantTaskID = $0.id },
                         onUnlink: { selectedQuadrantTaskID = nil },
@@ -182,6 +188,7 @@ struct MacDailyTaskFormView: View {
             .padding(.bottom, 14)
         }
         .frame(minWidth: 520, minHeight: 620)
+        .task(id: suggestionKey) { await refreshSuggestions() }
         .sheet(isPresented: $isShowingQuadrantPicker) {
             MacQuadrantTaskPicker(
                 tasks: quadrantTasks,
@@ -216,19 +223,31 @@ struct MacDailyTaskFormView: View {
                     matchingPolicy: .nextTime
                 ) ?? proposedEnd
                 if end <= startAt {
-                    end = calendar.date(byAdding: .day, value: 1, to: end) ?? end.addingTimeInterval(24 * 3600)
+                    end = calendar.date(byAdding: .day, value: 1, to: end) ?? end.addingTimeInterval(MacDailyTimeMath.maximumDuration)
                 }
-                duration = min(max(end.timeIntervalSince(startAt), MacDailyTimeMath.minimumDuration), 24 * 3600)
+                duration = min(max(end.timeIntervalSince(startAt), MacDailyTimeMath.minimumDuration), MacDailyTimeMath.maximumDuration)
             }
         )
     }
 
-    private func durationTitle(_ minutes: Int) -> String {
-        let hours = minutes / 60
-        let remaining = minutes % 60
-        if hours == 0 { return "\(minutes) 分钟" }
-        if remaining == 0 { return "\(hours) 小时" }
-        return "\(hours) 小时 \(remaining) 分钟"
+    /// Debounced so typing does not re-rank every task on each keystroke.
+    private func refreshSuggestions() async {
+        let key = suggestionKey
+        guard !key.title.isEmpty || !key.notes.isEmpty else {
+            suggestions = []
+            return
+        }
+        try? await Task.sleep(for: Self.suggestionDebounce)
+        guard !Task.isCancelled else { return }
+        if suggestionIndex.stamp != key.taskStamp {
+            suggestionIndex = MacDailyTaskSuggestions.Index(tasks: quadrantTasks)
+        }
+        suggestions = MacDailyTaskSuggestions.ranked(
+            title: key.title,
+            notes: key.notes,
+            in: suggestionIndex,
+            limit: Self.visibleSuggestionCount + 1
+        )
     }
 
     private func save() {
@@ -242,7 +261,7 @@ struct MacDailyTaskFormView: View {
                 task,
                 title: cleanTitle,
                 startAt: startAt,
-                duration: min(max(duration, MacDailyTimeMath.minimumDuration), 24 * 3600),
+                duration: min(max(duration, MacDailyTimeMath.minimumDuration), MacDailyTimeMath.maximumDuration),
                 colorHex: colorHex,
                 notes: notes,
                 quadrantTask: linkedTask
@@ -252,7 +271,7 @@ struct MacDailyTaskFormView: View {
             savedTask = taskStore.createDailyTask(
                 title: cleanTitle,
                 startAt: startAt,
-                duration: min(max(duration, MacDailyTimeMath.minimumDuration), 24 * 3600),
+                duration: min(max(duration, MacDailyTimeMath.minimumDuration), MacDailyTimeMath.maximumDuration),
                 colorHex: colorHex,
                 notes: notes,
                 quadrantTask: linkedTask
@@ -267,240 +286,5 @@ struct MacDailyTaskFormView: View {
     private func deleteTask() {
         guard let task, taskStore.removeDailyTask(task) else { return }
         dismiss()
-    }
-}
-
-private struct MacDailyLinkedTaskSection: View {
-    let linkedTask: QuadrantTask?
-    let suggestions: [MacDailyTaskSuggestions.Suggestion]
-    let hasSearchableTasks: Bool
-    let onChoose: (QuadrantTask) -> Void
-    let onUnlink: () -> Void
-    let onOpenPicker: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let linkedTask {
-                MacQuadrantTaskCard(task: linkedTask, isLinked: true)
-                Button("取消关联", systemImage: "link.badge.minus", action: onUnlink)
-                    .buttonStyle(.borderless)
-            } else {
-                Label("尚未关联四象限任务", systemImage: "link")
-                    .foregroundStyle(.secondary)
-                Text("可先选择一条已有任务；这不会影响日程的独立创建与完成。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if !suggestions.isEmpty {
-                VStack(alignment: .leading, spacing: 7) {
-                    Label("标题与备注关键词建议", systemImage: "sparkle.magnifyingglass")
-                        .font(.subheadline.weight(.medium))
-                    ForEach(suggestions) { suggestion in
-                        Button {
-                            onChoose(suggestion.task)
-                        } label: {
-                            HStack(spacing: 10) {
-                                Circle()
-                                    .fill(suggestion.task.isCompleted ? Color.secondary : Color.accentColor)
-                                    .frame(width: 7, height: 7)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(suggestion.task.title)
-                                        .lineLimit(1)
-                                        .foregroundStyle(.primary)
-                                    Text("匹配：\(suggestion.matches.formatted())")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                if suggestion.task.isCompleted {
-                                    Text("已完成").font(.caption).foregroundStyle(.secondary)
-                                }
-                                Image(systemName: "plus.circle")
-                                    .foregroundStyle(.tint)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            } else if !hasSearchableTasks {
-                ContentUnavailableView {
-                    Label("还没有四象限任务", systemImage: "square.grid.2x2")
-                } description: {
-                    Text("你仍可保存这条日程，之后再从四象限任务中关联。")
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 4)
-            } else {
-                Text("输入标题或备注后，这里会显示关键词匹配建议。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Button(hasSearchableTasks ? "搜索并手动选择…" : "选择关联任务…", systemImage: "magnifyingglass", action: onOpenPicker)
-                .buttonStyle(.bordered)
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-private struct MacQuadrantTaskPicker: View {
-    @Environment(\.dismiss) private var dismiss
-
-    let tasks: [QuadrantTask]
-    let selectedID: UUID?
-    let onSelect: (QuadrantTask?) -> Void
-
-    @State private var searchText = ""
-
-    private var filteredTasks: [QuadrantTask] {
-        guard !searchText.isEmpty else { return tasks }
-        return tasks.filter {
-            $0.title.localizedStandardContains(searchText) || ($0.notes ?? "").localizedStandardContains(searchText)
-        }
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("选择四象限任务").font(.title2.weight(.semibold))
-                    Text("手动选择始终可用，也可以取消关联。")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button("关闭") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-            }
-            .padding(20)
-
-            TextField("搜索任务标题或备注", text: $searchText)
-                .textFieldStyle(.roundedBorder)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 12)
-
-            List {
-                Button {
-                    onSelect(nil)
-                } label: {
-                    Label("不关联任务", systemImage: "link.badge.minus")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-
-                if filteredTasks.isEmpty {
-                    ContentUnavailableView.search(text: searchText)
-                } else {
-                    ForEach(filteredTasks, id: \.id) { task in
-                        Button {
-                            onSelect(task)
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: selectedID == task.id ? "largecircle.fill.circle" : "circle")
-                                    .foregroundStyle(selectedID == task.id ? Color.accentColor : Color.secondary)
-                                MacQuadrantTaskCard(task: task, isLinked: false)
-                                Spacer(minLength: 0)
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            .listStyle(.inset)
-        }
-        .background(Color(nsColor: .windowBackgroundColor))
-    }
-}
-
-private struct MacQuadrantTaskCard: View {
-    let task: QuadrantTask
-    let isLinked: Bool
-
-    private var quadrantLabel: String {
-        switch (task.isImportantQuadrant, task.isUrgent) {
-        case (true, true): "重要且紧急"
-        case (true, false): "重要不紧急"
-        case (false, true): "紧急不重要"
-        case (false, false): "不重要不紧急"
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 6) {
-                Text(task.title).font(.callout.weight(.medium)).lineLimit(1)
-                if task.isCompleted {
-                    Text("已完成").font(.caption2).foregroundStyle(.secondary)
-                }
-            }
-            HStack(spacing: 7) {
-                Text(quadrantLabel)
-                if let dueDate = task.displayDueDate {
-                    Text("·")
-                    Text("截止 \(dueDate.formatted(date: .abbreviated, time: .omitted))")
-                }
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            if isLinked, let notes = task.notes, !notes.isEmpty {
-                Text(notes).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 3)
-    }
-}
-
-private enum MacDailyTaskSuggestions {
-    struct Suggestion: Identifiable {
-        let task: QuadrantTask
-        let matches: [String]
-        let score: Double
-        var id: UUID { task.id }
-    }
-
-    static func ranked(title: String, notes: String, among tasks: [QuadrantTask]) -> [Suggestion] {
-        let sourceTerms = terms(title + " " + notes)
-        guard !sourceTerms.isEmpty else { return [] }
-
-        return tasks.compactMap { task in
-            let candidateTerms = terms(task.title + " " + (task.notes ?? ""))
-            let shared = sourceTerms.intersection(candidateTerms).sorted()
-            guard !shared.isEmpty else { return nil }
-            let unionCount = sourceTerms.union(candidateTerms).count
-            let score = Double(shared.count) / Double(max(unionCount, 1))
-            return Suggestion(task: task, matches: shared, score: score)
-        }
-        .sorted {
-            if $0.score == $1.score {
-                if $0.task.isCompleted != $1.task.isCompleted { return !$0.task.isCompleted }
-                return $0.task.updatedAt > $1.task.updatedAt
-            }
-            return $0.score > $1.score
-        }
-    }
-
-    private static func terms(_ text: String) -> Set<String> {
-        let scalars = text.lowercased().unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }
-        let characters = Array(String(String.UnicodeScalarView(scalars)))
-        guard characters.count > 1 else { return [] }
-
-        var result = Set<String>()
-        for width in 2...min(3, characters.count) {
-            for start in 0...(characters.count - width) {
-                result.insert(String(characters[start..<(start + width)]))
-            }
-        }
-        let words = text.lowercased().split { !$0.isLetter && !$0.isNumber }
-            .map(String.init)
-            .filter { $0.count > 1 }
-        result.formUnion(words)
-        return result
     }
 }

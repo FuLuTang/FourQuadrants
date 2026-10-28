@@ -1,28 +1,5 @@
-import Combine
 import SwiftData
 import SwiftUI
-
-private enum MacWorkspaceRoute: Hashable {
-    case quadrants
-    case daily
-    case all
-    case completed
-    case category(TaskCategory)
-
-    var supportsInspector: Bool {
-        self != .daily
-    }
-
-    var navigationTitle: Text {
-        switch self {
-        case .quadrants: Text("四象限")
-        case .daily: Text("日程")
-        case .all: Text("全部任务")
-        case .completed: Text("已完成")
-        case let .category(category): MacQuadrantHeading.styledText(category: category, font: .headline)
-        }
-    }
-}
 
 struct MacWorkspaceView: View {
     @Environment(MacApplicationRuntime.self) private var runtime
@@ -54,6 +31,10 @@ struct MacWorkspaceView: View {
         }
     }
 
+    private var completionExpiry: Date? {
+        MacCompletionVisibility.nextExpiry(of: tasks, after: refreshDate)
+    }
+
     private var inspectorPresentation: Binding<Bool> {
         Binding(
             get: { (selection ?? .quadrants).supportsInspector && prefersInspectorPresented },
@@ -81,7 +62,15 @@ struct MacWorkspaceView: View {
             )
             .searchable(text: $searchText, placement: .toolbar, prompt: "搜索任务")
             .navigationTitle((selection ?? .quadrants).navigationTitle)
-            .toolbar { workspaceToolbar }
+            .toolbar {
+                MacWorkspaceToolbar(
+                    route: selection ?? .quadrants,
+                    stickyCoordinator: stickyCoordinator,
+                    sortMethod: $sortMethod,
+                    prefersInspectorPresented: $prefersInspectorPresented,
+                    onNewTask: presentNewTask
+                )
+            }
             .inspector(isPresented: inspectorPresentation) {
                 if (selection ?? .quadrants).supportsInspector {
                     MacTaskInspector(
@@ -113,102 +102,21 @@ struct MacWorkspaceView: View {
         .onChange(of: taskStore.lastErrorMessage) { _, value in
             isShowingStoreError = value != nil
         }
-        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { instant in
-            let needsCompletionRefresh = tasks.contains { task in
-                guard let completedAt = task.completedAt else { return false }
-                let ageAtLastRefresh = refreshDate.timeIntervalSince(completedAt)
-                let completedAfterSnapshot = ageAtLastRefresh < 0
-                let visibleAtSnapshot = ageAtLastRefresh >= 0 && ageAtLastRefresh < 3
-                return (completedAfterSnapshot || visibleAtSnapshot) && instant > refreshDate
-            }
-            if needsCompletionRefresh { refreshDate = instant }
-        }
+        // Re-snapshot `refreshDate` only when a just-completed task is due to
+        // leave the quadrants; the id changes whenever that deadline changes.
+        .task(id: completionExpiry) { await refreshWhenCompletionExpires() }
         .onAppear(perform: handlePendingRoute)
         .onChange(of: runtime.pendingRoute) { _, _ in
             handlePendingRoute()
         }
     }
 
-    @ToolbarContentBuilder
-    private var workspaceToolbar: some ToolbarContent {
-        ToolbarItemGroup(placement: .primaryAction) {
-            if (selection ?? .quadrants) == .quadrants {
-                Menu {
-                    Section("新建浮窗") {
-                        MacStickyCreationMenuItems(stickies: stickyCoordinator, showsIcons: true)
-                    }
-
-                    if !stickyCoordinator.configurations.isEmpty {
-                        Section("已保存的便笺") {
-                            ForEach(stickyCoordinator.configurations) { configuration in
-                                Menu {
-                                    Button("打开便笺", systemImage: "arrow.up.forward.square") {
-                                        stickyCoordinator.showWindow(for: configuration.id)
-                                    }
-                                    Button("删除便笺", systemImage: "trash", role: .destructive) {
-                                        stickyCoordinator.removeConfiguration(id: configuration.id)
-                                    }
-                                } label: {
-                                    Label {
-                                        HStack(spacing: 4) {
-                                            MacStickyConfigurationHeading(configuration: configuration)
-                                            Text(configuration.isVisible ? "· 已打开" : "· 已隐藏")
-                                        }
-                                    } icon: {
-                                        Image(systemName: "note.text")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    Label("添加ToDo便笺浮窗", systemImage: "note.text.badge.plus")
-                        .fontWeight(.semibold)
-                }
-                .tint(.accentColor)
-                .controlSize(.large)
-                .help("创建、打开或删除 ToDo 便笺浮窗")
-            }
-
-            Menu {
-                Button("新建任务", systemImage: "plus") { presentNewTask() }
-                Menu("放到桌面") {
-                    ForEach(TaskCategory.allQuadrants, id: \.self) { category in
-                        Button {
-                            stickyCoordinator.createNote(source: .category(category))
-                        } label: {
-                            Label {
-                                MacQuadrantHeading(category: category, font: .body)
-                            } icon: {
-                                Image(systemName: category.icon)
-                            }
-                        }
-                    }
-                }
-            } label: {
-                Label("新建", systemImage: "plus")
-            }
-            .help("新建任务或将象限放到桌面")
-
-            Menu {
-                Button("智能排序") { sortMethod = .intelligence }
-                Button("截止日期") { sortMethod = .byDueDate }
-                Button("创建时间") { sortMethod = .byCreationDate }
-                Button("名称") { sortMethod = .byName }
-            } label: {
-                Label("排序", systemImage: "arrow.up.arrow.down")
-            }
-            .help("更改任务排序方式")
-
-            if (selection ?? .quadrants).supportsInspector {
-                Button {
-                    prefersInspectorPresented.toggle()
-                } label: {
-                    Label("显示检查器", systemImage: "sidebar.right")
-                }
-                .help("显示或隐藏任务检查器")
-            }
-        }
+    private func refreshWhenCompletionExpires() async {
+        guard let expiry = completionExpiry else { return }
+        let delay = expiry.timeIntervalSinceNow
+        if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
+        guard !Task.isCancelled else { return }
+        refreshDate = Date()
     }
 
     private func presentNewTask() {
@@ -249,72 +157,5 @@ struct MacWorkspaceView: View {
 
     private func pinTask(_ task: QuadrantTask) {
         stickyCoordinator.createNote(source: .category(task.category))
-    }
-}
-
-private struct MacWorkspaceSidebar: View {
-    @Binding var selection: MacWorkspaceRoute?
-    let tasks: [QuadrantTask]
-
-    var body: some View {
-        List(selection: $selection) {
-            Section("工作区") {
-                Label("四象限", systemImage: "square.grid.2x2.fill")
-                    .tag(MacWorkspaceRoute.quadrants)
-                Label("日程", systemImage: "calendar")
-                    .tag(MacWorkspaceRoute.daily)
-                Label("全部任务", systemImage: "tray.full")
-                    .badge(tasks.filter { !$0.isCompleted }.count)
-                    .tag(MacWorkspaceRoute.all)
-                Label("已完成", systemImage: "checkmark.circle")
-                    .badge(tasks.filter(\.isCompleted).count)
-                    .tag(MacWorkspaceRoute.completed)
-            }
-
-            Section("象限") {
-                ForEach(TaskCategory.allQuadrants, id: \.self) { category in
-                    Label {
-                        MacQuadrantHeading(category: category, font: .body)
-                    } icon: {
-                        Image(systemName: category.icon)
-                    }
-                        .foregroundStyle(category.themeColor)
-                        .tag(MacWorkspaceRoute.category(category))
-                }
-            }
-        }
-        .listStyle(.sidebar)
-        .navigationTitle("四象限")
-        .frame(minWidth: 190)
-    }
-}
-
-private struct MacWorkspaceContent: View {
-    let selection: MacWorkspaceRoute
-    let tasks: [QuadrantTask]
-    let taskStore: TaskStore
-    let sortMethod: TaskStore.TaskSortMethod
-    let now: Date
-    @Binding var selectedTaskID: UUID?
-    let onEdit: (QuadrantTask) -> Void
-    let onDelete: (QuadrantTask) -> Void
-    let onPin: (QuadrantTask) -> Void
-
-    var body: some View {
-        Group {
-            switch selection {
-            case .quadrants:
-                MacQuadrantBoard(tasks: tasks, taskStore: taskStore, now: now, selectedTaskID: $selectedTaskID, onEdit: onEdit, onDelete: onDelete, onPin: onPin)
-            case .daily:
-                MacDailyView()
-            case .all:
-                MacTaskList(title: "全部任务", tasks: taskStore.filteredTasks(tasks, in: .all, now: now), sortMethod: sortMethod, taskStore: taskStore, selectedTaskID: $selectedTaskID, onEdit: onEdit, onDelete: onDelete, onPin: onPin)
-            case .completed:
-                MacTaskList(title: "已完成", tasks: taskStore.filteredTasks(tasks, in: .completed, now: now), sortMethod: sortMethod, taskStore: taskStore, selectedTaskID: $selectedTaskID, onEdit: onEdit, onDelete: onDelete, onPin: onPin)
-            case let .category(category):
-                MacTaskList(title: category.displayName, category: category, tasks: taskStore.filteredTasks(tasks, in: category, now: now), sortMethod: sortMethod, taskStore: taskStore, selectedTaskID: $selectedTaskID, onEdit: onEdit, onDelete: onDelete, onPin: onPin)
-            }
-        }
-        .navigationTitle(selection.navigationTitle)
     }
 }
