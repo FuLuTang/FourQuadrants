@@ -162,7 +162,7 @@ private struct MacStickyTitleBar: View {
     }
 
     /// 8pt 空心方框，外围 20×16 为点击区域。收起框内多一道横线，与关闭框区分。
-    private func controlBox(label: String, showsShade: Bool = false, action: @escaping () -> Void) -> some View {
+    private func controlBox(label: LocalizedStringKey, showsShade: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Rectangle()
                 .strokeBorder(MacStickyPalette.ink.opacity(0.55), lineWidth: 1)

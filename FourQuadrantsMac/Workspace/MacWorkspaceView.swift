@@ -97,7 +97,7 @@ struct MacWorkspaceView: View {
         .alert("保存失败", isPresented: $isShowingStoreError) {
             Button("好", role: .cancel) { taskStore.dismissLastError() }
         } message: {
-            Text(taskStore.lastErrorMessage ?? "请重试。")
+            if let message = taskStore.lastErrorMessage { Text(verbatim: message) } else { Text("请重试。") }
         }
         .onChange(of: taskStore.lastErrorMessage) { _, value in
             isShowingStoreError = value != nil

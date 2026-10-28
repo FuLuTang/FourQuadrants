@@ -38,7 +38,7 @@ struct MacDailyTaskBlock: View {
         let color = MacDailyPalette.color(hex: task.colorHex)
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .top, spacing: 4) {
-                Text(task.title.isEmpty ? "未命名日程" : task.title)
+                (task.title.isEmpty ? Text("未命名日程") : Text(verbatim: task.title))
                     .font(.system(size: 12, weight: .semibold))
                     .lineLimit(1)
                 Spacer(minLength: 0)

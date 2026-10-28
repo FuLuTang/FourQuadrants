@@ -13,9 +13,9 @@ enum MacStickySource: Codable, Equatable {
 
     var title: String {
         switch self {
-        case .selectedTaskIDs, .smart: "智能排列"
+        case .selectedTaskIDs, .smart: String(localized: "智能排列")
         case .category(let category): category.displayName
-        case .combined: "四合一"
+        case .combined: String(localized: "四合一")
         }
     }
 

@@ -8,9 +8,9 @@ struct MacSyncStateView: View {
             Image(systemName: symbol)
                 .foregroundStyle(tint)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.callout.weight(.medium))
+                title.font(.callout.weight(.medium))
                 if let detail {
-                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                    detail.font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
@@ -18,25 +18,25 @@ struct MacSyncStateView: View {
         .padding(.vertical, 3)
     }
 
-    private var title: String {
+    private var title: Text {
         switch state {
-        case .inactive: "未连接"
-        case .connecting: "正在连接 Microsoft…"
-        case .syncing: "正在同步任务…"
-        case let .connected(_, syncEnabled): syncEnabled ? "同步已就绪" : "账户已连接"
-        case .failed: "同步遇到问题"
+        case .inactive: Text("未连接")
+        case .connecting: Text("正在连接 Microsoft…")
+        case .syncing: Text("正在同步任务…")
+        case let .connected(_, syncEnabled): syncEnabled ? Text("同步已就绪") : Text("账户已连接")
+        case .failed: Text("同步遇到问题")
         }
     }
 
-    private var detail: String? {
+    private var detail: Text? {
         switch state {
-        case .inactive: "连接账户后可在设备间同步任务。"
-        case .connecting: "请在 Microsoft 登录窗口中完成授权。"
-        case .syncing: "本地任务会继续保存在此设备。"
+        case .inactive: Text("连接账户后可在设备间同步任务。")
+        case .connecting: Text("请在 Microsoft 登录窗口中完成授权。")
+        case .syncing: Text("本地任务会继续保存在此设备。")
         case let .connected(lastSync, syncEnabled):
-            if let lastSync { "最近同步：\(lastSync.formatted(date: .abbreviated, time: .shortened))" }
-            else { syncEnabled ? "等待首次同步。" : "自动同步已关闭。" }
-        case let .failed(message): message
+            if let lastSync { Text("最近同步：\(lastSync.formatted(date: .abbreviated, time: .shortened))") }
+            else { syncEnabled ? Text("等待首次同步。") : Text("自动同步已关闭。") }
+        case let .failed(message): Text(verbatim: message)
         }
     }
 

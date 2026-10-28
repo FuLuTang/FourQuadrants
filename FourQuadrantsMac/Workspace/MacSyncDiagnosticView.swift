@@ -16,11 +16,11 @@ struct MacSyncDiagnosticView: View {
     private var copyText: String {
         guard let report else { return "" }
         return [
-            "Mac 本机同步健康检查",
-            "检查时间：\(report.checkedAt.formatted(date: .long, time: .shortened))",
-            "结果：\(report.succeeded ? "成功" : "未确认成功")",
-            "最近成功同步：\(report.lastSuccessfulSync?.formatted(date: .long, time: .shortened) ?? "无")",
-            "错误：\(report.message ?? "无")"
+            String(localized: "Mac 本机同步健康检查"),
+            String(localized: "检查时间：\(report.checkedAt.formatted(date: .long, time: .shortened))"),
+            String(localized: "结果：\(report.succeeded ? String(localized: "成功") : String(localized: "未确认成功"))"),
+            String(localized: "最近成功同步：\(report.lastSuccessfulSync?.formatted(date: .long, time: .shortened) ?? String(localized: "无"))"),
+            String(localized: "错误：\(report.message ?? String(localized: "无"))")
         ].joined(separator: "\n")
     }
 
@@ -45,7 +45,7 @@ struct MacSyncDiagnosticView: View {
             if let report {
                 Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 10) {
                     GridRow { Text("结果").foregroundStyle(.secondary); Text(report.succeeded ? "成功" : "未确认成功") }
-                    GridRow { Text("最近成功同步").foregroundStyle(.secondary); Text(report.lastSuccessfulSync?.formatted(date: .long, time: .shortened) ?? "无") }
+                    GridRow { Text("最近成功同步").foregroundStyle(.secondary); Text(report.lastSuccessfulSync?.formatted(date: .long, time: .shortened) ?? String(localized: "无")) }
                 }
                 if let error = report.message {
                     Text(error).foregroundStyle(.red).textSelection(.enabled)

@@ -40,8 +40,8 @@ enum MacDailyTimeMath {
     static func durationText(minutes: Int) -> String {
         let hours = minutes / 60
         let remaining = minutes % 60
-        if hours == 0 { return "\(remaining) 分钟" }
-        if remaining == 0 { return "\(hours) 小时" }
-        return "\(hours) 小时 \(remaining) 分钟"
+        if hours == 0 { return String(localized: "\(remaining) 分钟") }
+        if remaining == 0 { return String(localized: "\(hours) 小时") }
+        return String(localized: "\(hours) 小时 \(remaining) 分钟")
     }
 }

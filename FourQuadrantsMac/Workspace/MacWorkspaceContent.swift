@@ -19,9 +19,9 @@ struct MacWorkspaceContent: View {
             case .daily:
                 MacDailyView()
             case .all:
-                MacTaskList(title: "全部任务", tasks: taskStore.filteredTasks(tasks, in: .all, now: now), sortMethod: sortMethod, taskStore: taskStore, selectedTaskID: $selectedTaskID, onEdit: onEdit, onDelete: onDelete, onPin: onPin)
+                MacTaskList(title: String(localized: "全部任务"), tasks: taskStore.filteredTasks(tasks, in: .all, now: now), sortMethod: sortMethod, taskStore: taskStore, selectedTaskID: $selectedTaskID, onEdit: onEdit, onDelete: onDelete, onPin: onPin)
             case .completed:
-                MacTaskList(title: "已完成", tasks: taskStore.filteredTasks(tasks, in: .completed, now: now), sortMethod: sortMethod, taskStore: taskStore, selectedTaskID: $selectedTaskID, onEdit: onEdit, onDelete: onDelete, onPin: onPin)
+                MacTaskList(title: String(localized: "已完成"), tasks: taskStore.filteredTasks(tasks, in: .completed, now: now), sortMethod: sortMethod, taskStore: taskStore, selectedTaskID: $selectedTaskID, onEdit: onEdit, onDelete: onDelete, onPin: onPin)
             case let .category(category):
                 MacTaskList(title: category.displayName, category: category, tasks: taskStore.filteredTasks(tasks, in: category, now: now), sortMethod: sortMethod, taskStore: taskStore, selectedTaskID: $selectedTaskID, onEdit: onEdit, onDelete: onDelete, onPin: onPin)
             }

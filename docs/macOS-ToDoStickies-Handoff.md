@@ -1,5 +1,7 @@
 # macOS ToDo便笺与原版 Stickies 窗口还原交接
 
+> **说明：本文档记录的是重构前的状态，已被重构方案取代。** 现状请见 `macOS-Refactor-Plan.md` 与 `FourQuadrantsMac/Stickies/IntegrationContract.md`。以下正文保持原样，仅供历史参考。
+
 交接日期：2026-10-28。工作目录：`/Users/tanghaochen0506/Documents/Xcode/FourQuadrants`。
 
 本文记录进行中的实现、用户已确定的产品要求和后续验收入口。当前窗口还原尚未通过实际截图与鼠标操作验收。2026-10-28 本轮只整理交接并核查源码与 Git 状态，没有重新构建、测试或修改产品代码。

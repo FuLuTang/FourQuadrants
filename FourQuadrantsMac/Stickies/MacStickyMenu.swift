@@ -29,20 +29,20 @@ enum MacStickyMenu {
             .forEach(menu.addItem)
         menu.addItem(.separator())
 
-        let details = ClosureMenuItem(title: "显示任务详情") { [weak coordinator] in
+        let details = ClosureMenuItem(title: String(localized: "显示任务详情")) { [weak coordinator] in
             coordinator?.setShowDetails(!configuration.showDetails, id: id)
         }
         details.state = configuration.showDetails ? .on : .off
         menu.addItem(details)
 
-        let floating = ClosureMenuItem(title: "保持在其他窗口上方") { [weak coordinator] in
+        let floating = ClosureMenuItem(title: String(localized: "保持在其他窗口上方")) { [weak coordinator] in
             coordinator?.setFloating(!configuration.isFloating, id: id)
         }
         floating.state = configuration.isFloating ? .on : .off
         menu.addItem(floating)
 
         menu.addItem(.separator())
-        menu.addItem(ClosureMenuItem(title: "删除此浮窗配置") { [weak coordinator] in
+        menu.addItem(ClosureMenuItem(title: String(localized: "删除此浮窗配置")) { [weak coordinator] in
             coordinator?.removeConfiguration(id: id)
         })
         return menu

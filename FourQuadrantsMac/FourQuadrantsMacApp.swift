@@ -143,7 +143,7 @@ private struct MacSessionContent: View {
                 MacRecoveryView(error: error, retry: runtime.retry, reset: runtime.reset)
             }
         } else {
-            ContentUnavailableView("无法准备演示数据", systemImage: "externaldrive.badge.exclamationmark", description: Text(runtime.initializationError ?? "请重新打开应用。"))
+            ContentUnavailableView("无法准备演示数据", systemImage: "externaldrive.badge.exclamationmark", description: runtime.initializationError.map { Text(verbatim: $0) } ?? Text("请重新打开应用。"))
         }
     }
 }

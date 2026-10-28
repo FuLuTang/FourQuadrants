@@ -132,7 +132,7 @@ struct MacSyncSettingsView: View {
                 checkedAt: Date(),
                 succeeded: succeeded,
                 lastSuccessfulSync: lastSync,
-                message: error ?? (succeeded ? nil : "本次调用未记录新的成功同步时间。")
+                message: error ?? (succeeded ? nil : String(localized: "本次调用未记录新的成功同步时间。"))
             )
             isRunningHealthCheck = false
         }

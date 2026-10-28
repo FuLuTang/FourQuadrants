@@ -5,8 +5,8 @@ enum MacStickyPersistenceError: LocalizedError {
     case invalidStoredValue
     var errorDescription: String? {
         switch self {
-        case .writeVerificationFailed: "系统未能确认便笺配置已写入。"
-        case .invalidStoredValue: "便笺配置的存储格式无法识别。原始数据已保留。"
+        case .writeVerificationFailed: String(localized: "系统未能确认便笺配置已写入。")
+        case .invalidStoredValue: String(localized: "便笺配置的存储格式无法识别。原始数据已保留。")
         }
     }
 }
@@ -46,7 +46,7 @@ final class MacStickyConfigurationStore {
             return try Self.load(from: defaults)
         } catch {
             isReadOnly = true
-            report("无法读取便笺配置：\(error.localizedDescription)")
+            report(String(localized: "无法读取便笺配置：\(error.localizedDescription)"))
             return []
         }
     }
@@ -92,7 +92,7 @@ final class MacStickyConfigurationStore {
             }
             report(nil)
         } catch {
-            report("无法保存便笺配置：\(error.localizedDescription)")
+            report(String(localized: "无法保存便笺配置：\(error.localizedDescription)"))
         }
     }
 
