@@ -4,7 +4,7 @@ import SwiftData
 import WidgetKit
 #endif
 
-private struct WidgetSnapshot: Codable {
+private struct WidgetSnapshotPayload: Codable {
     struct Task: Codable {
         let id: String
         let title: String
@@ -14,6 +14,8 @@ private struct WidgetSnapshot: Codable {
         let isOverdue: Bool
         let hasDueDate: Bool
         let dueDate: Date?
+        let isCompleted: Bool
+        let completedAt: Date?
     }
 
     struct Quadrant: Codable {
@@ -47,33 +49,38 @@ enum WidgetSnapshotService {
         guard let directory = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) else { return }
         let tasks = (try? context.fetch(FetchDescriptor<QuadrantTask>())) ?? []
         let openTasks = tasks.filter { !$0.isCompleted }
-        let sorted = TaskOrdering.recommended(openTasks, limit: 5)
+        let visibleTasks = tasks.filter { task in
+            !task.isCompleted || Date.now.timeIntervalSince(task.completedAt ?? .distantPast) <= TaskStore.completionVisibilityDuration
+        }
+        let sorted = TaskOrdering.recommended(visibleTasks, limit: 5)
         let counts = Dictionary(grouping: openTasks, by: { $0.category }).mapValues(\.count)
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
 
-        func taskSnapshot(_ task: QuadrantTask) -> WidgetSnapshot.Task {
-            WidgetSnapshot.Task(
+        func taskSnapshot(_ task: QuadrantTask) -> WidgetSnapshotPayload.Task {
+            WidgetSnapshotPayload.Task(
                 id: task.id.uuidString,
                 title: task.title,
                 dueLabel: task.displayDueDate.map { formatter.string(from: $0) } ?? String(localized: "widget_no_due_date"),
-                quadrant: task.category.rawValue,
-                colorHex: color(for: task.category),
+                quadrant: quadrant(for: task).rawValue,
+                colorHex: color(for: quadrant(for: task)),
                 isOverdue: task.isOverdue,
                 hasDueDate: task.displayDueDate != nil,
-                dueDate: task.displayDueDate
+                dueDate: task.displayDueDate,
+                isCompleted: task.isCompleted,
+                completedAt: task.completedAt
             )
         }
 
         let quadrants = [
-            makeQuadrant(.importantAndUrgent, title: "category_important_urgent", tasks: openTasks, counts: counts, transform: taskSnapshot),
-            makeQuadrant(.importantButNotUrgent, title: "category_important_not_urgent", tasks: openTasks, counts: counts, transform: taskSnapshot),
-            makeQuadrant(.urgentButNotImportant, title: "category_urgent_not_important", tasks: openTasks, counts: counts, transform: taskSnapshot),
-            makeQuadrant(.notImportantAndNotUrgent, title: "category_not_important_not_urgent", tasks: openTasks, counts: counts, transform: taskSnapshot)
+            makeQuadrant(.importantAndUrgent, title: "category_important_urgent", tasks: visibleTasks, counts: counts, transform: taskSnapshot),
+            makeQuadrant(.importantButNotUrgent, title: "category_important_not_urgent", tasks: visibleTasks, counts: counts, transform: taskSnapshot),
+            makeQuadrant(.urgentButNotImportant, title: "category_urgent_not_important", tasks: visibleTasks, counts: counts, transform: taskSnapshot),
+            makeQuadrant(.notImportantAndNotUrgent, title: "category_not_important_not_urgent", tasks: visibleTasks, counts: counts, transform: taskSnapshot)
         ]
         let recommendedTasks = sorted.map(taskSnapshot)
-        let snapshot = WidgetSnapshot(
+        let snapshot = WidgetSnapshotPayload(
             generatedAt: .now,
             openCount: openTasks.count,
             focusTask: recommendedTasks.first,
@@ -95,10 +102,10 @@ enum WidgetSnapshotService {
         title: String,
         tasks: [QuadrantTask],
         counts: [TaskCategory: Int],
-        transform: (QuadrantTask) -> WidgetSnapshot.Task
-    ) -> WidgetSnapshot.Quadrant {
-        let categoryTasks = TaskOrdering.sorted(tasks.filter { $0.category == category }, by: .intelligence).prefix(5).map(transform)
-        return WidgetSnapshot.Quadrant(
+        transform: (QuadrantTask) -> WidgetSnapshotPayload.Task
+    ) -> WidgetSnapshotPayload.Quadrant {
+        let categoryTasks = TaskOrdering.sorted(tasks.filter { quadrant(for: $0) == category }, by: .intelligence).prefix(5).map(transform)
+        return WidgetSnapshotPayload.Quadrant(
             key: category.rawValue,
             title: String(localized: String.LocalizationValue(title)),
             count: counts[category] ?? 0,
@@ -113,6 +120,15 @@ enum WidgetSnapshotService {
         case .importantButNotUrgent: "#3380FF"
         case .urgentButNotImportant: "#00E680"
         default: "#B3B3CC"
+        }
+    }
+
+    private static func quadrant(for task: QuadrantTask) -> TaskCategory {
+        switch (task.isImportantQuadrant, task.isUrgent) {
+        case (true, true): .importantAndUrgent
+        case (true, false): .importantButNotUrgent
+        case (false, true): .urgentButNotImportant
+        case (false, false): .notImportantAndNotUrgent
         }
     }
 }

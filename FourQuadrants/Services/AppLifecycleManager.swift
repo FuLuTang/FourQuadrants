@@ -1,6 +1,6 @@
 import Foundation
 
-/// 仅记录应用版本。SwiftData Schema 迁移由 `AppMigrationPlan` 管理。
+/// 仅记录应用版本。当前持久化模型是首发 V1 基线。
 final class AppLifecycleManager {
     static let shared = AppLifecycleManager()
 

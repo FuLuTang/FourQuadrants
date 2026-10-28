@@ -68,13 +68,14 @@ private struct MacTaskInspectorEditor: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("任务检查器").font(.headline)
-                    Text(task.category.displayName).font(.caption).foregroundStyle(task.category.themeColor)
+                    MacQuadrantHeading(category: task.category, font: .caption)
+                        .foregroundStyle(task.category.themeColor)
                 }
                 Spacer()
                 Button(action: onPin) {
-                    Label("放到桌面", systemImage: "pin")
+                    Label("添加所属象限ToDo便笺", systemImage: "note.text.badge.plus")
                 }
-                .help("将此任务固定到桌面便笺")
+                .help("创建展示此任务所属象限的ToDo便笺浮窗")
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 11)

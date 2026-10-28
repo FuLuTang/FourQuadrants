@@ -1,5 +1,67 @@
 import SwiftUI
 
+struct MacQuadrantHeading: View {
+    let category: TaskCategory
+    let font: Font
+
+    var body: some View {
+        Self.styledText(category: category, font: font)
+    }
+
+    static func styledText(category: TaskCategory, font: Font) -> Text {
+        var title = AttributedString(category.displayName)
+        title.font = font.weight(.regular)
+
+        switch category {
+        case .importantAndUrgent:
+            let parts = category.displayName.split(separator: "&", maxSplits: 1, omittingEmptySubsequences: false)
+            if parts.count == 2 {
+                setFont(font.weight(.bold), for: String(parts[0]), in: &title)
+                setFont(font.weight(.bold), for: String(parts[1]), in: &title)
+            } else {
+                title.font = font.weight(.bold)
+            }
+        case .importantButNotUrgent, .urgentButNotImportant:
+            title.font = font.weight(.bold)
+        case .notImportantAndNotUrgent:
+            let words = category.displayName.split(separator: "✗", omittingEmptySubsequences: true)
+            for word in words {
+                setStrikethrough(for: String(word), in: &title)
+            }
+        case .all, .completed:
+            break
+        }
+
+        return Text(title)
+    }
+
+    private static func setFont(_ font: Font, for fragment: String, in title: inout AttributedString) {
+        guard let range = title.range(of: fragment.trimmingCharacters(in: .whitespaces)) else { return }
+        title[range].font = font
+    }
+
+    private static func setStrikethrough(for fragment: String, in title: inout AttributedString) {
+        guard let range = title.range(of: fragment.trimmingCharacters(in: .whitespaces)) else { return }
+        title[range].strikethroughStyle = .single
+    }
+}
+
+struct MacStickyConfigurationHeading: View {
+    let configuration: MacStickyConfiguration
+
+    @ViewBuilder
+    var body: some View {
+        if case .category(let category) = configuration.source,
+           category != .all,
+           category != .completed,
+           configuration.title == category.displayName {
+            MacQuadrantHeading(category: category, font: .body)
+        } else {
+            Text(configuration.displayTitle)
+        }
+    }
+}
+
 struct MacQuadrantBoard: View {
     let tasks: [QuadrantTask]
     let taskStore: TaskStore
@@ -59,8 +121,8 @@ private struct MacQuadrantCard: View {
             HStack(spacing: 8) {
                 Image(systemName: category.icon)
                     .foregroundStyle(category.themeColor)
-                Text(category.displayName)
-                    .font(.headline)
+                MacQuadrantHeading(category: category, font: .headline)
+                    .lineLimit(1)
                 Spacer()
                 Text(tasks.count, format: .number)
                     .font(.caption.weight(.medium))
@@ -107,6 +169,7 @@ private struct MacQuadrantCard: View {
 
 struct MacTaskList: View {
     let title: String
+    var category: TaskCategory? = nil
     let tasks: [QuadrantTask]
     let sortMethod: TaskStore.TaskSortMethod
     let taskStore: TaskStore
@@ -134,7 +197,19 @@ struct MacTaskList: View {
     var body: some View {
         Group {
             if orderedTasks.isEmpty {
-                ContentUnavailableView(title, systemImage: "tray", description: Text("这里还没有任务。可以新建任务，或从其他象限切换查看。"))
+                ContentUnavailableView {
+                    Label {
+                        if let category {
+                            MacQuadrantHeading(category: category, font: .title2)
+                        } else {
+                            Text(title)
+                        }
+                    } icon: {
+                        Image(systemName: "tray")
+                    }
+                } description: {
+                    Text("这里还没有任务。可以新建任务，或从其他象限切换查看。")
+                }
             } else {
                 List(selection: $selectedTaskID) {
                     ForEach(orderedTasks) { task in
@@ -146,7 +221,7 @@ struct MacTaskList: View {
                 .listStyle(.inset)
             }
         }
-        .navigationTitle(title)
+        .navigationTitle(category.map { MacQuadrantHeading.styledText(category: $0, font: .headline) } ?? Text(title))
         .onAppear(perform: updateOrder)
         .onChange(of: orderSignature) { _, _ in updateOrder() }
         .onChange(of: sortMethod) { _, _ in updateOrder() }
@@ -221,11 +296,17 @@ private struct MacTaskRow: View {
             Menu {
                 Button("编辑任务", systemImage: "pencil", action: onEdit)
                 Button(task.isCompleted ? "标记为未完成" : "标记为已完成", systemImage: "checkmark", action: onToggle)
-                Button("放到桌面", systemImage: "pin", action: onPin)
+                Button("添加所属象限ToDo便笺", systemImage: "note.text.badge.plus", action: onPin)
                 Divider()
                 Menu("移动到象限") {
                     ForEach([TaskCategory.importantAndUrgent, .urgentButNotImportant, .importantButNotUrgent, .notImportantAndNotUrgent], id: \.self) { category in
-                        Button(category.displayName, systemImage: category.icon) { onMove(category) }
+                        Button { onMove(category) } label: {
+                            Label {
+                                MacQuadrantHeading(category: category, font: .body)
+                            } icon: {
+                                Image(systemName: category.icon)
+                            }
+                        }
                     }
                 }
                 Divider()
@@ -245,10 +326,16 @@ private struct MacTaskRow: View {
         .contextMenu {
             Button("编辑任务", systemImage: "pencil", action: onEdit)
             Button(task.isCompleted ? "标记为未完成" : "标记为已完成", systemImage: "checkmark", action: onToggle)
-            Button("放到桌面", systemImage: "pin", action: onPin)
+            Button("添加所属象限ToDo便笺", systemImage: "note.text.badge.plus", action: onPin)
             Menu("移动到象限") {
                 ForEach([TaskCategory.importantAndUrgent, .urgentButNotImportant, .importantButNotUrgent, .notImportantAndNotUrgent], id: \.self) { category in
-                    Button(category.displayName, systemImage: category.icon) { onMove(category) }
+                    Button { onMove(category) } label: {
+                        Label {
+                            MacQuadrantHeading(category: category, font: .body)
+                        } icon: {
+                            Image(systemName: category.icon)
+                        }
+                    }
                 }
             }
             Divider()

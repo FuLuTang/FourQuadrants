@@ -104,4 +104,38 @@ struct DailyTaskLayoutTests {
             #expect(abs(l.frame.width - (1.0/3.0)) < 0.01, "Width should be approx 0.33")
         }
     }
+
+    @Test func testCrossMidnightTaskIsClippedToVisibleDay() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let start = calendar.date(from: DateComponents(year: 2024, month: 1, day: 1, hour: 23))!
+        let nextDay = calendar.startOfDay(for: calendar.date(byAdding: .day, value: 1, to: start)!)
+        let endOfNextDay = calendar.date(byAdding: .day, value: 1, to: nextDay)!
+        let task = DailyTask(title: "Overnight", startAt: start, duration: 2 * 3600)
+
+        let layout = DailyTaskLayout.calculateLayout(
+            for: [task],
+            hourHeight: 60,
+            visibleStart: nextDay,
+            visibleEnd: endOfNextDay
+        )
+
+        #expect(layout[task.id]?.startAt == nextDay)
+        #expect(layout[task.id]?.duration == 3600)
+        #expect(layout[task.id]?.frame.origin.y == 10)
+        #expect(layout[task.id]?.frame.height == 60)
+    }
+
+    @Test func testNewDailyTaskUsesSelectedCivilDate() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let selectedDate = calendar.date(from: DateComponents(year: 2024, month: 2, day: 15, hour: 12))!
+        let now = calendar.date(from: DateComponents(year: 2024, month: 2, day: 10, hour: 18, minute: 30))!
+
+        let start = DailyTaskDateHelper.defaultStartTime(for: selectedDate, now: now, calendar: calendar)
+
+        #expect(calendar.isDate(start, inSameDayAs: selectedDate))
+        #expect(calendar.component(.hour, from: start) == 19)
+        #expect(calendar.component(.minute, from: start) == 0)
+    }
 }

@@ -58,7 +58,7 @@ struct QuadrantViewContainer: View {
                     onCreate: { requestTaskEditor(.create) },
                     onEdit: { requestTaskEditor(.edit($0)) }
                 )
-                    .navigationTitle(category.displayName)
+                    .navigationTitle(category.styledDisplayName)
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
@@ -119,6 +119,8 @@ struct QuadrantViewContainer: View {
                 .padding(.leading, 8)
             
             Spacer()
+
+            SyncStatusControl()
             
             Button {
                 showingTaskFormView = true

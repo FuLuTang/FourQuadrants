@@ -143,6 +143,23 @@ final class MicrosoftTodoTaskLink {
     var remoteETag: String?
     var remoteLastModifiedAt: Date?
     var lastSyncedLocalUpdatedAt: Date?
+    /// Microsoft-owned shadow data. It intentionally stays out of QuadrantTask.
+    /// `unobserved` means a delta response omitted recurrence; `null` is an explicit
+    /// non-repeating remote task; `value` has its opaque Graph JSON in recurrenceJSON.
+    var recurrenceObservationRaw: String = "unobserved"
+    var recurrenceJSON: Data?
+    var remoteDueDateTimeJSON: Data?
+    var remoteStatusRaw: String?
+    var shadowTitle: String?
+    var shadowTitleObserved: Bool = false
+    var shadowNotes: String?
+    var shadowNotesObserved: Bool = false
+    var shadowImportanceRaw: String?
+    var shadowImportanceObserved: Bool = false
+    var shadowCompleted: Bool?
+    var shadowCompletedObserved: Bool = false
+    var shadowDueDateKey: String?
+    var shadowDueDateObserved: Bool = false
     var stateRawValue: String = MicrosoftTodoLinkState.pendingUpload.rawValue
     var createdAt: Date = Date()
     var updatedAt: Date = Date()

@@ -11,6 +11,8 @@ struct WidgetSnapshot: Codable {
         let isOverdue: Bool
         var hasDueDate: Bool? = nil
         var dueDate: Date? = nil
+        var isCompleted: Bool? = nil
+        var completedAt: Date? = nil
     }
 
     struct Quadrant: Codable, Identifiable {
@@ -62,6 +64,14 @@ struct WidgetSnapshot: Codable {
         quadrants.flatMap(\.tasks).first { $0.id == id }
     }
 
+    func visibleTasks(_ tasks: [Task], at date: Date) -> [Task] {
+        tasks.filter { task in
+            guard task.isCompleted == true else { return true }
+            guard let completedAt = task.completedAt else { return true }
+            return date.timeIntervalSince(completedAt) < TaskStore.completionVisibilityDuration
+        }
+    }
+
     static let sample = WidgetSnapshot(
         generatedAt: .now,
         openCount: 5,
@@ -106,14 +116,5 @@ enum WidgetSnapshotStore {
               let data = try? Data(contentsOf: directory.appendingPathComponent(filename)),
               let snapshot = try? JSONDecoder().decode(WidgetSnapshot.self, from: data) else { return .sample }
         return snapshot
-    }
-}
-
-extension Color {
-    init(hex: String) {
-        let normalized = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-        let value = UInt64(normalized, radix: 16) ?? 0x8E8E93
-        self.init(.sRGB, red: Double((value >> 16) & 0xff) / 255,
-                  green: Double((value >> 8) & 0xff) / 255, blue: Double(value & 0xff) / 255)
     }
 }

@@ -20,7 +20,7 @@ struct ListView: View {
                 Section(header: Text("category_quadrants_section")) {
                     ForEach([TaskCategory.importantAndUrgent, TaskCategory.urgentButNotImportant, TaskCategory.importantButNotUrgent, TaskCategory.notImportantAndNotUrgent], id: \.self) { category in
                         NavigationLink(value: category) {
-                            Text(category.displayName)
+                            category.styledDisplayName
                         }
                         .listRowBackground(Color(.secondarySystemBackground))
                     }
@@ -112,7 +112,7 @@ struct TaskListView: View {
             }
         }
         .listStyle(.plain) // 使用 plain 样式，去掉 insetGrouped 的额外间距
-        .navigationTitle(category.displayName)
+        .navigationTitle(category.styledDisplayName)
         .scrollContentBackground(.hidden)
         .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
         .toolbar {

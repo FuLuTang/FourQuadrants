@@ -10,6 +10,7 @@ final class MacApplicationRuntime {
     private(set) var data: AppDataController?
     private(set) var stickies: MacStickyCoordinator?
     private(set) var initializationError: String?
+    private(set) var createTaskRequestID: UUID?
     let isPreview: Bool
     private var didRestoreWindows = false
 
@@ -49,6 +50,14 @@ final class MacApplicationRuntime {
         didRestoreWindows = true
         stickies?.restoreWindows()
         if !isPreview { _ = AppLifecycleManager.shared.performUpdateIfNeeded() }
+    }
+
+    func requestNewTask() {
+        createTaskRequestID = UUID()
+    }
+
+    func consumeNewTaskRequest() {
+        createTaskRequestID = nil
     }
 
     private func connectWindows() {

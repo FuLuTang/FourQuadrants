@@ -583,7 +583,8 @@ private struct DailyTimeGrid: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(startHour..<endHour, id: \.self) { hour in
-                HStack(spacing: 0) {
+                // The tick line shares the row's top-edge time coordinate with tasks and the current-time line.
+                HStack(alignment: .top, spacing: 0) {
                     Text(String(format: "%02d:00", hour))
                         .font(.caption)
                         .foregroundColor(.secondary)

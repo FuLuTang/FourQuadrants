@@ -20,7 +20,7 @@ struct TaskPreviewView: View {
                         .lineLimit(3)
                     
                     // 象限分类标签
-                    Text(task.category.displayName)
+                    task.category.styledDisplayName
                         .font(.caption)
                         .fontWeight(.medium)
                         .padding(.horizontal, 8)
@@ -182,8 +182,8 @@ struct QuadrantPreviewView: View {
                     .fill(category.themeColor)
                     .frame(width: 12, height: 12)
                 
-                Text(category.displayName)
-                    .font(.headline.bold())
+                category.styledDisplayName
+                    .font(.headline)
                 
                 Spacer()
                 

@@ -4,186 +4,107 @@ import SwiftUI
 
 private enum MacStickyPalette {
     static let ink = Color(red: 0.16, green: 0.15, blue: 0.13)
+
+    static func background(for category: TaskCategory) -> Color {
+        switch category {
+        case .importantAndUrgent: Color(red: 1.00, green: 0.84, blue: 0.86)
+        case .importantButNotUrgent: Color(red: 0.82, green: 0.89, blue: 1.00)
+        case .urgentButNotImportant: Color(red: 0.78, green: 0.97, blue: 0.88)
+        case .notImportantAndNotUrgent, .all, .completed: Color(red: 0.90, green: 0.90, blue: 0.94)
+        }
+    }
 }
 
-private extension MacStickyPaper {
-    var color: Color {
+private enum MacStickyMode: CaseIterable, Identifiable {
+    case importantAndUrgent
+    case importantButNotUrgent
+    case urgentButNotImportant
+    case notImportantAndNotUrgent
+    case combined
+    case smart
+
+    var id: Self { self }
+
+    var title: String {
         switch self {
-        case .yellow: Color(red: 1.00, green: 0.94, blue: 0.63)
-        case .blue: Color(red: 0.73, green: 0.86, blue: 0.98)
-        case .green: Color(red: 0.76, green: 0.91, blue: 0.73)
-        case .pink: Color(red: 0.98, green: 0.78, blue: 0.84)
+        case .importantAndUrgent: TaskCategory.importantAndUrgent.displayName
+        case .importantButNotUrgent: TaskCategory.importantButNotUrgent.displayName
+        case .urgentButNotImportant: TaskCategory.urgentButNotImportant.displayName
+        case .notImportantAndNotUrgent: TaskCategory.notImportantAndNotUrgent.displayName
+        case .combined: "四合一"
+        case .smart: "智能排列"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .importantAndUrgent: "exclamationmark.triangle.fill"
+        case .importantButNotUrgent: "clock.fill"
+        case .urgentButNotImportant: "bolt.fill"
+        case .notImportantAndNotUrgent: "leaf.fill"
+        case .combined: "square.grid.2x2.fill"
+        case .smart: "sparkles"
+        }
+    }
+
+    var source: MacStickySource {
+        switch self {
+        case .importantAndUrgent: .category(.importantAndUrgent)
+        case .importantButNotUrgent: .category(.importantButNotUrgent)
+        case .urgentButNotImportant: .category(.urgentButNotImportant)
+        case .notImportantAndNotUrgent: .category(.notImportantAndNotUrgent)
+        case .combined: .combined
+        case .smart: .smart
+        }
+    }
+
+    var background: Color {
+        switch self {
+        case .importantAndUrgent: MacStickyPalette.background(for: .importantAndUrgent)
+        case .importantButNotUrgent: MacStickyPalette.background(for: .importantButNotUrgent)
+        case .urgentButNotImportant: MacStickyPalette.background(for: .urgentButNotImportant)
+        case .notImportantAndNotUrgent: MacStickyPalette.background(for: .notImportantAndNotUrgent)
+        case .combined, .smart: Color(red: 0.96, green: 0.94, blue: 0.87)
+        }
+    }
+
+    var foreground: Color {
+        switch self {
+        case .importantAndUrgent, .importantButNotUrgent, .urgentButNotImportant, .notImportantAndNotUrgent:
+            MacStickyPalette.ink
+        case .combined, .smart:
+            MacStickyPalette.ink.opacity(0.82)
+        }
+    }
+
+    init(source: MacStickySource) {
+        switch source {
+        case .category(.importantAndUrgent): self = .importantAndUrgent
+        case .category(.importantButNotUrgent): self = .importantButNotUrgent
+        case .category(.urgentButNotImportant): self = .urgentButNotImportant
+        case .category(.notImportantAndNotUrgent): self = .notImportantAndNotUrgent
+        case .combined: self = .combined
+        case .smart: self = .smart
+        case .category(.all), .category(.completed), .selectedTaskIDs: self = .smart
         }
     }
 }
 
+/// Compatibility surface for callers that still route to the former library screen.
 struct MacStickiesLibraryView: View {
-    @Environment(MacStickyCoordinator.self) private var coordinator
-    @State private var editingConfiguration: MacStickyConfiguration?
-    @State private var showingCategoryPicker = false
-
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Label("桌面便笺", systemImage: "note.text")
-                    .font(.title2.weight(.semibold))
-                Spacer()
-                Button { coordinator.createEmptyNote() } label: {
-                    Label("新建手选便笺", systemImage: "plus")
-                }
-                Button { showingCategoryPicker = true } label: {
-                    Label("新建象限便笺", systemImage: "square.grid.2x2")
-                }
-            }
-            .padding()
-
-            if let error = coordinator.persistenceError {
-                Label(error, systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.bottom, 8)
-            }
-
-            if coordinator.configurations.isEmpty {
-                ContentUnavailableView("还没有便笺", systemImage: "note.text", description: Text("新建一张空白手选便笺，或按象限动态展示任务。"))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                List(coordinator.configurations) { configuration in
-                    MacStickyConfigurationRow(
-                        configuration: configuration,
-                        onShowHide: {
-                            configuration.isVisible
-                                ? coordinator.hideWindow(id: configuration.id)
-                                : coordinator.showWindow(for: configuration.id)
-                        },
-                        onCollapse: { coordinator.setCollapsed(!configuration.isCollapsed, id: configuration.id) },
-                        onEdit: { editingConfiguration = configuration },
-                        onDelete: { coordinator.removeConfiguration(id: configuration.id) }
-                    )
-                }
-                .listStyle(.inset)
-            }
-        }
-        .sheet(item: $editingConfiguration) { configuration in
-            MacStickyConfigurationEditor(configuration: configuration) { title, paper, floating, opacity in
-                coordinator.updateConfiguration(configuration.id, title: title, paper: paper, isFloating: floating, opacity: opacity)
-            }
-        }
-        .confirmationDialog("新建象限便笺", isPresented: $showingCategoryPicker, titleVisibility: .visible) {
-            ForEach(TaskCategory.allCases.filter { $0 != .all && $0 != .completed }) { category in
-                Button(category.displayName) { coordinator.pinCategory(category) }
-            }
-            Button("全部未完成任务") { coordinator.pinCategory(.all) }
-            Button("取消", role: .cancel) { }
-        }
-    }
-}
-
-private struct MacStickyConfigurationRow: View {
-    let configuration: MacStickyConfiguration
-    let onShowHide: () -> Void
-    let onCollapse: () -> Void
-    let onEdit: () -> Void
-    let onDelete: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 4)
-                .fill(configuration.paper.color)
-                .frame(width: 20, height: 20)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(configuration.title).fontWeight(.medium)
-                Text(sourceDescription)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button(action: onShowHide) {
-                Label(configuration.isVisible ? "隐藏" : "展示", systemImage: configuration.isVisible ? "eye.slash" : "eye")
-            }
-            Button(action: onCollapse) {
-                Label(configuration.isCollapsed ? "展开" : "收起", systemImage: configuration.isCollapsed ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-            }
-            Button("编辑", systemImage: "slider.horizontal.3", action: onEdit)
-            Button(role: .destructive, action: onDelete) { Image(systemName: "trash") }
-                .help("删除便笺配置")
-        }
-        .padding(.vertical, 4)
-    }
-
-    private var sourceDescription: String {
-        switch configuration.source {
-        case .selectedTaskIDs(let ids): "手选任务 · \(ids.count) 项"
-        case .category(let category): "动态象限 · \(category.displayName)"
-        }
-    }
-}
-
-private struct MacStickyConfigurationEditor: View {
-    @Environment(\.dismiss) private var dismiss
-    let configuration: MacStickyConfiguration
-    let onSave: (String, MacStickyPaper, Bool, Double) -> Void
-    @State private var title: String
-    @State private var paper: MacStickyPaper
-    @State private var isFloating: Bool
-    @State private var opacity: Double
-
-    init(configuration: MacStickyConfiguration, onSave: @escaping (String, MacStickyPaper, Bool, Double) -> Void) {
-        self.configuration = configuration
-        self.onSave = onSave
-        _title = State(initialValue: configuration.title)
-        _paper = State(initialValue: configuration.paper)
-        _isFloating = State(initialValue: configuration.isFloating)
-        _opacity = State(initialValue: configuration.opacity)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("编辑便笺").font(.title2.weight(.semibold))
-            TextField("名称", text: $title)
-                .textFieldStyle(.roundedBorder)
-            HStack(spacing: 12) {
-                ForEach(MacStickyPaper.allCases) { choice in
-                    Button { paper = choice } label: {
-                        RoundedRectangle(cornerRadius: 7)
-                            .fill(choice.color)
-                            .frame(width: 36, height: 28)
-                            .overlay {
-                                if paper == choice { Image(systemName: "checkmark").foregroundStyle(.primary) }
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(choice.title)
-                }
-            }
-            Toggle("保持在其他窗口上方", isOn: $isFloating)
-            VStack(alignment: .leading) {
-                Text("纸张透明度 \(Int(opacity * 100))%")
-                Slider(value: $opacity, in: 0.65...1)
-            }
-            HStack {
-                Spacer()
-                Button("取消") { dismiss() }
-                Button("保存") {
-                    onSave(title, paper, isFloating, opacity)
-                    dismiss()
-                }
-                .keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(22)
-        .frame(width: 360)
+        ContentUnavailableView(
+            "桌面任务浮窗",
+            systemImage: "list.bullet.rectangle",
+            description: Text("请从主页入口创建和管理任务浮窗。")
+        )
     }
 }
 
 struct MacStickyNoteView: View {
     let configurationID: UUID
     @Environment(MacStickyCoordinator.self) private var coordinator
-    @Environment(\.modelContext) private var modelContext
     @Query(sort: \QuadrantTask.updatedAt, order: .reverse) private var allTasks: [QuadrantTask]
-    @State private var showingTaskPicker = false
-    @State private var newTaskTitle = ""
 
     init(configurationID: UUID) {
         self.configurationID = configurationID
@@ -191,75 +112,255 @@ struct MacStickyNoteView: View {
 
     var body: some View {
         if let configuration = coordinator.configurations.first(where: { $0.id == configurationID }) {
+            let mode = MacStickyMode(source: configuration.source)
             VStack(spacing: 0) {
-                MacStickyTitleBar(configuration: configuration, onClose: { coordinator.hideWindow(id: configurationID) })
+                MacStickyTitleBar(configuration: configuration, mode: mode)
                 if !configuration.isCollapsed {
-                    switch configuration.source {
-                    case .selectedTaskIDs:
-                        taskList(configuration, now: .now)
-                    case .category:
-                        TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                            taskList(configuration, now: timeline.date)
+                    TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                        let tasks = coordinator.visibleTasks(from: configuration.source, in: allTasks, now: timeline.date)
+                        if mode == .combined {
+                            MacStickyCombinedGrid(
+                                tasks: tasks.filter { !$0.isCompleted },
+                                showDetails: configuration.showDetails,
+                                error: coordinator.persistenceError ?? coordinator.taskStore.lastErrorMessage,
+                                onToggle: { task in _ = coordinator.taskStore.toggleTask(task) },
+                                onOpen: { task in coordinator.openTaskInMainApp(task.id) }
+                            )
+                        } else {
+                            MacStickyTaskList(
+                                tasks: tasks,
+                                showDetails: configuration.showDetails,
+                                error: coordinator.persistenceError ?? coordinator.taskStore.lastErrorMessage,
+                                onToggle: { task in _ = coordinator.taskStore.toggleTask(task) },
+                                onOpen: { task in coordinator.openTaskInMainApp(task.id) }
+                            )
                         }
                     }
                 }
             }
             .foregroundStyle(MacStickyPalette.ink)
-            .background(configuration.paper.color.opacity(configuration.opacity))
-            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 7).stroke(.black.opacity(0.12), lineWidth: 0.8))
-            .shadow(color: .black.opacity(0.13), radius: 8, x: 0, y: 3)
+            .background(mode.background.opacity(0.96))
+            .clipShape(RoundedRectangle(cornerRadius: configuration.isCollapsed ? 15 : 9, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: configuration.isCollapsed ? 15 : 9).stroke(.black.opacity(0.14), lineWidth: 0.8))
+            .shadow(color: .black.opacity(0.16), radius: 8, x: 0, y: 3)
             .padding(1)
-            .sheet(isPresented: $showingTaskPicker) {
-                MacStickyTaskPickerView(excludedIDs: referencedIDs(configuration)) { task in
-                    coordinator.addTaskReference(task.id, to: configurationID)
-                }
-            }
         } else {
             EmptyView()
         }
     }
+}
+
+private struct MacStickyTitleBar: View {
+    let configuration: MacStickyConfiguration
+    let mode: MacStickyMode
+    @Environment(MacStickyCoordinator.self) private var coordinator
 
     @ViewBuilder
-    private func taskList(_ configuration: MacStickyConfiguration, now: Date) -> some View {
-        let tasks = coordinator.visibleTasks(from: configuration.source, in: allTasks, now: now)
+    private var modeHeading: some View {
+        switch mode.source {
+        case .category(let category) where category != .all && category != .completed:
+            MacQuadrantHeading(category: category, font: .system(size: 11, weight: .semibold))
+        default:
+            Text(mode.title)
+                .font(.system(size: 11, weight: .semibold))
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Button {
+                coordinator.hideWindow(id: configuration.id)
+            } label: {
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .fill(Color(red: 0.89, green: 0.31, blue: 0.28))
+                    .frame(width: 11, height: 11)
+                    .overlay {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 6, weight: .black))
+                            .foregroundStyle(.white.opacity(0.92))
+                    }
+                    .frame(width: 22, height: 22)
+            }
+            .buttonStyle(.plain)
+            .help("隐藏浮窗")
+            .accessibilityLabel("隐藏浮窗")
+
+            Menu {
+                Section("ToDo便笺分类") {
+                    ForEach(MacStickyMode.allCases) { choice in
+                        Button {
+                            coordinator.updateSource(id: configuration.id, source: choice.source)
+                        } label: {
+                            if choice == mode {
+                                Label(choice.title, systemImage: "checkmark")
+                            } else {
+                                Label(choice.title, systemImage: choice.icon)
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: mode.icon)
+                        .foregroundStyle(mode.foreground)
+                    modeHeading
+                        .lineLimit(1)
+                    Image(systemName: "chevron.right.2")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.secondary)
+                }
+                .font(.system(size: 11, weight: .semibold))
+                .frame(minHeight: 25)
+            }
+            .menuStyle(.borderlessButton)
+            .help("选择 ToDo便笺分类")
+            .accessibilityLabel(mode.title)
+            .accessibilityHint("选择要显示的 ToDo便笺分类")
+
+            MacStickyWindowDragHandle {
+                coordinator.setCollapsed(!configuration.isCollapsed, id: configuration.id)
+            }
+                .frame(minWidth: 22, maxWidth: .infinity, minHeight: 25)
+                .overlay {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.secondary.opacity(0.7))
+                        .allowsHitTesting(false)
+                }
+                .help("拖动以移动浮窗")
+                .accessibilityLabel("拖动以移动浮窗")
+
+            MacStickySettingsMenu(configuration: configuration, mode: mode)
+        }
+        .padding(.horizontal, 6)
+        .frame(height: 29)
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.97, green: 0.95, blue: 0.88), mode.background.opacity(0.84)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .overlay(alignment: .bottom) { Rectangle().fill(.black.opacity(0.1)).frame(height: 0.5) }
+    }
+}
+
+private struct MacStickyWindowDragHandle: NSViewRepresentable {
+    let onDoubleClick: () -> Void
+
+    func makeNSView(context: Context) -> MacStickyWindowDragView {
+        let view = MacStickyWindowDragView(onDoubleClick: onDoubleClick)
+        view.setAccessibilityRole(.button)
+        view.setAccessibilityLabel("拖动以移动浮窗")
+        return view
+    }
+
+    func updateNSView(_ nsView: MacStickyWindowDragView, context: Context) {
+        nsView.onDoubleClick = onDoubleClick
+    }
+}
+
+private final class MacStickyWindowDragView: NSView {
+    var onDoubleClick: () -> Void
+
+    init(onDoubleClick: @escaping () -> Void) {
+        self.onDoubleClick = onDoubleClick
+        super.init(frame: .zero)
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    override var acceptsFirstResponder: Bool { false }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 {
+            onDoubleClick()
+            return
+        }
+        window?.performDrag(with: event)
+    }
+}
+
+private struct MacStickySettingsMenu: View {
+    let configuration: MacStickyConfiguration
+    let mode: MacStickyMode
+    @Environment(MacStickyCoordinator.self) private var coordinator
+
+    var body: some View {
+        Menu {
+            Section("显示模式") {
+                ForEach(MacStickyMode.allCases) { choice in
+                    Button {
+                        coordinator.updateSource(id: configuration.id, source: choice.source)
+                    } label: {
+                        if choice == mode {
+                            Label(choice.title, systemImage: "checkmark")
+                        } else {
+                            Label(choice.title, systemImage: choice.icon)
+                        }
+                    }
+                }
+            }
+
+            Divider()
+            Toggle("显示任务详情", isOn: Binding(
+                get: { configuration.showDetails },
+                set: { coordinator.updatePreferences(id: configuration.id, isFloating: configuration.isFloating, showDetails: $0) }
+            ))
+            Toggle("保持在其他窗口上方", isOn: Binding(
+                get: { configuration.isFloating },
+                set: { coordinator.updatePreferences(id: configuration.id, isFloating: $0, showDetails: configuration.showDetails) }
+            ))
+            Button {
+                coordinator.setCollapsed(!configuration.isCollapsed, id: configuration.id)
+            } label: {
+                Label(configuration.isCollapsed ? "展开任务列表" : "收起为窄条", systemImage: "arrow.up.left.and.arrow.down.right")
+            }
+
+            Divider()
+            Button("删除此浮窗配置", systemImage: "trash", role: .destructive) {
+                coordinator.removeConfiguration(id: configuration.id)
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 13, weight: .medium))
+                .frame(width: 20, height: 22)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .help("浮窗设置")
+        .accessibilityLabel("浮窗设置")
+    }
+}
+
+private struct MacStickyTaskList: View {
+    let tasks: [QuadrantTask]
+    let showDetails: Bool
+    let error: String?
+    let onToggle: (QuadrantTask) -> Void
+    let onOpen: (QuadrantTask) -> Void
+
+    var body: some View {
         VStack(spacing: 0) {
             if tasks.isEmpty {
-                Text("没有显示的任务")
-                    .font(.callout)
-                    .foregroundStyle(MacStickyPalette.ink)
+                ContentUnavailableView("没有符合条件的任务", systemImage: "checklist")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    LazyVStack(spacing: 3) {
                         ForEach(tasks, id: \.id) { task in
-                            MacStickyTaskRow(task: task,
-                                onToggle: { _ = coordinator.taskStore.toggleTask(task) },
-                                onRemove: { coordinator.removeTaskReference(task.id, from: configurationID) },
-                                onOpen: { coordinator.openTaskInMainApp(task.id) })
+                            MacStickyTaskRow(task: task, showDetails: showDetails, onToggle: { onToggle(task) }, onOpen: { onOpen(task) })
                         }
                     }
-                    .padding(.horizontal, 8)
+                    .padding(7)
                 }
             }
-            if case .selectedTaskIDs = configuration.source {
-                HStack(spacing: 6) {
-                    TextField("新任务…", text: $newTaskTitle)
-                        .textFieldStyle(.plain)
-                        .foregroundStyle(MacStickyPalette.ink)
-                        .onSubmit(createTask)
-                    Button(action: createTask) { Image(systemName: "plus.circle.fill") }
-                        .buttonStyle(.plain)
-                        .disabled(newTaskTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button { showingTaskPicker = true } label: { Image(systemName: "list.bullet") }
-                        .buttonStyle(.plain)
-                        .help("添加现有任务")
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(.black.opacity(0.045))
-            }
-            if let error = coordinator.persistenceError ?? coordinator.taskStore.lastErrorMessage {
+
+            if let error {
                 Text(error)
                     .font(.caption2)
                     .foregroundStyle(.red)
@@ -269,117 +370,167 @@ struct MacStickyNoteView: View {
             }
         }
     }
+}
 
-    private func referencedIDs(_ configuration: MacStickyConfiguration) -> Set<UUID> {
-        guard case .selectedTaskIDs(let ids) = configuration.source else { return [] }
-        return Set(ids)
+private struct MacStickyCombinedGrid: View {
+    let tasks: [QuadrantTask]
+    let showDetails: Bool
+    let error: String?
+    let onToggle: (QuadrantTask) -> Void
+    let onOpen: (QuadrantTask) -> Void
+
+    var body: some View {
+        VStack(spacing: 1) {
+            HStack(spacing: 1) {
+                quadrant(.importantAndUrgent)
+                quadrant(.importantButNotUrgent)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            HStack(spacing: 1) {
+                quadrant(.urgentButNotImportant)
+                quadrant(.notImportantAndNotUrgent)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if let error {
+                Text(error)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(.regularMaterial)
+            }
+        }
+        .padding(1)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func createTask() {
-        guard coordinator.createTask(title: newTaskTitle, for: configurationID) else { return }
-        newTaskTitle = ""
+    private func quadrant(_ category: TaskCategory) -> some View {
+        MacStickyQuadrantPanel(
+            category: category,
+            tasks: tasks.filter { $0.category == category },
+            showDetails: showDetails,
+            onToggle: onToggle,
+            onOpen: onOpen
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
-private struct MacStickyTitleBar: View {
-    let configuration: MacStickyConfiguration
-    let onClose: () -> Void
-    @Environment(MacStickyCoordinator.self) private var coordinator
+private struct MacStickyQuadrantPanel: View {
+    let category: TaskCategory
+    let tasks: [QuadrantTask]
+    let showDetails: Bool
+    let onToggle: (QuadrantTask) -> Void
+    let onOpen: (QuadrantTask) -> Void
 
     var body: some View {
-        HStack(spacing: 9) {
-            Button(action: onClose) {
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(Color(red: 0.82, green: 0.31, blue: 0.27))
-                    .frame(width: 11, height: 11)
-                    .overlay(RoundedRectangle(cornerRadius: 3).stroke(.black.opacity(0.13), lineWidth: 0.6))
+        VStack(spacing: 0) {
+            HStack(spacing: 4) {
+                Image(systemName: category.icon)
+                    .foregroundStyle(category.themeColor)
+                MacQuadrantHeading(category: category, font: .system(size: 10))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                Text("\(tasks.count)")
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
-            .help("隐藏便笺")
-            .accessibilityLabel("隐藏便笺")
-            Spacer(minLength: 0)
-            Color.clear.frame(width: 11, height: 11)
+            .padding(.horizontal, 7)
+            .frame(height: 23)
+            .background(MacStickyPalette.background(for: category))
+
+            Rectangle()
+                .fill(category.themeColor.opacity(0.32))
+                .frame(height: 1)
+
+            ScrollView {
+                if tasks.isEmpty {
+                    Text("暂无待办")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.top, 12)
+                } else {
+                    LazyVStack(spacing: 3) {
+                        ForEach(tasks, id: \.id) { task in
+                            MacStickyTaskRow(
+                                task: task,
+                                showDetails: showDetails,
+                                onToggle: { onToggle(task) },
+                                onOpen: { onOpen(task) }
+                            )
+                        }
+                    }
+                    .padding(4)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .overlay {
-            Text(configuration.title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(MacStickyPalette.ink)
-                .lineLimit(1)
-                .padding(.horizontal, 32)
-                .frame(maxWidth: .infinity)
-                .contentShape(Rectangle())
-                .onTapGesture(count: 2) { coordinator.setCollapsed(!configuration.isCollapsed, id: configuration.id) }
-                .accessibilityAddTraits(.isHeader)
-        }
-        .padding(.horizontal, 7)
-        .frame(height: 24)
-        .background(Color(red: 0.78, green: 0.91, blue: 0.92))
-        .overlay(alignment: .bottom) { Rectangle().fill(.black.opacity(0.09)).frame(height: 0.5) }
+        .background(MacStickyPalette.background(for: category).opacity(0.76))
+        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
     }
 }
 
 private struct MacStickyTaskRow: View {
     let task: QuadrantTask
+    let showDetails: Bool
     let onToggle: () -> Void
-    let onRemove: () -> Void
     let onOpen: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .top, spacing: 7) {
             Button(action: onToggle) {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(MacStickyPalette.ink.opacity(task.isCompleted ? 0.58 : 0.86))
+                    .foregroundStyle(MacStickyPalette.ink.opacity(task.isCompleted ? 0.52 : 0.82))
+                    .padding(.top, 1)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(task.isCompleted ? "重新打开任务：\(task.title)" : "完成任务：\(task.title)")
-            Text(task.title)
-                .lineLimit(2)
-                .strikethrough(task.isCompleted)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .onTapGesture(count: 2, perform: onOpen)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(task.title)
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(showDetails ? 3 : 2)
+                    .strikethrough(task.isCompleted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if showDetails {
+                    if let notes = task.notes?.trimmingCharacters(in: .whitespacesAndNewlines), !notes.isEmpty {
+                        Text(notes)
+                            .font(.caption2)
+                            .foregroundStyle(MacStickyPalette.ink.opacity(0.7))
+                            .lineLimit(3)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    if let dueDate = task.displayDueDate {
+                        HStack(spacing: 4) {
+                            Image(systemName: "calendar")
+                            Text(dueDate, format: .dateTime.month(.abbreviated).day())
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(MacStickyPalette.ink.opacity(task.isOverdue ? 0.9 : 0.64))
+                    }
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2, perform: onOpen)
+
             Menu {
-                Button("在主窗口中打开", systemImage: "arrow.up.forward.app", action: onOpen)
-                Button("从此便笺移除", systemImage: "minus.circle", role: .destructive, action: onRemove)
+                Button("在主页中打开", systemImage: "arrow.up.forward.app", action: onOpen)
             } label: {
                 Image(systemName: "ellipsis")
-                    .foregroundStyle(MacStickyPalette.ink.opacity(0.68))
-                    .frame(width: 22, height: 24)
+                    .foregroundStyle(MacStickyPalette.ink.opacity(0.64))
+                    .frame(width: 19, height: 23)
                     .contentShape(Rectangle())
             }
             .menuStyle(.borderlessButton)
             .accessibilityLabel("任务操作：\(task.title)")
         }
-        .font(.system(size: 12.5))
-        .padding(.horizontal, 4)
-        .frame(minHeight: 32)
-        .overlay(alignment: .bottom) { Rectangle().fill(.black.opacity(0.07)).frame(height: 0.5) }
-    }
-}
-
-private struct MacStickyTaskPickerView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Query(sort: \QuadrantTask.updatedAt, order: .reverse) private var tasks: [QuadrantTask]
-    let excludedIDs: Set<UUID>
-    let onSelect: (QuadrantTask) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("添加现有任务").font(.headline).padding(.horizontal)
-            List(tasks.filter { !excludedIDs.contains($0.id) }, id: \.id) { task in
-                Button {
-                    onSelect(task)
-                    dismiss()
-                } label: {
-                    HStack {
-                        Image(systemName: task.isCompleted ? "checkmark.circle" : "circle")
-                        Text(task.title).lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .frame(width: 320, height: 380)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5)
+        .background(MacStickyPalette.background(for: task.category).opacity(task.isCompleted ? 0.43 : 0.82))
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 }

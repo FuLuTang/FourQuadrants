@@ -11,10 +11,10 @@
 "widget_parameter_content" = "Content";
 "widget_parameter_quadrant" = "Quadrant";
 "widget_mode_quadrant_tasks" = "Quadrant tasks";
-"widget_quadrant_important_urgent" = "Important & urgent";
-"widget_quadrant_important_not_urgent" = "Important, not urgent";
-"widget_quadrant_urgent_not_important" = "Urgent, not important";
-"widget_quadrant_not_important_not_urgent" = "Not important, not urgent";
+"widget_quadrant_important_urgent" = "Important & Urgent";
+"widget_quadrant_important_not_urgent" = "Important";
+"widget_quadrant_urgent_not_important" = "Urgent";
+"widget_quadrant_not_important_not_urgent" = "✗Important✗Urgent";
 "widget_short_important_urgent" = "Do first";
 "widget_short_important_not_urgent" = "Plan";
 "widget_short_urgent_not_important" = "Delegate";

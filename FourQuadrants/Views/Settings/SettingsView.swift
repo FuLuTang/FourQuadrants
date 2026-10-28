@@ -120,18 +120,12 @@ struct SettingsView: View {
                 
                 // Sync Settings
                 Section(header: Text("settings_sync_section")) {
-                    SyncSettingsView()
-                }
-
-                #if DEBUG
-                Section("开发") {
                     NavigationLink {
-                        MicrosoftTodoSyncDiagnosticsView()
+                        SyncCenterSettingsView()
                     } label: {
-                        Label("Microsoft To Do 同步诊断", systemImage: "stethoscope")
+                        Label("Microsoft To Do", systemImage: "arrow.triangle.2.circlepath")
                     }
                 }
-                #endif
                 
                 // 修改后的关于区块
                 Section(header: Text("settings_about_section")) {

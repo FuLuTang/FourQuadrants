@@ -14,8 +14,15 @@ struct MSALConfig {
     static let bundleID = "com.fulu.FourQuadrants"
     #endif
     
-    // Redirect URI Scheme: msauth.$(PRODUCT_BUNDLE_IDENTIFIER)://auth
+    // The native Mac target keeps its own bundle ID, while reusing the iOS
+    // redirect URIs already registered in Microsoft Entra.
+#if os(macOS) && DEBUG
+    static let redirectUri = "msauth.com.fulu.FourQuadrants.dev://auth"
+#elseif os(macOS)
+    static let redirectUri = "msauth.com.fulu.FourQuadrants://auth"
+#else
     static let redirectUri = "msauth.\(bundleID)://auth"
+#endif
     
     // Microsoft Graph Scopes
     static let scopes = ["User.Read", "Tasks.ReadWrite"]

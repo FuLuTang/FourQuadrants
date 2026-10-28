@@ -82,6 +82,13 @@ struct FourQuadrantsWidgetProvider: AppIntentTimelineProvider {
         let now = Date.now
         let snapshot = WidgetSnapshotStore.read()
         var entries = [FourQuadrantsWidgetEntry(date: now, mode: configuration.mode, quadrant: configuration.quadrant, snapshot: snapshot)]
+        let completionExpirations = (snapshot.recommendedTasks + snapshot.quadrants.flatMap(\.tasks))
+            .compactMap(\.completedAt)
+            .map { $0.addingTimeInterval(TaskStore.completionVisibilityDuration) }
+            .filter { $0 > now }
+        for expiration in Set(completionExpirations).sorted() {
+            entries.append(FourQuadrantsWidgetEntry(date: expiration, mode: configuration.mode, quadrant: configuration.quadrant, snapshot: snapshot))
+        }
         if let nextDay = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)) {
             entries.append(FourQuadrantsWidgetEntry(date: nextDay, mode: configuration.mode, quadrant: configuration.quadrant, snapshot: snapshot))
         }
@@ -141,7 +148,14 @@ struct QuadrantTasksWidget: View {
     let referenceDate: Date
 
     private var visibleTasks: [WidgetSnapshot.Task] {
-        Array((quadrant?.tasks ?? []).prefix(compact ? 3 : 4))
+        Array(entryVisibleTasks.prefix(compact ? 3 : 4))
+    }
+
+    private var entryVisibleTasks: [WidgetSnapshot.Task] {
+        (quadrant?.tasks ?? []).filter { task in
+            guard task.isCompleted == true, let completedAt = task.completedAt else { return true }
+            return referenceDate.timeIntervalSince(completedAt) < TaskStore.completionVisibilityDuration
+        }
     }
 
     var body: some View {
@@ -161,16 +175,6 @@ private struct QuadrantTasksSmallLayout: View {
     let tasks: [WidgetSnapshot.Task]
     let accented: Bool
 
-    private var shortTitle: LocalizedStringResource {
-        switch quadrant?.key {
-        case "important_urgent": "widget_short_important_urgent"
-        case "important_not_urgent": "widget_short_important_not_urgent"
-        case "urgent_not_important": "widget_short_urgent_not_important"
-        case "not_important_not_urgent": "widget_short_other"
-        default: "widget_mode_quadrant_tasks"
-        }
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 5) {
@@ -178,8 +182,7 @@ private struct QuadrantTasksSmallLayout: View {
                     .fill(accented ? Color.primary : (quadrant?.color ?? Color.secondary))
                     .frame(width: 8, height: 8)
                     .widgetAccentable()
-                Text(shortTitle)
-                    .font(.caption.weight(.semibold))
+                QuadrantWidgetTitle(title: quadrant?.title ?? "Quadrant", key: quadrant?.key, font: .caption)
                     .lineLimit(1)
                     .widgetAccentable()
                     .accessibilityLabel(Text(quadrant?.title ?? "Quadrant"))
@@ -214,21 +217,32 @@ private struct QuadrantTasksMediumLayout: View {
     let referenceDate: Date
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(accented ? Color.primary : (quadrant?.color ?? Color.secondary))
-                    .frame(width: 7, height: 7)
-                    .widgetAccentable()
-                Text(quadrant?.title ?? "Quadrant")
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Image(systemName: quadrantIcon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(accented ? Color.primary : (quadrant?.color ?? Color.blue))
+                    .frame(width: 30, height: 30)
+                    .background((accented ? Color.primary : (quadrant?.color ?? Color.blue)).opacity(0.14), in: Circle())
                     .widgetAccentable()
                 Spacer(minLength: 0)
                 Text("\(quadrant?.count ?? 0)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .contentTransition(.numericText())
+                QuadrantWidgetTitle(title: quadrant?.title ?? "Quadrant", key: quadrant?.key, font: .caption2)
+                    .foregroundStyle(accented ? .primary : (quadrant?.color ?? .blue))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
+                    .widgetAccentable()
             }
+            .frame(width: 68)
+            .frame(maxHeight: .infinity, alignment: .leading)
+
+            Rectangle()
+                .fill(Color.primary.opacity(0.12))
+                .frame(width: 1)
+                .padding(.vertical, 2)
+
             VStack(alignment: .leading, spacing: 0) {
                 if tasks.isEmpty {
                     Label("widget_no_open_tasks", systemImage: "checkmark.circle")
@@ -245,6 +259,55 @@ private struct QuadrantTasksMediumLayout: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
+
+    private var quadrantIcon: String {
+        switch quadrant?.key {
+        case "important_urgent": "exclamationmark.triangle.fill"
+        case "important_not_urgent": "clock.fill"
+        case "urgent_not_important": "bolt.fill"
+        default: "leaf.fill"
+        }
+    }
+}
+
+private struct QuadrantWidgetTitle: View {
+    let title: String
+    let key: String?
+    let font: Font
+
+    var body: some View {
+        Text(styledTitle)
+            .font(font)
+            .fontWeight(titleWeight)
+    }
+
+    private var titleWeight: Font.Weight? {
+        switch key {
+        case "important_not_urgent", "urgent_not_important": .bold
+        case "not_important_not_urgent": .regular
+        default: nil
+        }
+    }
+
+    private var styledTitle: AttributedString {
+        var result = AttributedString(title)
+
+        if key == "important_urgent", let ampersand = result.range(of: "&") {
+            let important = result.startIndex..<ampersand.lowerBound
+            let urgent = ampersand.upperBound..<result.endIndex
+            result[important].inlinePresentationIntent = .stronglyEmphasized
+            result[urgent].inlinePresentationIntent = .stronglyEmphasized
+        }
+
+        guard key == "not_important_not_urgent",
+              let firstMarker = result.range(of: "✗"),
+              let secondMarker = result[firstMarker.upperBound...].range(of: "✗")
+        else { return result }
+
+        result[firstMarker.upperBound..<secondMarker.lowerBound].strikethroughStyle = .single
+        result[secondMarker.upperBound..<result.endIndex].strikethroughStyle = .single
+        return result
+    }
 }
 
 private struct WidgetTaskRow: View {
@@ -255,14 +318,14 @@ private struct WidgetTaskRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 7) {
             Button(intent: CompleteWidgetTaskIntent(taskID: task.id)) {
-                Image(systemName: "circle")
+                Image(systemName: task.isCompleted == true ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: compact ? 11 : 13, weight: .medium))
-                    .foregroundStyle(accented ? Color.primary : Color.gray.opacity(0.7))
+                    .foregroundStyle(task.isCompleted == true ? .green : (accented ? Color.primary : Color.gray.opacity(0.7)))
                     .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Text("widget_complete_task"))
+            .accessibilityLabel(Text(task.isCompleted == true ? "widget_undo_completion" : "widget_complete_task"))
             .accessibilityValue(Text(task.title))
 
             Link(destination: FourQuadrantsWidgetDeepLink.task(id: task.id)) {
@@ -295,12 +358,19 @@ struct RecommendedTasksWidget: View {
     var body: some View {
         Group {
             if compact {
-                RecommendedTasksSmall(tasks: Array(tasks.prefix(3)), totalCount: totalCount, accented: accented)
+                RecommendedTasksSmall(tasks: Array(visibleTasks.prefix(3)), totalCount: totalCount, accented: accented)
             } else {
-                RecommendedTasksMedium(tasks: Array(tasks.prefix(4)), totalCount: totalCount, accented: accented, referenceDate: referenceDate)
+                RecommendedTasksMedium(tasks: Array(visibleTasks.prefix(4)), totalCount: totalCount, accented: accented, referenceDate: referenceDate)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var visibleTasks: [WidgetSnapshot.Task] {
+        tasks.filter { task in
+            guard task.isCompleted == true, let completedAt = task.completedAt else { return true }
+            return referenceDate.timeIntervalSince(completedAt) < TaskStore.completionVisibilityDuration
+        }
     }
 }
 
@@ -389,14 +459,14 @@ private struct CompactWidgetTaskRow: View {
     var body: some View {
         HStack(spacing: 5) {
             Button(intent: CompleteWidgetTaskIntent(taskID: task.id)) {
-                Image(systemName: "circle")
+                Image(systemName: task.isCompleted == true ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(accented ? Color.primary : Color.gray.opacity(0.7))
+                    .foregroundStyle(task.isCompleted == true ? .green : (accented ? Color.primary : Color.gray.opacity(0.7)))
                     .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Text("widget_complete_task"))
+            .accessibilityLabel(Text(task.isCompleted == true ? "widget_undo_completion" : "widget_complete_task"))
             .accessibilityValue(Text(task.title))
 
             Link(destination: FourQuadrantsWidgetDeepLink.task(id: task.id)) {
@@ -440,14 +510,14 @@ private struct MediumWidgetTaskRow: View {
     var body: some View {
         HStack(spacing: 6) {
             Button(intent: CompleteWidgetTaskIntent(taskID: task.id)) {
-                Image(systemName: "circle")
+                Image(systemName: task.isCompleted == true ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(accented ? Color.primary : Color.gray.opacity(0.7))
+                    .foregroundStyle(task.isCompleted == true ? .green : (accented ? Color.primary : Color.gray.opacity(0.7)))
                     .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Text("widget_complete_task"))
+            .accessibilityLabel(Text(task.isCompleted == true ? "widget_undo_completion" : "widget_complete_task"))
             .accessibilityValue(Text(task.title))
 
             Link(destination: FourQuadrantsWidgetDeepLink.task(id: task.id)) {
@@ -516,8 +586,6 @@ private struct WidgetRelativeDueBadge: View {
         let tint: Color = accented ? .primary : (dayOffset < 0 ? .red : .blue)
 
         HStack(spacing: 4) {
-            Image(systemName: dayOffset < 0 ? "bell.fill" : "calendar")
-                .font(.caption2.weight(.semibold))
             Text(label)
                 .font(.caption2.weight(.semibold))
                 .lineLimit(1)

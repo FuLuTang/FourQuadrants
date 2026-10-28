@@ -20,6 +20,28 @@ enum TaskCategory: String, CaseIterable, Codable, Identifiable, Hashable {
         case .completed: return String(localized: "category_completed")
         }
     }
+
+    var styledDisplayName: Text {
+        var title = AttributedString(displayName)
+        switch self {
+        case .importantAndUrgent:
+            if let separator = title.range(of: "&") {
+                title[title.startIndex..<separator.lowerBound].inlinePresentationIntent = .stronglyEmphasized
+                title[separator.upperBound..<title.endIndex].inlinePresentationIntent = .stronglyEmphasized
+            }
+        case .importantButNotUrgent, .urgentButNotImportant:
+            title.inlinePresentationIntent = .stronglyEmphasized
+        case .notImportantAndNotUrgent:
+            if let firstMarker = title.range(of: "✗"),
+               let secondMarker = title[firstMarker.upperBound...].range(of: "✗") {
+                title[firstMarker.upperBound..<secondMarker.lowerBound].strikethroughStyle = .single
+                title[secondMarker.upperBound..<title.endIndex].strikethroughStyle = .single
+            }
+        case .all, .completed:
+            break
+        }
+        return Text(title)
+    }
     
     var icon: String {
         switch self {

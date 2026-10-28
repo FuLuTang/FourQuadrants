@@ -5,6 +5,7 @@ import SwiftData
 @MainActor
 @Observable
 final class TaskStore {
+    nonisolated static let completionVisibilityDuration: TimeInterval = 3
     enum QuadrantTaskMutation {
         case upsert(UUID)
         case delete(UUID)
@@ -194,7 +195,7 @@ final class TaskStore {
         direction: TaskSortDirection = .ascending
     ) -> [QuadrantTask] {
         let visible = tasks.filter { task in
-            let isVisible = !task.isCompleted || now.timeIntervalSince(task.completedAt ?? now) <= 3
+            let isVisible = !task.isCompleted || now.timeIntervalSince(task.completedAt ?? now) <= Self.completionVisibilityDuration
             switch category {
             case .all: return isVisible
             case .importantAndUrgent: return task.isImportantQuadrant && task.isUrgent && isVisible

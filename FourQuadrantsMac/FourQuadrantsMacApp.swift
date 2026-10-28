@@ -28,22 +28,96 @@ struct FourQuadrantsMacApp: App {
                 .keyboardShortcut("n")
                 .disabled(runtime.stickies == nil)
             }
-            CommandMenu("便笺") {
-                Button("新建桌面便笺") {
-                    runtime.stickies?.pinTasks([], title: "新便笺")
+            CommandMenu("ToDo便笺") {
+                Menu("添加ToDo便笺浮窗") {
+                    ForEach([
+                        TaskCategory.importantAndUrgent,
+                        .urgentButNotImportant,
+                        .importantButNotUrgent,
+                        .notImportantAndNotUrgent
+                    ], id: \.self) { category in
+                        Button {
+                            runtime.stickies?.createNote(source: .category(category))
+                        } label: {
+                            MacQuadrantHeading(category: category, font: .body)
+                        }
+                    }
+                    Divider()
+                    Button("四合一") { runtime.stickies?.createNote(source: .combined) }
+                    Button("智能排列") { runtime.stickies?.createNote(source: .smart) }
                 }
-                .keyboardShortcut("n", modifiers: [.command, .shift])
                 .disabled(runtime.stickies == nil)
-                Button("管理桌面便笺") {
-                    NotificationCenter.default.post(name: .macNavigate, object: "stickies")
-                }
-                .keyboardShortcut("b", modifiers: [.command, .shift])
             }
         }
 
         Settings {
             MacSettingsRootView(runtime: runtime)
         }
+
+        MenuBarExtra("FourQuadrants", systemImage: "square.grid.2x2.fill") {
+            MacMenuBarContent(runtime: runtime)
+        }
+        .menuBarExtraStyle(.menu)
+    }
+}
+
+private struct MacMenuBarContent: View {
+    let runtime: MacApplicationRuntime
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        Button("新建任务", systemImage: "plus") {
+            runtime.requestNewTask()
+            openWindow(id: "main")
+            NSApp.activate(ignoringOtherApps: true)
+        }
+        Button("打开四象限", systemImage: "macwindow") {
+            openWindow(id: "main")
+            NSApp.activate(ignoringOtherApps: true)
+        }
+        Divider()
+        Menu("添加ToDo便笺浮窗", systemImage: "note.text.badge.plus") {
+            ForEach([
+                TaskCategory.importantAndUrgent,
+                .urgentButNotImportant,
+                .importantButNotUrgent,
+                .notImportantAndNotUrgent
+            ], id: \.self) { category in
+                Button {
+                    runtime.stickies?.createNote(source: .category(category))
+                } label: {
+                    MacQuadrantHeading(category: category, font: .body)
+                }
+            }
+            Divider()
+            Button("四合一") { runtime.stickies?.createNote(source: .combined) }
+            Button("智能排列") { runtime.stickies?.createNote(source: .smart) }
+        }
+        .disabled(runtime.stickies == nil)
+
+        if let stickies = runtime.stickies, !stickies.configurations.isEmpty {
+            Menu("已有ToDo便笺", systemImage: "square.on.square") {
+                ForEach(stickies.configurations) { configuration in
+                    Button {
+                        if configuration.isVisible {
+                            stickies.hideWindow(id: configuration.id)
+                        } else {
+                            stickies.showWindow(for: configuration.id)
+                        }
+                    } label: {
+                        Label {
+                            MacStickyConfigurationHeading(configuration: configuration)
+                        } icon: {
+                            Image(systemName: configuration.isVisible ? "checkmark" : "eye.slash")
+                        }
+                    }
+                }
+            }
+        }
+        Divider()
+        Button("设置…", systemImage: "gearshape") { openSettings() }
+        Button("退出 FourQuadrants", systemImage: "power") { NSApp.terminate(nil) }
     }
 }
 
@@ -60,6 +134,7 @@ private struct MacRootView: View {
 
     var body: some View {
         MacSessionContent(runtime: runtime)
+            .environment(runtime)
             .preferredColorScheme(themeMode == 1 ? .light : themeMode == 2 ? .dark : nil)
             .onReceive(NotificationCenter.default.publisher(for: .macShowTask)) { _ in
                 openWindow(id: "main")

@@ -9,7 +9,7 @@ enum WidgetTaskCompletionBridge {
 
 struct CompleteWidgetTaskIntent: AppIntent {
     static var title: LocalizedStringResource = "Complete task"
-    static var supportedModes: IntentModes { .foreground(.immediate) }
+    static var supportedModes: IntentModes { .background }
     static var isDiscoverable: Bool { false }
 
     @Parameter(title: "Task ID")
@@ -23,7 +23,12 @@ struct CompleteWidgetTaskIntent: AppIntent {
 
     func perform() async throws -> some IntentResult {
         guard let id = UUID(uuidString: taskID) else { return .result() }
-        let completed = await MainActor.run { WidgetTaskCompletionBridge.complete?(id) ?? false }
+        let completed = await MainActor.run {
+            if let complete = WidgetTaskCompletionBridge.complete {
+                return complete(id)
+            }
+            return WidgetTaskActionService.toggle(taskID: id)
+        }
         guard completed else { throw CompletionError.saveFailed }
         return .result()
     }

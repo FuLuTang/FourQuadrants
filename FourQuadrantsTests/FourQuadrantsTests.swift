@@ -4,50 +4,82 @@ import Testing
 @testable import FourQuadrants
 
 struct FourQuadrantsTests {
-    @Test @MainActor func intelligenceOrderingIsUnaffectedByDirection() {
+    @Test func widgetDeepLinksRouteToTheExpectedDestination() throws {
+        let taskID = UUID()
+        #expect(WidgetRoute(url: URL(string: "fourquadrants://today")!) == .today)
+        #expect(WidgetRoute(url: URL(string: "fourquadrants://quadrant/important_urgent")!) == .quadrant(.importantAndUrgent))
+        #expect(WidgetRoute(url: URL(string: "fourquadrants://task/\(taskID.uuidString)")!) == .task(taskID))
+        #expect(WidgetRoute(url: URL(string: "fourquadrants://quadrant/all")!) == nil)
+    }
+
+    @Test @MainActor func widgetTaskOrderingPrioritizesOverdueAndDueTasks() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let overdue = QuadrantTask(title: "Overdue", createdAt: today.addingTimeInterval(-30), dueAt: today.addingTimeInterval(-86_400))
+        let tomorrow = QuadrantTask(title: "Tomorrow", createdAt: today, dueAt: today.addingTimeInterval(86_400))
+        let undated = QuadrantTask(title: "Undated", createdAt: today.addingTimeInterval(30))
+
+        let ordered = WidgetSnapshotService.sortTasksForWidget([undated, tomorrow, overdue])
+        #expect(ordered.map(\.title) == ["Overdue", "Tomorrow", "Undated"])
+    }
+
+    @Test @MainActor func sharedIntelligenceOrderingUsesImportanceThenTopThenDueDateAndStableTies() {
         let base = Date(timeIntervalSince1970: 1_700_000_000)
-        func task(_ id: Int, importance: ImportanceLevel, isTop: Bool, dueOffset: TimeInterval?) -> QuadrantTask {
+        func task(
+            _ id: String,
+            importance: ImportanceLevel = .high,
+            isTop: Bool = true,
+            dueOffset: TimeInterval? = nil,
+            updatedOffset: TimeInterval = 0
+        ) -> QuadrantTask {
             QuadrantTask(
-                id: UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", id))!,
-                title: "Task \(id)",
+                id: UUID(uuidString: id)!,
+                title: id,
                 createdAt: base,
+                updatedAt: base.addingTimeInterval(updatedOffset),
                 dueAt: dueOffset.map { base.addingTimeInterval($0) },
                 importance: importance,
+                isUrgent: false,
                 isTop: isTop
             )
         }
 
-        let importantTopSoon = task(1, importance: .high, isTop: true, dueOffset: 86_400)
-        let importantTopLater = task(2, importance: .high, isTop: true, dueOffset: 172_800)
-        let importantNotTop = task(3, importance: .high, isTop: false, dueOffset: nil)
-        let normalTop = task(4, importance: .normal, isTop: true, dueOffset: nil)
-        let input = [normalTop, importantNotTop, importantTopLater, importantTopSoon]
-        let expected = [importantTopSoon, importantTopLater, importantNotTop, normalTop]
+        let highTopEarlyID5 = task("00000000-0000-0000-0000-000000000005", dueOffset: 86_400, updatedOffset: 2)
+        let highTopEarlyID6 = task("00000000-0000-0000-0000-000000000006", dueOffset: 86_400, updatedOffset: 1)
+        let highTopEarlyID4 = task("00000000-0000-0000-0000-000000000004", dueOffset: 86_400, updatedOffset: 1)
+        let highTopLater = task("00000000-0000-0000-0000-000000000003", dueOffset: 172_800)
+        let highTopUndated = task("00000000-0000-0000-0000-000000000007", updatedOffset: -1)
+        let highNotTop = task("00000000-0000-0000-0000-000000000002", isTop: false, dueOffset: -86_400)
+        let normalTop = task("00000000-0000-0000-0000-000000000001", importance: .normal, dueOffset: -172_800)
+        let lowTop = task("00000000-0000-0000-0000-000000000008", importance: .low, dueOffset: -259_200)
+
+        let input = [lowTop, highNotTop, highTopUndated, normalTop, highTopLater, highTopEarlyID5, highTopEarlyID6, highTopEarlyID4]
+        let expected = [highTopEarlyID4, highTopEarlyID6, highTopEarlyID5, highTopLater, highTopUndated, highNotTop, normalTop, lowTop]
 
         #expect(TaskOrdering.sorted(input, by: .intelligence).map(\.id) == expected.map(\.id))
         #expect(TaskOrdering.sorted(input, by: .intelligence, direction: .descending).map(\.id) == expected.map(\.id))
-        #expect(TaskStore.TaskSortMethod.intelligence.supportsDirection == false)
+        #expect(Set(TaskStore.TaskSortMethod.allCases).count == 4)
     }
 
     @Test @MainActor func dueDateDirectionReversesDatedTasksAndKeepsUndatedLast() {
         let base = Date(timeIntervalSince1970: 1_700_000_000)
-        func task(_ id: Int, dueOffset: TimeInterval?) -> QuadrantTask {
+        func task(_ id: Int, title: String, dueOffset: TimeInterval?) -> QuadrantTask {
             QuadrantTask(
                 id: UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", id))!,
-                title: "Task \(id)",
+                title: title,
                 createdAt: base,
                 dueAt: dueOffset.map { base.addingTimeInterval($0) }
             )
         }
 
-        let early1 = task(1, dueOffset: 86_400)
-        let early2 = task(2, dueOffset: 86_400)
-        let late = task(3, dueOffset: 172_800)
-        let undated = task(4, dueOffset: nil)
-        let input = [undated, late, early2, early1]
+        let earlyID1 = task(1, title: "Early 1", dueOffset: 86_400)
+        let earlyID2 = task(2, title: "Early 2", dueOffset: 86_400)
+        let late = task(3, title: "Late", dueOffset: 172_800)
+        let undated = task(4, title: "Undated", dueOffset: nil)
+        let input = [undated, late, earlyID2, earlyID1]
 
-        #expect(TaskOrdering.sorted(input, by: .byDueDate).map(\.id) == [early1.id, early2.id, late.id, undated.id])
-        #expect(TaskOrdering.sorted(input, by: .byDueDate, direction: .descending).map(\.id) == [late.id, early1.id, early2.id, undated.id])
+        #expect(TaskOrdering.sorted(input, by: .byDueDate).map(\.id) == [earlyID1.id, earlyID2.id, late.id, undated.id])
+        #expect(TaskOrdering.sorted(input, by: .byDueDate, direction: .descending).map(\.id) == [late.id, earlyID1.id, earlyID2.id, undated.id])
     }
 
     @Test @MainActor func creationDateAndNameDirectionsKeepStableIDTieBreaks() {
@@ -60,15 +92,117 @@ struct FourQuadrantsTests {
             )
         }
 
-        let older1 = task(1, title: "Bravo", createdOffset: 0)
-        let older2 = task(2, title: "Bravo", createdOffset: 0)
+        let olderID1 = task(1, title: "Bravo", createdOffset: 0)
+        let olderID2 = task(2, title: "Bravo", createdOffset: 0)
         let newer = task(3, title: "Alpha", createdOffset: 86_400)
-        let input = [newer, older2, older1]
+        let input = [newer, olderID2, olderID1]
 
-        #expect(TaskOrdering.sorted(input, by: .byCreationDate).map(\.id) == [older1.id, older2.id, newer.id])
-        #expect(TaskOrdering.sorted(input, by: .byCreationDate, direction: .descending).map(\.id) == [newer.id, older1.id, older2.id])
-        #expect(TaskOrdering.sorted(input, by: .byName).map(\.id) == [newer.id, older1.id, older2.id])
-        #expect(TaskOrdering.sorted(input, by: .byName, direction: .descending).map(\.id) == [older1.id, older2.id, newer.id])
+        #expect(TaskOrdering.sorted(input, by: .byCreationDate).map(\.id) == [olderID1.id, olderID2.id, newer.id])
+        #expect(TaskOrdering.sorted(input, by: .byCreationDate, direction: .descending).map(\.id) == [newer.id, olderID1.id, olderID2.id])
+        #expect(TaskOrdering.sorted(input, by: .byName).map(\.id) == [newer.id, olderID1.id, olderID2.id])
+        #expect(TaskOrdering.sorted(input, by: .byName, direction: .descending).map(\.id) == [olderID1.id, olderID2.id, newer.id])
+    }
+
+    @Test @MainActor func recommendationFillsWithImportantUrgentTasksBeforeOtherGroups() {
+        let base = Date(timeIntervalSince1970: 1_700_000_000)
+        func task(_ id: Int, importance: ImportanceLevel = .high, urgent: Bool, dueOffset: TimeInterval? = nil) -> QuadrantTask {
+            QuadrantTask(
+                id: UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", id))!,
+                title: "Task \(id)",
+                createdAt: base,
+                updatedAt: base,
+                dueAt: dueOffset.map { base.addingTimeInterval($0) },
+                importance: importance,
+                isUrgent: urgent
+            )
+        }
+
+        let importantUrgent = (1...6).map { task($0, urgent: true, dueOffset: TimeInterval($0) * 86_400) }
+        let urgentNotImportant = task(20, importance: .normal, urgent: true)
+        let importantNotUrgent = task(30, urgent: false)
+
+        let recommended = TaskOrdering.recommended(importantUrgent + [urgentNotImportant, importantNotUrgent], limit: 5)
+        let recommendedIDs = recommended.map(\.id)
+        let expectedIDs = Array(importantUrgent.prefix(5)).map(\.id)
+        #expect(recommendedIDs == expectedIDs)
+        #expect(TaskOrdering.sorted(
+            importantUrgent + [urgentNotImportant, importantNotUrgent],
+            by: .intelligence,
+            direction: .descending
+        ).map(\.id) == TaskOrdering.sorted(
+            importantUrgent + [urgentNotImportant, importantNotUrgent],
+            by: .intelligence
+        ).map(\.id))
+        #expect(TaskOrdering.recommended(importantUrgent, limit: 0).isEmpty)
+    }
+
+    @Test @MainActor func recommendationKeepsGroupGuaranteesThenFillsByIntelligenceAndCapacityPrefix() {
+        let base = Date(timeIntervalSince1970: 1_700_000_000)
+        func task(
+            _ id: Int,
+            importance: ImportanceLevel = .high,
+            urgent: Bool,
+            isTop: Bool = false,
+            dueOffset: TimeInterval? = nil,
+            updatedOffset: TimeInterval = 0
+        ) -> QuadrantTask {
+            QuadrantTask(
+                id: UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", id))!,
+                title: "Task \(id)",
+                createdAt: base,
+                updatedAt: base.addingTimeInterval(updatedOffset),
+                dueAt: dueOffset.map { base.addingTimeInterval($0) },
+                importance: importance,
+                isUrgent: urgent,
+                isTop: isTop
+            )
+        }
+
+        let urgentImportantEarly = task(1, urgent: true, dueOffset: 86_400)
+        let urgentImportantTop = task(2, urgent: true, isTop: true, dueOffset: 172_800)
+        let urgentNormal = task(3, importance: .normal, urgent: true, dueOffset: 86_400)
+        let urgentLow = task(4, importance: .low, urgent: true, dueOffset: 86_400)
+        let importantNotUrgentEarly = task(5, urgent: false, dueOffset: 86_400)
+        let importantNotUrgentTop = task(6, urgent: false, isTop: true, dueOffset: 172_800)
+
+        let input = [urgentImportantEarly, urgentNormal, importantNotUrgentEarly, urgentLow, urgentImportantTop, importantNotUrgentTop]
+        let limitFive = TaskOrdering.recommended(input, limit: 5)
+        let expectedIDs = [urgentImportantTop.id, urgentImportantEarly.id, urgentNormal.id, importantNotUrgentTop.id, importantNotUrgentEarly.id]
+        let limitFiveIDs = limitFive.map(\.id)
+        let limitThreeIDs = TaskOrdering.recommended(input, limit: 3).map(\.id)
+        let limitFourIDs = TaskOrdering.recommended(input, limit: 4).map(\.id)
+        #expect(limitFiveIDs == expectedIDs)
+        #expect(limitThreeIDs == Array(expectedIDs.prefix(3)))
+        #expect(limitFourIDs == Array(expectedIDs.prefix(4)))
+    }
+
+    @Test func microsoftTodoRecurrenceDistinguishesUnobservedAndNull() throws {
+        let absent = try JSONDecoder().decode(MicrosoftTodoTask.self, from: Data(#"{"id":"absent"}"#.utf8))
+        let null = try JSONDecoder().decode(MicrosoftTodoTask.self, from: Data(#"{"id":"null","importance":null,"body":null,"dueDateTime":null,"recurrence":null}"#.utf8))
+        #expect(absent.importanceObservation.isObserved == false)
+        #expect(null.importanceObservation.isObserved == true)
+        #expect(null.importanceObservation.value == nil)
+        #expect(null.bodyObservation.isObserved == true)
+        #expect(null.dueDateTimeObservation.isObserved == true)
+        #expect(absent.recurrence.rawValue == "unobserved")
+        #expect(null.recurrence.rawValue == "null")
+        #expect(null.recurrence.encodedData == nil)
+    }
+
+    @Test @MainActor func updateAndCreateOperationsProtectLocalTaskDuringPull() {
+        let taskID = UUID()
+        let update = MicrosoftTodoSyncOperation(
+            profileIdentifier: UUID(), localTaskIdentifier: taskID, operationKind: .update
+        )
+        let create = MicrosoftTodoSyncOperation(
+            profileIdentifier: UUID(), localTaskIdentifier: taskID, operationKind: .create
+        )
+        let delete = MicrosoftTodoSyncOperation(
+            profileIdentifier: UUID(), localTaskIdentifier: taskID, operationKind: .delete
+        )
+        #expect(SyncService.isLocalMutationOperation(update))
+        #expect(SyncService.isLocalMutationOperation(create))
+        #expect(!SyncService.isLocalMutationOperation(delete))
     }
 
     @Test @MainActor func taskStoreCRUDCompletionAndTimestamps() throws {
@@ -195,13 +329,12 @@ struct FourQuadrantsTests {
 
         let configuration = ModelConfiguration(
             "FourQuadrants-v1",
-            schema: Schema(versionedSchema: AppSchemaV3.self),
+            schema: Schema(versionedSchema: AppSchemaV1.self),
             url: storeURL,
             cloudKitDatabase: .none
         )
         let firstContainer = try ModelContainer(
-            for: Schema(versionedSchema: AppSchemaV3.self),
-            migrationPlan: AppMigrationPlan.self,
+            for: Schema(versionedSchema: AppSchemaV1.self),
             configurations: configuration
         )
         let firstStore = TaskStore(modelContext: firstContainer.mainContext)
@@ -209,110 +342,11 @@ struct FourQuadrantsTests {
         #expect(firstStore.addTask(title: "Persist me", importance: .normal, isUrgent: false, isTop: false))
 
         let reopenedContainer = try ModelContainer(
-            for: Schema(versionedSchema: AppSchemaV3.self),
-            migrationPlan: AppMigrationPlan.self,
+            for: Schema(versionedSchema: AppSchemaV1.self),
             configurations: configuration
         )
         let reopenedTasks = try reopenedContainer.mainContext.fetch(FetchDescriptor<QuadrantTask>())
         #expect(reopenedTasks.map(\.title) == ["Persist me"])
-    }
-
-    @Test @MainActor func v2DiskStoreMigratesToV3WithTasksRelationshipsAndSyncLinks() throws {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("FourQuadrantsV2Migration-\(UUID().uuidString)", isDirectory: true)
-        let storeURL = directory.appendingPathComponent(PersistenceController.storeFilename)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-
-        let taskID = UUID()
-        let profileID = UUID()
-        let dueAt = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2026, month: 11, day: 19))!
-
-        do {
-            let v2Configuration = ModelConfiguration(
-                "FourQuadrants-v1",
-                schema: Schema(versionedSchema: AppSchemaV2.self),
-                url: storeURL,
-                cloudKitDatabase: .none
-            )
-            let v2Container = try ModelContainer(
-                for: Schema(versionedSchema: AppSchemaV2.self),
-                configurations: v2Configuration
-            )
-            let context = v2Container.mainContext
-            let task = AppSchemaV2.QuadrantTask(
-                id: taskID,
-                title: "V2 task",
-                notes: "Preserve me",
-                dueAt: dueAt,
-                importance: .high,
-                manualIsUrgent: true,
-                urgentThresholdDays: 7,
-                isTop: true
-            )
-            let daily = AppSchemaV2.DailyTask(title: "V2 daily", quadrantTask: task)
-            let profile = AppSchemaV2.MicrosoftTodoSyncProfile(
-                id: profileID,
-                accountIdentifier: "legacy-account",
-                displayName: "Legacy Account",
-                defaultListIdentifier: "Tasks",
-                deltaLink: "legacy-delta"
-            )
-            let link = AppSchemaV2.MicrosoftTodoTaskLink(
-                profileIdentifier: profileID,
-                localTaskIdentifier: taskID,
-                remoteTaskIdentifier: "legacy-remote",
-                remoteETag: "legacy-etag",
-                stateRawValue: MicrosoftTodoLinkState.linked.rawValue
-            )
-            context.insert(task)
-            context.insert(daily)
-            context.insert(profile)
-            context.insert(link)
-            try context.save()
-        }
-
-        let v3Configuration = ModelConfiguration(
-            "FourQuadrants-v1",
-            schema: Schema(versionedSchema: AppSchemaV3.self),
-            url: storeURL,
-            cloudKitDatabase: .none
-        )
-        let v3Container = try ModelContainer(
-            for: Schema(versionedSchema: AppSchemaV3.self),
-            migrationPlan: AppMigrationPlan.self,
-            configurations: v3Configuration
-        )
-        let context = v3Container.mainContext
-
-        let task = try #require(context.fetch(FetchDescriptor<QuadrantTask>()).first)
-        #expect(task.id == taskID)
-        #expect(task.title == "V2 task")
-        #expect(task.notes == "Preserve me")
-        #expect(task.dueDateKey == "2026-11-19")
-        #expect(task.importance == .high)
-        #expect(task.manualIsUrgent)
-        #expect(task.urgentThresholdDays == 7)
-        #expect(task.isTop)
-
-        let daily = try #require(context.fetch(FetchDescriptor<DailyTask>()).first)
-        #expect(daily.title == "V2 daily")
-        #expect(daily.quadrantTask?.id == taskID)
-
-        let profile = try #require(context.fetch(FetchDescriptor<MicrosoftTodoSyncProfile>()).first)
-        #expect(profile.id == profileID)
-        #expect(profile.accountIdentifier == "legacy-account")
-        #expect(profile.defaultListIdentifier == "Tasks")
-        #expect(profile.deltaLink == "legacy-delta")
-
-        let link = try #require(context.fetch(FetchDescriptor<MicrosoftTodoTaskLink>()).first)
-        #expect(link.profileIdentifier == profileID)
-        #expect(link.localTaskIdentifier == taskID)
-        #expect(link.remoteTaskIdentifier == "legacy-remote")
-        #expect(link.remoteETag == "legacy-etag")
-        #expect(link.state == .linked)
-        #expect(try context.fetch(FetchDescriptor<MicrosoftTodoSyncOperation>()).isEmpty)
-        #expect(try context.fetch(FetchDescriptor<MicrosoftTodoDeletionTombstone>()).isEmpty)
     }
 
     @Test @MainActor func failedSaveRollsBackAndReportsError() throws {
@@ -502,6 +536,7 @@ struct FourQuadrantsTests {
               "lastModifiedDateTime": "2026-08-16T10:00:00Z",
               "dueDateTime": { "dateTime": "2026-08-17T09:00:00.0000000", "timeZone": "Europe/Paris" },
               "completedDateTime": { "dateTime": "2026-08-16T10:00:00.0000000", "timeZone": "Europe/Paris" },
+              "recurrence": { "pattern": { "type": "weekly", "interval": 2, "daysOfWeek": ["monday"] }, "range": { "type": "noEnd", "startDate": "2026-08-17", "recurrenceTimeZone": "Europe/Paris" } },
               "extensions": [
                 {
                   "extensionName": "com.fulu.FourQuadrants.taskMetadata",
@@ -528,6 +563,8 @@ struct FourQuadrantsTests {
         #expect(page.value[0].id == "task/with+reserved=characters")
         #expect(page.value[0].eTag == "W/\"etag-1\"")
         #expect(page.deltaLink?.contains("opaque-delta-link") == true)
+        #expect(page.value[0].recurrence.rawValue == "value")
+        #expect(page.value[0].recurrence.encodedData != nil)
         let metadata = try #require(page.value[0].fourQuadrantsMetadata)
         #expect(metadata.localTaskIdentifier == "26B2D16B-32B6-4928-B0A7-1D5B5FC8A427")
         #expect(metadata.manualIsUrgent == true)
@@ -563,6 +600,16 @@ struct FourQuadrantsTests {
         )
         let clearObject = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(clearPayload)) as? [String: Any])
         #expect(clearObject["dueDateTime"] is NSNull)
+
+        let statusOnlyPayload = MicrosoftTodoTaskPayload(
+            title: nil, body: nil, importance: nil, status: "completed", dueDateTime: nil,
+            includesTitle: false, includesBody: false, includesImportance: false,
+            includesStatus: true, includesDueDateTime: false
+        )
+        let statusOnlyObject = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(statusOnlyPayload)) as? [String: Any])
+        #expect(statusOnlyObject["status"] as? String == "completed")
+        #expect(statusOnlyObject["dueDateTime"] == nil)
+        #expect(statusOnlyObject["recurrence"] == nil)
 
         let localTask = QuadrantTask(
             id: UUID(uuidString: "26B2D16B-32B6-4928-B0A7-1D5B5FC8A427")!,
@@ -605,6 +652,7 @@ struct FourQuadrantsTests {
         let extensions = try #require(createObject["extensions"] as? [[String: Any]])
         #expect(extensions.first?["extensionName"] as? String == MicrosoftTodoTaskMetadata.extensionName)
         #expect((createObject["dueDateTime"] as? [String: String])?["timeZone"] == "Romance Standard Time")
+        #expect((createObject["importance"] as? String) == "high")
 
         let taskWithExplicitMetadata = page.value[0].replacingExtensions([metadata])
         #expect(taskWithExplicitMetadata.fourQuadrantsMetadata?.localTaskIdentifier == metadata.localTaskIdentifier)

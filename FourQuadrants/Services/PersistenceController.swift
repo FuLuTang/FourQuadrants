@@ -43,8 +43,7 @@ struct PersistenceController {
         let configuration = try makeStoreConfiguration()
         do {
             return try ModelContainer(
-                for: Schema(versionedSchema: AppSchemaV3.self),
-                migrationPlan: AppMigrationPlan.self,
+                for: Schema(versionedSchema: AppSchemaV1.self),
                 configurations: configuration
             )
         } catch {
@@ -57,7 +56,7 @@ struct PersistenceController {
         let storeURL = try storeURL()
         return ModelConfiguration(
             "FourQuadrants-v1",
-            schema: Schema(versionedSchema: AppSchemaV3.self),
+            schema: Schema(versionedSchema: AppSchemaV1.self),
             url: storeURL,
             allowsSave: true,
             cloudKitDatabase: .none
@@ -99,14 +98,13 @@ struct PersistenceController {
     static func inMemoryContainer(allowsSave: Bool = true) throws -> ModelContainer {
         let configuration = ModelConfiguration(
             "FourQuadrants-tests",
-            schema: Schema(versionedSchema: AppSchemaV3.self),
+            schema: Schema(versionedSchema: AppSchemaV1.self),
             isStoredInMemoryOnly: true,
             allowsSave: allowsSave,
             cloudKitDatabase: .none
         )
         return try ModelContainer(
-            for: Schema(versionedSchema: AppSchemaV3.self),
-            migrationPlan: AppMigrationPlan.self,
+            for: Schema(versionedSchema: AppSchemaV1.self),
             configurations: configuration
         )
     }

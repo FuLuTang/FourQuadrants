@@ -39,11 +39,77 @@ final class MacStickyCoordinator {
         showWindow(for: config.id)
     }
 
+    @discardableResult
+    func createNote(source: MacStickySource) -> UUID {
+        let paper: MacStickyPaper
+        if case .category(let category) = source {
+            paper = .default(for: category)
+        } else {
+            paper = .yellow
+        }
+        var frame = MacStickyWindowFrame.initial
+        if case .combined = source {
+            frame.width = max(frame.width, Double(Self.combinedMinimumWidth))
+        }
+        let configuration = MacStickyConfiguration(
+            title: source.title,
+            source: source,
+            paper: paper,
+            frame: frame,
+            isVisible: true
+        )
+        configurations.append(configuration)
+        persist()
+        showWindow(for: configuration.id)
+        return configuration.id
+    }
+
     func pinCategory(_ category: TaskCategory) {
         let config = MacStickyConfiguration(title: category.displayName, source: .category(category), isVisible: true)
         configurations.append(config)
         persist()
         showWindow(for: config.id)
+    }
+
+    @discardableResult
+    func createTodoMode(_ category: TaskCategory, title: String? = nil, showDetails: Bool = false) -> UUID {
+        let displayTitle = title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return createTodoMode(.category(category), title: displayTitle?.isEmpty == false ? displayTitle : category.displayName, showDetails: showDetails)
+    }
+
+    @discardableResult
+    func createTodoMode(_ source: MacStickySource, title: String? = nil, showDetails: Bool = false) -> UUID {
+        let displayTitle = title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let paper: MacStickyPaper
+        if case .category(let category) = source {
+            paper = .default(for: category)
+        } else {
+            paper = .yellow
+        }
+        var frame = MacStickyWindowFrame.initial
+        if case .combined = source {
+            frame.width = max(frame.width, Double(Self.combinedMinimumWidth))
+        }
+        let configuration = MacStickyConfiguration(
+            title: displayTitle?.isEmpty == false ? displayTitle! : source.title,
+            source: source,
+            paper: paper,
+            frame: frame,
+            isVisible: true,
+            showDetails: showDetails
+        )
+        configurations.append(configuration)
+        persist()
+        showWindow(for: configuration.id)
+        return configuration.id
+    }
+
+    func switchTodoMode(_ category: TaskCategory, for id: UUID) {
+        updateSource(.category(category), for: id)
+    }
+
+    func switchTodoMode(_ source: MacStickySource, for id: UUID) {
+        updateSource(source, for: id)
     }
 
     func createEmptyNote(title: String = "便笺") {
@@ -59,8 +125,9 @@ final class MacStickyCoordinator {
 
     func closeAllWindows() {
         for id in Array(windows.keys) {
+            guard let controller = windows[id] else { continue }
             hideWindow(id: id)
-            windows[id]?.closePermanently()
+            controller.schedulePermanentClose()
         }
         windows.removeAll()
     }
@@ -92,16 +159,58 @@ final class MacStickyCoordinator {
             configurations = previous
             return
         }
-        windows[id]?.closePermanently()
+        windows[id]?.schedulePermanentClose()
         windows[id] = nil
     }
 
-    func updateConfiguration(_ id: UUID, title: String, paper: MacStickyPaper, isFloating: Bool, opacity: Double) {
+    func updateConfiguration(_ id: UUID, title: String, paper: MacStickyPaper, isFloating: Bool, opacity: Double, showDetails: Bool? = nil) {
         guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
         configurations[index].title = title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "便笺" : title
         configurations[index].paper = paper
         configurations[index].isFloating = isFloating
         configurations[index].opacity = min(max(opacity, 0.65), 1)
+        if let showDetails { configurations[index].showDetails = showDetails }
+        windows[id]?.apply(configurations[index])
+        persist()
+    }
+
+    func setShowsDetails(_ showDetails: Bool, for id: UUID) {
+        guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
+        configurations[index].showDetails = showDetails
+        persist()
+    }
+
+    func setFloating(_ isFloating: Bool, for id: UUID) {
+        guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
+        configurations[index].isFloating = isFloating
+        windows[id]?.apply(configurations[index])
+        persist()
+    }
+
+    func updateSource(_ source: MacStickySource, for id: UUID) {
+        guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
+        configurations[index].source = source
+        configurations[index].title = source.title
+        if case .combined = source {
+            if let controller = windows[id] {
+                controller.ensureMinimumExpandedWidth(Self.combinedMinimumWidth, isCollapsed: configurations[index].isCollapsed)
+            } else if configurations[index].frame.width < Double(Self.combinedMinimumWidth) {
+                let widthDelta = Double(Self.combinedMinimumWidth) - configurations[index].frame.width
+                configurations[index].frame.x -= widthDelta / 2
+                configurations[index].frame.width = Double(Self.combinedMinimumWidth)
+            }
+        }
+        persist()
+    }
+
+    func updateSource(id: UUID, source: MacStickySource) {
+        updateSource(source, for: id)
+    }
+
+    func updatePreferences(id: UUID, isFloating: Bool, showDetails: Bool) {
+        guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
+        configurations[index].isFloating = isFloating
+        configurations[index].showDetails = showDetails
         windows[id]?.apply(configurations[index])
         persist()
     }
@@ -132,6 +241,34 @@ final class MacStickyCoordinator {
         guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
         configurations[index].source = .selectedTaskIDs(Self.unique(ids))
         persist()
+    }
+
+    @discardableResult
+    func setTaskPinned(_ taskID: UUID, isPinned: Bool) -> Bool {
+        guard let task = try? container.mainContext.fetch(
+            FetchDescriptor<QuadrantTask>(predicate: #Predicate { $0.id == taskID })
+        ).first else { return false }
+        guard task.isTop != isPinned else { return true }
+        return taskStore.updateTask(
+            task,
+            title: task.title,
+            notes: task.notes,
+            importance: task.importance,
+            isUrgent: task.manualIsUrgent,
+            isTop: isPinned,
+            dueAt: task.displayDueDate,
+            urgentThresholdDays: task.urgentThresholdDays,
+            originalUrgentThresholdDays: task.originalUrgentThresholdDays,
+            originalImportance: task.originalImportance
+        )
+    }
+
+    @discardableResult
+    func toggleTaskPinned(_ taskID: UUID) -> Bool {
+        guard let task = try? container.mainContext.fetch(
+            FetchDescriptor<QuadrantTask>(predicate: #Predicate { $0.id == taskID })
+        ).first else { return false }
+        return setTaskPinned(taskID, isPinned: !task.isTop)
     }
 
     @discardableResult
@@ -177,6 +314,11 @@ final class MacStickyCoordinator {
             return taskStore.sortTasks(tasks.filter { selected.contains($0.id) }, by: .intelligence)
         case .category(let category):
             return taskStore.filteredTasks(tasks, in: category, now: now)
+        case .combined:
+            return taskStore.filteredTasks(tasks, in: .all, now: now)
+        case .smart:
+            let openTasks = tasks.filter { !$0.isCompleted }
+            return TaskOrdering.recommended(openTasks, limit: 8)
         }
     }
 
@@ -218,6 +360,9 @@ final class MacStickyCoordinator {
         var seen = Set<UUID>()
         return ids.filter { seen.insert($0).inserted }
     }
+
+    fileprivate static let collapsedWindowHeight: CGFloat = 32
+    fileprivate static let combinedMinimumWidth: CGFloat = 420
 }
 
 private enum MacStickyPersistenceError: LocalizedError {
@@ -242,17 +387,26 @@ private final class MacStickyWindowController: NSObject, NSWindowDelegate {
     private let window: MacStickyWindow
     private weak var coordinator: MacStickyCoordinator?
     private var configurationID: UUID
-    private var expandedHeight: CGFloat
+    private var expandedFrame: NSRect
+    private var isFinishingClose = false
+    private var isChangingCollapsedState = false
 
     init(configuration: MacStickyConfiguration, coordinator: MacStickyCoordinator, container: ModelContainer, taskStore: TaskStore) {
         self.configurationID = configuration.id
         self.coordinator = coordinator
-        self.expandedHeight = CGFloat(configuration.frame.height)
-        let frame = NSRect(x: configuration.frame.x, y: configuration.frame.y, width: configuration.frame.width, height: configuration.isCollapsed ? 25 : configuration.frame.height)
+        self.expandedFrame = NSRect(x: configuration.frame.x, y: configuration.frame.y, width: configuration.frame.width, height: configuration.frame.height)
+        var frame = expandedFrame
+        if configuration.isCollapsed {
+            let compact = configuration.frame.collapsed(to: Double(MacStickyCoordinator.collapsedWindowHeight))
+            frame = NSRect(x: compact.x, y: compact.y, width: compact.width, height: compact.height)
+        }
         window = MacStickyWindow(contentRect: frame, styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
         super.init()
+        if configuration.isCollapsed {
+            window.styleMask.remove(.resizable)
+        }
         window.delegate = self
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = false
         window.isOpaque = false
         window.backgroundColor = .clear
         window.hasShadow = true
@@ -268,29 +422,66 @@ private final class MacStickyWindowController: NSObject, NSWindowDelegate {
     }
 
     func hide() { window.orderOut(nil) }
-    func closePermanently() {
-        window.delegate = nil
+    func schedulePermanentClose() {
+        guard !isFinishingClose else { return }
+        isFinishingClose = true
         window.orderOut(nil)
-        window.contentView = nil
-        window.close()
+        DispatchQueue.main.async { [self] in
+            window.delegate = nil
+            window.contentView = nil
+            window.close()
+        }
     }
 
     func apply(_ configuration: MacStickyConfiguration) {
+        guard !isFinishingClose else { return }
         window.level = configuration.isFloating ? .floating : .normal
-        window.alphaValue = 1
+        window.alphaValue = CGFloat(configuration.opacity)
     }
 
     func setCollapsed(_ collapsed: Bool) {
+        guard !isFinishingClose else { return }
         var frame = window.frame
         if collapsed {
-            expandedHeight = frame.height
-            frame.origin.y += frame.height - 25
-            frame.size.height = 25
+            expandedFrame = frame
+            let compact = MacStickyWindowFrame(
+                x: expandedFrame.minX,
+                y: expandedFrame.minY,
+                width: expandedFrame.width,
+                height: expandedFrame.height
+            ).collapsed(to: Double(MacStickyCoordinator.collapsedWindowHeight))
+            frame = NSRect(x: compact.x, y: compact.y, width: compact.width, height: compact.height)
+            window.styleMask.remove(.resizable)
         } else {
-            frame.origin.y -= max(expandedHeight - frame.height, 0)
-            frame.size.height = max(expandedHeight, 190)
+            frame = expandedFrame
+            window.styleMask.insert(.resizable)
         }
-        window.setFrame(frame, display: true, animate: true)
+        isChangingCollapsedState = true
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            window.animator().setFrame(frame, display: true)
+        } completionHandler: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.isChangingCollapsedState = false
+                self.coordinator?.recordFrame(self.expandedFrame, id: self.configurationID)
+            }
+        }
+    }
+
+    func ensureMinimumExpandedWidth(_ minimumWidth: CGFloat, isCollapsed: Bool) {
+        guard !isFinishingClose, expandedFrame.width < minimumWidth else { return }
+        if isCollapsed {
+            expandedFrame.origin.x = window.frame.minX
+        } else {
+            expandedFrame.origin.x = expandedFrame.midX - minimumWidth / 2
+        }
+        expandedFrame.size.width = minimumWidth
+        if !isCollapsed {
+            window.setFrame(expandedFrame, display: true, animate: false)
+        }
+        coordinator?.recordFrame(expandedFrame, id: configurationID)
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -302,12 +493,17 @@ private final class MacStickyWindowController: NSObject, NSWindowDelegate {
     func windowDidResize(_ notification: Notification) { saveFrame() }
 
     private func saveFrame() {
-        guard let coordinator else { return }
-        var frame = window.frame
+        guard !isFinishingClose, !isChangingCollapsedState, let coordinator else { return }
+        let frame = window.frame
         if let configuration = coordinator.configurations.first(where: { $0.id == configurationID }), configuration.isCollapsed {
-            frame.size.height = expandedHeight
-            frame.origin.y -= expandedHeight - window.frame.height
+            let dx = frame.minX - expandedFrame.minX
+            let dy = frame.minY - (expandedFrame.maxY - MacStickyCoordinator.collapsedWindowHeight)
+            expandedFrame.origin.x += dx
+            expandedFrame.origin.y += dy
+        } else {
+            expandedFrame = frame
         }
-        coordinator.recordFrame(frame, id: configurationID)
+        coordinator.recordFrame(expandedFrame, id: configurationID)
     }
+
 }

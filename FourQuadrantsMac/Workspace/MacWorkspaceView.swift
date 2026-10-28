@@ -7,11 +7,10 @@ private enum MacWorkspaceRoute: Hashable {
     case daily
     case all
     case completed
-    case stickies
     case category(TaskCategory)
 
     var supportsInspector: Bool {
-        self != .daily && self != .stickies
+        self != .daily
     }
 
     var navigationTitle: Text {
@@ -20,13 +19,13 @@ private enum MacWorkspaceRoute: Hashable {
         case .daily: Text("日程")
         case .all: Text("全部任务")
         case .completed: Text("已完成")
-        case .stickies: Text("桌面便笺")
-        case let .category(category): Text(category.displayName)
+        case let .category(category): MacQuadrantHeading.styledText(category: category, font: .headline)
         }
     }
 }
 
 struct MacWorkspaceView: View {
+    @Environment(MacApplicationRuntime.self) private var runtime
     @Environment(TaskStore.self) private var taskStore
     @Environment(MacStickyCoordinator.self) private var stickyCoordinator
     @Query(sort: \QuadrantTask.updatedAt, order: .reverse) private var tasks: [QuadrantTask]
@@ -127,6 +126,10 @@ struct MacWorkspaceView: View {
         .onReceive(NotificationCenter.default.publisher(for: .macCreateTask)) { _ in
             presentNewTask()
         }
+        .onAppear(perform: presentMenuBarTaskRequest)
+        .onChange(of: runtime.createTaskRequestID) { _, _ in
+            presentMenuBarTaskRequest()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .macShowTask)) { notification in
             guard let id = notification.object as? UUID else { return }
             selection = .all
@@ -141,7 +144,6 @@ struct MacWorkspaceView: View {
             case "daily": selection = .daily
             case "all": selection = .all
             case "completed": selection = .completed
-            case "stickies": selection = .stickies
             default: break
             }
         }
@@ -150,12 +152,72 @@ struct MacWorkspaceView: View {
     @ToolbarContentBuilder
     private var workspaceToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
+            if (selection ?? .quadrants) == .quadrants {
+                Menu {
+                    Section("新建浮窗") {
+                        ForEach(MacWorkspaceSidebar.quadrants, id: \.self) { category in
+                            Button {
+                                stickyCoordinator.createNote(source: .category(category))
+                            } label: {
+                                Label {
+                                    MacQuadrantHeading(category: category, font: .body)
+                                } icon: {
+                                    Image(systemName: category.icon)
+                                }
+                            }
+                        }
+                        Button("四合一", systemImage: "square.grid.2x2") {
+                            stickyCoordinator.createNote(source: .combined)
+                        }
+                        Button("智能排列", systemImage: "sparkles.rectangle.stack") {
+                            stickyCoordinator.createNote(source: .smart)
+                        }
+                    }
+
+                    if !stickyCoordinator.configurations.isEmpty {
+                        Section("已保存的便笺") {
+                            ForEach(stickyCoordinator.configurations) { configuration in
+                                Menu {
+                                    Button("打开便笺", systemImage: "arrow.up.forward.square") {
+                                        stickyCoordinator.showWindow(for: configuration.id)
+                                    }
+                                    Button("删除便笺", systemImage: "trash", role: .destructive) {
+                                        stickyCoordinator.removeConfiguration(id: configuration.id)
+                                    }
+                                } label: {
+                                    Label {
+                                        HStack(spacing: 4) {
+                                            MacStickyConfigurationHeading(configuration: configuration)
+                                            Text(configuration.isVisible ? "· 已打开" : "· 已隐藏")
+                                        }
+                                    } icon: {
+                                        Image(systemName: "note.text")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Label("添加ToDo便笺浮窗", systemImage: "note.text.badge.plus")
+                        .fontWeight(.semibold)
+                }
+                .tint(.accentColor)
+                .controlSize(.large)
+                .help("创建、打开或删除 ToDo 便笺浮窗")
+            }
+
             Menu {
                 Button("新建任务", systemImage: "plus") { presentNewTask() }
                 Menu("放到桌面") {
                     ForEach(MacWorkspaceSidebar.quadrants, id: \.self) { category in
-                        Button(category.displayName, systemImage: category.icon) {
-                            stickyCoordinator.pinCategory(category)
+                        Button {
+                            stickyCoordinator.createNote(source: .category(category))
+                        } label: {
+                            Label {
+                                MacQuadrantHeading(category: category, font: .body)
+                            } icon: {
+                                Image(systemName: category.icon)
+                            }
                         }
                     }
                 }
@@ -190,6 +252,12 @@ struct MacWorkspaceView: View {
         isTaskFormPresented = true
     }
 
+    private func presentMenuBarTaskRequest() {
+        guard runtime.createTaskRequestID != nil else { return }
+        runtime.consumeNewTaskRequest()
+        presentNewTask()
+    }
+
     private func presentEditForm(_ task: QuadrantTask) {
         taskToEdit = task
         isTaskFormPresented = true
@@ -208,7 +276,7 @@ struct MacWorkspaceView: View {
     }
 
     private func pinTask(_ task: QuadrantTask) {
-        stickyCoordinator.pinTasks([task.id], title: task.title)
+        stickyCoordinator.createNote(source: .category(task.category))
     }
 }
 
@@ -236,13 +304,15 @@ private struct MacWorkspaceSidebar: View {
                 Label("已完成", systemImage: "checkmark.circle")
                     .badge(tasks.filter(\.isCompleted).count)
                     .tag(MacWorkspaceRoute.completed)
-                Label("桌面便笺", systemImage: "note.text")
-                    .tag(MacWorkspaceRoute.stickies)
             }
 
             Section("象限") {
                 ForEach(Self.quadrants, id: \.self) { category in
-                    Label(category.displayName, systemImage: category.icon)
+                    Label {
+                        MacQuadrantHeading(category: category, font: .body)
+                    } icon: {
+                        Image(systemName: category.icon)
+                    }
                         .foregroundStyle(category.themeColor)
                         .tag(MacWorkspaceRoute.category(category))
                 }
@@ -276,10 +346,8 @@ private struct MacWorkspaceContent: View {
                 MacTaskList(title: "全部任务", tasks: taskStore.filteredTasks(tasks, in: .all, now: now), sortMethod: sortMethod, taskStore: taskStore, selectedTaskID: $selectedTaskID, onEdit: onEdit, onDelete: onDelete, onPin: onPin)
             case .completed:
                 MacTaskList(title: "已完成", tasks: taskStore.filteredTasks(tasks, in: .completed, now: now), sortMethod: sortMethod, taskStore: taskStore, selectedTaskID: $selectedTaskID, onEdit: onEdit, onDelete: onDelete, onPin: onPin)
-            case .stickies:
-                MacStickiesLibraryView()
             case let .category(category):
-                MacTaskList(title: category.displayName, tasks: taskStore.filteredTasks(tasks, in: category, now: now), sortMethod: sortMethod, taskStore: taskStore, selectedTaskID: $selectedTaskID, onEdit: onEdit, onDelete: onDelete, onPin: onPin)
+                MacTaskList(title: category.displayName, category: category, tasks: taskStore.filteredTasks(tasks, in: category, now: now), sortMethod: sortMethod, taskStore: taskStore, selectedTaskID: $selectedTaskID, onEdit: onEdit, onDelete: onDelete, onPin: onPin)
             }
         }
         .navigationTitle(selection.navigationTitle)

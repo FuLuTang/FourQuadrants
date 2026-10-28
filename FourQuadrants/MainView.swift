@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UIKit
 
 struct MainView: View {
     @Environment(\.modelContext) private var modelContext
@@ -15,7 +16,12 @@ struct MainView: View {
             set: { newValue in
                 if newValue == selectedTab && newValue == .daily {
                     NotificationCenter.default.post(name: .scrollDailyToNow, object: nil)
+                    return
                 }
+
+                guard newValue != selectedTab else { return }
+
+                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
                 selectedTab = newValue
             }
         )) {

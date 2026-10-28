@@ -1,23 +1,27 @@
 import SwiftUI
 
 private struct QuickQuadrantSelectionLabel: View {
-    let title: String
+    let title: Text
     let color: Color
     let icon: String?
 
     var body: some View {
         Group {
             if let icon {
-                Label(title, systemImage: icon)
+                Label {
+                    title
+                } icon: {
+                    Image(systemName: icon)
+                }
             } else {
-                Text(title)
+                title
             }
         }
         .font(.caption.weight(.semibold))
         .foregroundStyle(color)
         .frame(maxWidth: .infinity, alignment: .center)
         .accessibilityLabel(Text("quick_control_current"))
-        .accessibilityValue(Text(title))
+        .accessibilityValue(title)
     }
 }
 
@@ -43,12 +47,15 @@ private struct QuickQuadrantHandle: View {
                         .strokeBorder(.white.opacity(isTouchActive ? 0.94 : 0.78), lineWidth: 1.5)
                 }
                 .overlay {
-                    RadialGradient(
-                        colors: [.white.opacity(isTouchActive ? 0.62 : 0.34), .clear],
-                        center: .init(x: 0.3, y: 0.22),
-                        startRadius: 0,
-                        endRadius: diameter * 0.7
-                    )
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [.white.opacity(isTouchActive ? 0.62 : 0.34), .clear],
+                                center: .init(x: 0.3, y: 0.22),
+                                startRadius: 0,
+                                endRadius: diameter * 0.7
+                            )
+                        )
                 }
                 .frame(width: diameter, height: diameter)
                 .glassEffect(.regular, in: .circle)
@@ -148,8 +155,10 @@ struct QuickQuadrantControl: View {
         }
     }
 
-    private var selectionTitle: String {
-        effectiveUrgency == nil ? selectedQuadrant.title : AutomaticQuickOption(importance: importance).title
+    private var selectionTitle: Text {
+        effectiveUrgency == nil
+            ? selectedQuadrant.category.styledDisplayName
+            : Text(AutomaticQuickOption(importance: importance).title)
     }
 
     private var selectionColor: Color {
@@ -193,7 +202,9 @@ struct QuickQuadrantControl: View {
         .accessibilityElement(children: .contain)
         .accessibilityChildren {
             ForEach(QuickQuadrant.allCases) { quadrant in
-                Button(quadrant.title) { select(quadrant) }
+                Button { select(quadrant) } label: {
+                    quadrant.category.styledDisplayName
+                }
                     .accessibilityHint(Text("quick_control_select_hint"))
                     .accessibilityAddTraits(quadrant == selectedQuadrant ? .isSelected : [])
             }
@@ -269,11 +280,26 @@ struct QuickQuadrantControl: View {
     }
 
     private func manualColorField() -> some View {
-        Rectangle().fill(manualMesh)
+        colorField(manualMesh)
     }
 
     private func automaticColorField() -> some View {
-        Rectangle().fill(automaticMesh)
+        colorField(automaticMesh)
+    }
+
+    private func colorField(_ mesh: MeshGradient) -> some View {
+        Rectangle()
+            .fill(mesh)
+            .overlay {
+                Rectangle()
+                    .fill(mesh)
+                    .saturation(1.12)
+                    .mask {
+                        panelShape
+                            .strokeBorder(.white, lineWidth: 20)
+                            .blur(radius: 10)
+                    }
+            }
     }
 
     private var manualMesh: MeshGradient {

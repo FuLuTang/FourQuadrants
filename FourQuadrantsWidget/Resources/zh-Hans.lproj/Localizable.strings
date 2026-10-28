@@ -11,10 +11,10 @@
 "widget_parameter_content" = "显示内容";
 "widget_parameter_quadrant" = "象限";
 "widget_mode_quadrant_tasks" = "象限任务";
-"widget_quadrant_important_urgent" = "重要且紧急";
-"widget_quadrant_important_not_urgent" = "重要不紧急";
-"widget_quadrant_urgent_not_important" = "紧急不重要";
-"widget_quadrant_not_important_not_urgent" = "不重要不紧急";
+"widget_quadrant_important_urgent" = "重要&紧急";
+"widget_quadrant_important_not_urgent" = "重要";
+"widget_quadrant_urgent_not_important" = "紧急";
+"widget_quadrant_not_important_not_urgent" = "✗重要✗紧急";
 "widget_short_important_urgent" = "重要紧急";
 "widget_short_important_not_urgent" = "重要不急";
 "widget_short_urgent_not_important" = "紧急不重要";

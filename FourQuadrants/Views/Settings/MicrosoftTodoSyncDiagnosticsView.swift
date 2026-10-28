@@ -1,124 +1,58 @@
-#if DEBUG
 import SwiftUI
 import UIKit
 
+/// Observes a normal sync. It never creates diagnostic tasks or retains task data.
 struct MicrosoftTodoSyncDiagnosticsView: View {
     @ObservedObject private var syncService = SyncService.shared
-    @State private var showsConfirmation = false
 
     var body: some View {
         Form {
             Section {
                 Button {
-                    showsConfirmation = true
+                    Task { await syncService.runSyncDiagnostic() }
                 } label: {
-                    Label("运行一次远端往返诊断", systemImage: "stethoscope")
+                    Label(String(localized: "sync_diagnostic_run"), systemImage: "stethoscope")
                 }
-                .disabled(syncService.isRunningDiagnostic || syncService.isSyncing || !syncService.isSyncEnabled)
+                .disabled(syncService.isSyncing || !syncService.isSyncEnabled)
+                .accessibilityLabel("运行 Microsoft To Do 同步诊断")
             } footer: {
-                Text("会创建 8 条随机四象限字段的 Microsoft To Do 测试任务，读回并导入校验后自动删除。")
+                Text(String(localized: "sync_diagnostic_privacy"))
             }
 
-            Section("测试进度") {
-                ForEach(Array(syncService.diagnosticSteps.enumerated()), id: \.element.id) { index, check in
-                    diagnosticStepRow(
-                        check,
-                        showsConnector: index < syncService.diagnosticSteps.count - 1
-                    )
+            if let report = syncService.syncDiagnosticReport {
+                Section(String(localized: "sync_diagnostic_latest_report")) {
+                    LabeledContent("开始", value: report.startedAt.formatted(date: .abbreviated, time: .shortened))
+                    if let finishedAt = report.finishedAt { LabeledContent("完成", value: finishedAt.formatted(date: .abbreviated, time: .shortened)) }
+                    LabeledContent("结果", value: report.succeeded == true ? "成功" : "失败")
+                    LabeledContent("Delta 条目", value: "\(report.pulledEntries)")
+                    LabeledContent("导入 / 更新 / 删除", value: "\(report.imported) / \(report.updated) / \(report.deleted)")
+                    LabeledContent("保留本地 Outbox", value: "\(report.pendingLocalPreserved)")
+                    if !report.patchFields.isEmpty { LabeledContent("PATCH 字段", value: summary(report.patchFields)) }
+                    if !report.observations.isEmpty { LabeledContent("字段观测", value: observationSummary(report.observations)) }
+                    if let error = report.errorSummary { LabeledContent("错误", value: error) }
+                    Button {
+                        UIPasteboard.general.string = syncService.copyableSyncDiagnosticText()
+                    } label: { Label(String(localized: "sync_diagnostic_copy"), systemImage: "doc.on.doc") }
+                    .accessibilityLabel("复制无敏感信息同步诊断报告")
                 }
             }
 
-            if let result = syncService.diagnosticResult {
-                Section("结果") {
-                    switch result {
-                    case .running:
-                        Text(syncService.diagnosticHasFailure ? "检查失败，正在清理测试任务" : "正在运行完整测试套件")
-                    case .success:
-                        Label("全部检查点通过，测试任务已清理", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                    case let .failure(message, remoteTaskIdentifiers):
-                        Label(message, systemImage: "xmark.circle.fill")
-                            .foregroundStyle(.red)
-                        if !remoteTaskIdentifiers.isEmpty {
-                            LabeledContent("待清理任务", value: remoteTaskIdentifiers.joined(separator: ", "))
-                                .font(.caption)
-                        }
-                    }
-
-                    if !syncService.diagnosticLog.isEmpty {
-                        Button {
-                            UIPasteboard.general.string = syncService.diagnosticLog
-                        } label: {
-                            Label("复制诊断日志", systemImage: "doc.on.doc")
-                        }
-                    }
-                }
+            Section("建议验证") {
+                Text("在 Microsoft To Do 编辑高重要性、描述和到期日；再在四象限中拖入“重要不紧急”。运行诊断后查看 PATCH 字段是否含 importance，以及字段观测是否显示 value、null 或 unobserved。")
+                Text("若要确认远端最终字段，请在开发工具中明确触发一次单任务读取；常规同步不会为诊断额外循环请求。")
             }
         }
         .navigationTitle("同步诊断")
-        .confirmationDialog("运行同步诊断？", isPresented: $showsConfirmation, titleVisibility: .visible) {
-            Button("开始诊断") {
-                Task { await syncService.runRoundTripDiagnostic() }
-            }
-            Button("取消", role: .cancel) {}
-        } message: {
-            Text("8 条随机测试任务会短暂出现在默认 Tasks 清单中，完成校验后自动删除。")
-        }
+        .navigationBarTitleDisplayMode(.inline)
     }
 
-    @ViewBuilder
-    private func diagnosticStepRow(
-        _ check: SyncDiagnosticStepResult,
-        showsConnector: Bool
-    ) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(spacing: 0) {
-                diagnosticStatusIndicator(for: check.status)
-                    .frame(width: 24, height: 24)
-
-                if showsConnector {
-                    Rectangle()
-                        .fill(.quaternary)
-                        .frame(width: 2)
-                        .frame(maxHeight: .infinity)
-                        .padding(.top, 4)
-                }
-            }
-            .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(check.step.title)
-                switch check.status {
-                case .failed(let message):
-                    Text(message)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                default:
-                    Text(check.step.detail)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .frame(minHeight: 52, alignment: .top)
+    private func summary(_ values: [String: Int]) -> String {
+        values.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: "，")
     }
 
-    @ViewBuilder
-    private func diagnosticStatusIndicator(for status: SyncDiagnosticStepStatus) -> some View {
-        switch status {
-        case .pending:
-            Image(systemName: "circle")
-                .foregroundStyle(.secondary)
-        case .running:
-            ProgressView()
-                .controlSize(.small)
-        case .passed:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-        case .failed:
-            Image(systemName: "xmark.circle.fill")
-                .foregroundStyle(.red)
-        }
+    private func observationSummary(_ values: [String: [String: Int]]) -> String {
+        values.sorted { $0.key < $1.key }.map { key, states in
+            "\(key): " + states.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: "，")
+        }.joined(separator: "\n")
     }
 }
-#endif

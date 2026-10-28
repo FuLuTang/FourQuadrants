@@ -8,12 +8,41 @@ import UIKit
 import AppKit
 #endif
 
+/// A compact, presentation-focused view of the Microsoft bridge.
+///
+/// This deliberately reports the bridge as a whole. Individual task and outbox
+/// records remain implementation details of the synchronizer.
+enum SyncPresentationState: Equatable {
+    case inactive
+    case connecting
+    case syncing
+    case succeeded(lastSync: Date?)
+    case failed(message: String)
+}
+
+/// Privacy-safe aggregate of one ordinary synchronization. Task content,
+/// account data, Graph identifiers, and access tokens are never recorded.
+struct MicrosoftTodoSyncDiagnosticReport: Codable, Equatable {
+    var startedAt: Date
+    var finishedAt: Date?
+    var succeeded: Bool?
+    var pulledEntries = 0
+    var imported = 0
+    var updated = 0
+    var deleted = 0
+    var pendingLocalPreserved = 0
+    var observations: [String: [String: Int]] = [:]
+    var patchFields: [String: Int] = [:]
+    var errorSummary: String?
+}
+
 @MainActor
 final class SyncService: ObservableObject {
     static let shared = SyncService()
-    private static let taskDeltaQueryVersion = 2
+    // V3 begins retaining Microsoft-owned recurrence/time/status shadows, so
+    // older delta links are deliberately replaced by a fresh baseline pull.
+    private static let taskDeltaQueryVersion = 3
     private static let automaticSyncDelay: Duration = .seconds(1)
-    private static let diagnosticProbeCount = 8
 
     @Published private(set) var isSyncing = false
     @Published private(set) var isSigningIn = false
@@ -23,23 +52,23 @@ final class SyncService: ObservableObject {
     @Published private(set) var accountName: String?
     @Published private(set) var pendingInitialTasks: [QuadrantTask] = []
     @Published private(set) var isPresentingInitialMerge = false
-    @Published private(set) var diagnosticResult: SyncDiagnosticResult?
-    @Published private(set) var diagnosticSteps = SyncDiagnosticStep.allCases.map {
-        SyncDiagnosticStepResult(step: $0, status: .pending)
-    }
-    @Published private(set) var diagnosticLog = ""
-    @Published private(set) var isRunningDiagnostic = false
+    @Published private(set) var syncDiagnosticReport: MicrosoftTodoSyncDiagnosticReport?
 
     var needsInitialMerge: Bool { isPresentingInitialMerge && !pendingInitialTasks.isEmpty }
     var hasDeferredInitialMerge: Bool {
         activeProfile.map { !$0.hasCompletedInitialMerge } ?? false
     }
     var isSyncEnabled: Bool { activeProfile?.isEnabled ?? false }
-    var diagnosticHasFailure: Bool {
-        diagnosticSteps.contains {
-            if case .failed = $0.status { return true }
-            return false
-        }
+
+    /// The sole state surface used by the app chrome and Sync Center.
+    /// It is intentionally computed from the synchronizer's existing source of
+    /// truth so displaying state cannot alter Graph or outbox behavior.
+    var syncPresentationState: SyncPresentationState {
+        if isSigningIn { return .connecting }
+        if isSyncing { return .syncing }
+        if let errorMessage { return .failed(message: errorMessage) }
+        if isAuthenticated, isSyncEnabled { return .succeeded(lastSync: lastSyncTime) }
+        return .inactive
     }
 
     private var modelContext: ModelContext?
@@ -51,8 +80,40 @@ final class SyncService: ObservableObject {
     private var scheduledSyncTask: Task<Void, Never>?
     private var retrySyncTask: Task<Void, Never>?
     private var requiresAnotherSync = false
+    private var activeDiagnosticReport: MicrosoftTodoSyncDiagnosticReport?
 
-    private init() {}
+    private init() {
+        if let data = UserDefaults.standard.data(forKey: "MicrosoftTodo.syncDiagnosticReport"),
+           let report = try? JSONDecoder().decode(MicrosoftTodoSyncDiagnosticReport.self, from: data) {
+            syncDiagnosticReport = report
+        }
+    }
+
+    /// Runs normal synchronization; this method creates no probe task and writes
+    /// no task data beyond ordinary user-initiated sync behavior.
+    func runSyncDiagnostic() async {
+        guard !isSyncing, let profile = activeProfile, profile.isEnabled else { return }
+        activeDiagnosticReport = MicrosoftTodoSyncDiagnosticReport(startedAt: Date())
+        await synchronize()
+        guard var report = activeDiagnosticReport else { return }
+        report.finishedAt = Date()
+        report.succeeded = errorMessage == nil
+        report.errorSummary = errorMessage
+        syncDiagnosticReport = report
+        activeDiagnosticReport = nil
+        if let data = try? JSONEncoder().encode(report) {
+            UserDefaults.standard.set(data, forKey: "MicrosoftTodo.syncDiagnosticReport")
+        }
+    }
+
+    func copyableSyncDiagnosticText() -> String {
+        guard let report = syncDiagnosticReport else { return "No synchronization diagnostic report is available." }
+        let observationText = report.observations.sorted { $0.key < $1.key }.map { field, values in
+            "\(field): " + values.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ", ")
+        }.joined(separator: "\n")
+        let patches = report.patchFields.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ", ")
+        return "Microsoft To Do sync diagnostic\nstarted=\(report.startedAt)\nfinished=\(report.finishedAt?.description ?? "")\nsucceeded=\(report.succeeded?.description ?? "")\npulled=\(report.pulledEntries) imported=\(report.imported) updated=\(report.updated) deleted=\(report.deleted) pendingLocalPreserved=\(report.pendingLocalPreserved)\npatchFields: \(patches)\nobservations:\n\(observationText)\nerror=\(report.errorSummary ?? "")"
+    }
 
     func configure(modelContext: ModelContext, taskStore: TaskStore) {
         self.modelContext = modelContext
@@ -153,6 +214,7 @@ final class SyncService: ObservableObject {
 
     func setSyncEnabled(_ enabled: Bool) {
         guard let profile = activeProfile else { return }
+        objectWillChange.send()
         profile.isEnabled = enabled
         profile.updatedAt = Date()
         saveContext()
@@ -160,7 +222,6 @@ final class SyncService: ObservableObject {
     }
 
     func synchronize() async {
-        guard !isRunningDiagnostic else { return }
         guard let profile = activeProfile, profile.isEnabled else { return }
         guard !isSyncing else {
             requiresAnotherSync = true
@@ -181,157 +242,6 @@ final class SyncService: ObservableObject {
             didRetryAfterDeltaReset = didRetryAfterDeltaReset || shouldRetryAfterDeltaReset
             requiresAnotherSync = requiresAnotherSync || shouldRetryAfterDeltaReset
         } while requiresAnotherSync
-    }
-
-    /// Runs an isolated, real Graph round trip using the same payload and import path as production sync.
-    func runRoundTripDiagnostic() async {
-        guard !isRunningDiagnostic, !isSyncing else { return }
-        guard let profile = activeProfile, profile.isEnabled else {
-            diagnosticResult = .failure("请先连接 Microsoft To Do 并打开同步开关。")
-            return
-        }
-
-        scheduledSyncTask?.cancel()
-        scheduledSyncTask = nil
-        isRunningDiagnostic = true
-        diagnosticResult = .running
-        resetDiagnosticSteps()
-        resetDiagnosticLog()
-        defer { isRunningDiagnostic = false }
-
-        let probes = (0 ..< Self.diagnosticProbeCount).map { _ in makeDiagnosticProbe() }
-        var remoteTasks: [MicrosoftTodoTask] = []
-
-        do {
-            setDiagnosticStep(.createAndRestore, status: .running)
-            appendDiagnosticLog("节点 1 开始：创建并从云端恢复。")
-            let token = try await acquireSilentToken()
-            for probe in probes {
-                let created = try await graph.createTask(
-                    listID: profile.defaultListIdentifier,
-                    payload: payload(for: probe, profile: profile, includingMetadata: true),
-                    token: token
-                )
-                remoteTasks.append(created)
-                appendDiagnosticLog("已创建远端任务 local=\(probe.id.uuidString) remote=\(created.id)。")
-
-                let fetchedTask = try await graph.fetchTask(
-                    listID: profile.defaultListIdentifier,
-                    taskID: created.id,
-                    token: token
-                )
-                let fetchedMetadata = try await graph.fetchTaskMetadata(
-                    listID: profile.defaultListIdentifier,
-                    taskID: created.id,
-                    token: token
-                )
-                remoteTasks[remoteTasks.count - 1] = fetchedTask.replacingExtensions([fetchedMetadata])
-            }
-
-            try apply(remoteTasks, profile: profile)
-            try modelContext?.save()
-
-            for probe in probes {
-                guard let restored = try localTask(id: probe.id) else {
-                    throw SyncError.diagnosticImportMissing(probe.title)
-                }
-                let mismatches = diagnosticMismatches(expected: .init(task: probe), actual: restored)
-                guard mismatches.isEmpty else {
-                    appendDiagnosticLog("节点 1 字段不一致 local=\(probe.id.uuidString) fields=\(mismatches.joined(separator: ", ")) expected={\(diagnosticFieldSummary(for: SyncDiagnosticTaskSnapshot(task: probe)))} actual={\(diagnosticFieldSummary(for: restored))}")
-                    throw SyncError.diagnosticMismatch(probe.title, mismatches)
-                }
-            }
-
-            setDiagnosticStep(.createAndRestore, status: .passed)
-            appendDiagnosticLog("节点 1 通过：8 条任务字段一致。")
-            setDiagnosticStep(.moveAndResync, status: .running)
-            appendDiagnosticLog("节点 2 开始：移动象限后再次同步。")
-
-            guard let taskStore else { throw SyncError.notConfigured }
-            guard let editedTask = try localTask(id: probes[0].id) else {
-                throw SyncError.diagnosticImportMissing(probes[0].title)
-            }
-            let destination = diagnosticDestination(for: editedTask)
-            appendDiagnosticLog("移动 local=\(editedTask.id.uuidString) destination=\(destination.rawValue)。")
-            guard taskStore.moveTask(editedTask, to: destination) else {
-                throw SyncError.diagnosticMoveFailed(editedTask.title)
-            }
-            guard editedTask.category == destination else {
-                throw SyncError.diagnosticMoveFailed(editedTask.title)
-            }
-            let expectedEditedTask = SyncDiagnosticTaskSnapshot(task: editedTask)
-            appendDiagnosticLog("移动后期望字段={\(diagnosticFieldSummary(for: expectedEditedTask))}")
-
-            try await synchronizeForDiagnostic(profile: profile)
-            guard let remoteTaskID = try remoteTaskIdentifier(for: editedTask.id, profileID: profile.id) else {
-                throw SyncError.diagnosticImportMissing(editedTask.title)
-            }
-            appendDiagnosticLog("生产同步完成 local=\(editedTask.id.uuidString) remote=\(remoteTaskID) \(try diagnosticLinkSummary(localTaskID: editedTask.id, profileID: profile.id))")
-            let updatedRemoteTask = try await graph.fetchTask(
-                listID: profile.defaultListIdentifier,
-                taskID: remoteTaskID,
-                token: token
-            )
-            let updatedMetadata = try await graph.fetchTaskMetadata(
-                listID: profile.defaultListIdentifier,
-                taskID: remoteTaskID,
-                token: token
-            )
-            let restoredRemoteTask = updatedRemoteTask.replacingExtensions([updatedMetadata])
-            try apply([restoredRemoteTask], profile: profile)
-            try modelContext?.save()
-            remoteTasks[0] = restoredRemoteTask
-
-            guard let restoredEditedTask = try localTask(id: editedTask.id) else {
-                throw SyncError.diagnosticImportMissing(editedTask.title)
-            }
-            let editedMismatches = diagnosticMismatches(expected: expectedEditedTask, actual: restoredEditedTask)
-            guard editedMismatches.isEmpty else {
-                appendDiagnosticLog("节点 2 字段不一致 local=\(editedTask.id.uuidString) remote=\(remoteTaskID) fields=\(editedMismatches.joined(separator: ", ")) expected={\(diagnosticFieldSummary(for: expectedEditedTask))} actual={\(diagnosticFieldSummary(for: restoredEditedTask))}")
-                throw SyncError.diagnosticMismatch(editedTask.title, editedMismatches)
-            }
-            setDiagnosticStep(.moveAndResync, status: .passed)
-            appendDiagnosticLog("节点 2 通过：移动后的字段一致。")
-
-            try await cleanUpDiagnostic(probes: probes, remoteTasks: remoteTasks, profile: profile, token: token)
-            appendDiagnosticLog("清理完成：8 条远端测试任务与本地导入记录已删除。")
-            diagnosticResult = .success
-        } catch {
-            let diagnosticError = userFacingError(error)
-            appendDiagnosticLog("诊断失败：\(diagnosticError)")
-            failActiveDiagnosticStep(with: diagnosticError)
-            guard !remoteTasks.isEmpty else {
-                diagnosticResult = .failure(diagnosticError)
-                return
-            }
-
-            do {
-                try await cleanUpDiagnostic(
-                    probes: probes,
-                    remoteTasks: remoteTasks,
-                    profile: profile,
-                    token: try await acquireSilentToken()
-                )
-                appendDiagnosticLog("失败后的清理完成。")
-                diagnosticResult = .failure(diagnosticError)
-            } catch {
-                appendDiagnosticLog("清理失败：\(userFacingError(error))")
-                diagnosticResult = .failure(
-                    "\(diagnosticError) 测试任务清理失败：\(userFacingError(error))",
-                    remoteTaskIdentifiers: remoteTasks.map(\.id)
-                )
-            }
-        }
-    }
-
-    private func synchronizeForDiagnostic(profile: MicrosoftTodoSyncProfile) async throws {
-        do {
-            try await performSynchronization(profile: profile)
-        } catch let error as MicrosoftGraphError where requiresDeltaReset(error) {
-            profile.deltaLink = nil
-            try modelContext?.save()
-            try await performSynchronization(profile: profile)
-        }
     }
 
     private func synchronize(profile: MicrosoftTodoSyncProfile) async -> Bool {
@@ -367,6 +277,9 @@ final class SyncService: ObservableObject {
         profile.updatedAt = Date()
         try modelContext?.save()
         lastSyncTime = profile.lastSuccessfulSyncAt
+        if let modelContext {
+            WidgetSnapshotService.write(context: modelContext)
+        }
     }
 
     func signOut() {
@@ -425,6 +338,7 @@ final class SyncService: ObservableObject {
         var finalDeltaLink: String?
         repeat {
             let page = try await graph.taskDeltaPage(listID: profile.defaultListIdentifier, url: nextURL, token: token)
+            activeDiagnosticReport?.pulledEntries += page.value.count
             seenRemoteTaskIDs.formUnion(page.value.filter { $0.removed == nil }.map(\.id))
             try apply(page.value, profile: profile)
             try modelContext?.save()
@@ -437,6 +351,9 @@ final class SyncService: ObservableObject {
         if let finalDeltaLink {
             profile.deltaLink = finalDeltaLink
             UserDefaults.standard.set(Self.taskDeltaQueryVersion, forKey: deltaQueryVersionKey(for: profile))
+        }
+        if let context = modelContext {
+            WidgetSnapshotService.write(context: context)
         }
     }
 
@@ -490,12 +407,30 @@ final class SyncService: ObservableObject {
         let localByID = Dictionary(uniqueKeysWithValues: localTasks.map { ($0.id, $0) })
         let tombstones = try context.fetch(FetchDescriptor<MicrosoftTodoDeletionTombstone>(predicate: #Predicate { $0.profileIdentifier == profileIdentifier }))
         let deletedRemoteIDs = Set(tombstones.map(\.remoteTaskIdentifier))
+        let operations = try context.fetch(FetchDescriptor<MicrosoftTodoSyncOperation>(predicate: #Predicate {
+            $0.profileIdentifier == profileIdentifier
+        }))
+        // A pull is allowed to advance the remote cursor, but it must not erase
+        // a local update that is still waiting to be delivered. This covers
+        // queued, retryable, in-flight, uncertain, conflict, and permanent
+        // update/create records; delete operations remain governed by the
+        // tombstone path below.
+        let pendingLocalTaskIDs = Set(
+            operations
+                .filter { operation in
+                    Self.isLocalMutationOperation(operation)
+                }
+                .map(\.localTaskIdentifier)
+        )
 
         for remote in remoteTasks {
+            recordDiagnosticObservation(remote)
             let metadataLocalID = remote.fourQuadrantsMetadata?.localTaskIdentifier.flatMap(UUID.init(uuidString:))
             let link = linksByRemoteID[remote.id] ?? metadataLocalID.flatMap { linksByLocalID[$0] }
             if remote.removed != nil {
                 guard let link else { continue }
+                if pendingLocalTaskIDs.contains(link.localTaskIdentifier), link.state != .pendingLocalDeletion { continue }
+                activeDiagnosticReport?.deleted += 1
                 if let task = localByID[link.localTaskIdentifier] { context.delete(task) }
                 removeOperations(profileID: profile.id, localTaskID: link.localTaskIdentifier)
                 removeTombstones(profileID: profile.id, localTaskID: link.localTaskIdentifier)
@@ -510,6 +445,10 @@ final class SyncService: ObservableObject {
             if let link, let local = localByID[link.localTaskIdentifier] {
                 link.remoteTaskIdentifier = remote.id
                 if link.state == .pendingLocalDeletion { continue }
+                if pendingLocalTaskIDs.contains(link.localTaskIdentifier) {
+                    activeDiagnosticReport?.pendingLocalPreserved += 1
+                    continue
+                }
                 if Self.shouldKeepPendingLocalChange(
                     linkState: link.state,
                     localUpdatedAt: local.updatedAt,
@@ -521,11 +460,8 @@ final class SyncService: ObservableObject {
                     continue
                 }
                 update(local, from: remote)
-                link.remoteETag = remote.eTag
-                link.remoteLastModifiedAt = remoteModifiedAt
-                link.lastSyncedLocalUpdatedAt = local.updatedAt
-                link.state = .linked
-                link.updatedAt = Date()
+                activeDiagnosticReport?.updated += 1
+                updateRemoteShadow(link, from: remote, local: local, remoteModifiedAt: remoteModifiedAt)
             } else {
                 let task: QuadrantTask
                 if let metadataLocalID, let local = localByID[metadataLocalID] {
@@ -542,9 +478,9 @@ final class SyncService: ObservableObject {
                     state: .linked
                 )
                 newLink.remoteETag = remote.eTag
-                newLink.remoteLastModifiedAt = remoteModifiedAt
-                newLink.lastSyncedLocalUpdatedAt = task.updatedAt
+                updateRemoteShadow(newLink, from: remote, local: task, remoteModifiedAt: remoteModifiedAt)
                 context.insert(newLink)
+                activeDiagnosticReport?.imported += 1
             }
         }
     }
@@ -724,11 +660,8 @@ final class SyncService: ObservableObject {
         )
 
         // This checkpoint turns a successful remote POST into durable local knowledge before another request.
-        link.remoteTaskIdentifier = created.id
-        link.remoteETag = created.eTag
-        link.remoteLastModifiedAt = parseDate(created.lastModifiedDateTime)
+        updateRemoteShadow(link, from: created, local: task, remoteModifiedAt: parseDate(created.lastModifiedDateTime) ?? Date())
         link.state = .remoteCreated
-        link.updatedAt = Date()
         operation.remoteTaskIdentifier = created.id
         operation.operationKind = .update
         operation.state = .queued
@@ -781,12 +714,25 @@ final class SyncService: ObservableObject {
             return
         }
 
+        let initialPayload = patchPayload(for: task, remote: latestRemote, link: link, profile: profile)
+        let needsMetadataUpdate = metadataNeedsUpdate(task, remote: latestRemote)
+        if initialPayload.isEmptyPatch, !needsMetadataUpdate {
+            updateRemoteShadow(link, from: latestRemote, local: task, remoteModifiedAt: parseDate(latestRemote.lastModifiedDateTime) ?? Date())
+            context.delete(operation)
+            return
+        }
+
         let remote: MicrosoftTodoTask
-        do {
+        if initialPayload.isEmptyPatch {
+            // An extension-only edit has no task PATCH at all.
+            remote = latestRemote
+        } else {
+            do {
+            recordPatchFields(initialPayload)
             remote = try await graph.updateTask(
                 listID: profile.defaultListIdentifier,
                 taskID: remoteID,
-                payload: payload(for: task, profile: profile, includingMetadata: false),
+                payload: initialPayload,
                 eTag: latestRemote.eTag,
                 token: token
             )
@@ -803,10 +749,12 @@ final class SyncService: ObservableObject {
                 context.delete(operation)
                 return
             }
+            let retryPayload = patchPayload(for: task, remote: refreshed, link: link, profile: profile)
+            recordPatchFields(retryPayload)
             remote = try await graph.updateTask(
                 listID: profile.defaultListIdentifier,
                 taskID: remoteID,
-                payload: payload(for: task, profile: profile, includingMetadata: false),
+                payload: retryPayload,
                 eTag: refreshed.eTag,
                 token: token
             )
@@ -815,28 +763,26 @@ final class SyncService: ObservableObject {
             context.delete(operation)
             removeTombstones(profileID: profile.id, localTaskID: task.id)
             return
-        }
-
-        let metadata = metadata(for: task, operationIdentifier: operation.operationIdentifier)
-        do {
-            try await graph.updateTaskMetadata(listID: profile.defaultListIdentifier, taskID: remoteID, metadata: metadata, token: token)
-        } catch let error as MicrosoftGraphError where isNotFound(error) {
-            do {
-                try await graph.createTaskMetadata(listID: profile.defaultListIdentifier, taskID: remoteID, metadata: metadata, token: token)
-            } catch let createError as MicrosoftGraphError where isNotFound(createError) {
-                deleteLocallyDeletedRemoteTask(task, link: link, in: context)
-                context.delete(operation)
-                removeTombstones(profileID: profile.id, localTaskID: task.id)
-                return
             }
         }
 
-        link.remoteTaskIdentifier = remote.id
-        link.remoteETag = remote.eTag
-        link.remoteLastModifiedAt = parseDate(remote.lastModifiedDateTime)
-        link.lastSyncedLocalUpdatedAt = task.updatedAt
-        link.state = .linked
-        link.updatedAt = Date()
+        if needsMetadataUpdate {
+            let metadata = metadata(for: task, operationIdentifier: operation.operationIdentifier)
+            do {
+                try await graph.updateTaskMetadata(listID: profile.defaultListIdentifier, taskID: remoteID, metadata: metadata, token: token)
+            } catch let error as MicrosoftGraphError where isNotFound(error) {
+                do {
+                    try await graph.createTaskMetadata(listID: profile.defaultListIdentifier, taskID: remoteID, metadata: metadata, token: token)
+                } catch let createError as MicrosoftGraphError where isNotFound(createError) {
+                    deleteLocallyDeletedRemoteTask(task, link: link, in: context)
+                    context.delete(operation)
+                    removeTombstones(profileID: profile.id, localTaskID: task.id)
+                    return
+                }
+            }
+        }
+
+        updateRemoteShadow(link, from: remote, local: task, remoteModifiedAt: parseDate(remote.lastModifiedDateTime) ?? Date())
         context.delete(operation)
     }
 
@@ -1267,137 +1213,6 @@ final class SyncService: ObservableObject {
         return !remoteChangedSinceLastSync || localUpdatedAt >= remoteModifiedAt
     }
 
-    private func diagnosticDestination(for task: QuadrantTask) -> TaskCategory {
-        switch (task.isImportantQuadrant, task.isUrgent) {
-        case (true, true): .notImportantAndNotUrgent
-        case (true, false): .urgentButNotImportant
-        case (false, true): .importantButNotUrgent
-        case (false, false): .importantAndUrgent
-        }
-    }
-
-    private func resetDiagnosticSteps() {
-        diagnosticSteps = SyncDiagnosticStep.allCases.map {
-            SyncDiagnosticStepResult(step: $0, status: .pending)
-        }
-    }
-
-    private func resetDiagnosticLog() {
-        diagnosticLog = "FourQuadrants Microsoft To Do 同步诊断\n"
-        appendDiagnosticLog("开始：随机生成 \(Self.diagnosticProbeCount) 条测试任务。")
-    }
-
-    private func appendDiagnosticLog(_ message: String) {
-        let formatter = ISO8601DateFormatter()
-        diagnosticLog += "[\(formatter.string(from: Date()))] \(message)\n"
-    }
-
-    private func diagnosticFieldSummary(for task: SyncDiagnosticTaskSnapshot) -> String {
-        return "importance=\(task.importance.rawValue), manualUrgent=\(task.manualIsUrgent), threshold=\(task.urgentThresholdDays.map(String.init) ?? "nil"), originalThreshold=\(task.originalUrgentThresholdDays.map(String.init) ?? "nil"), originalImportance=\(task.originalImportance?.rawValue ?? "nil"), top=\(task.isTop), due=\(task.dueDateKey ?? "nil"), completed=\(task.isCompleted)"
-    }
-
-    private func diagnosticFieldSummary(for task: QuadrantTask) -> String {
-        diagnosticFieldSummary(for: SyncDiagnosticTaskSnapshot(task: task))
-    }
-
-    private func diagnosticLinkSummary(localTaskID: UUID, profileID: UUID) throws -> String {
-        guard let context = modelContext else { throw SyncError.notConfigured }
-        let descriptor = FetchDescriptor<MicrosoftTodoTaskLink>(predicate: #Predicate {
-            $0.profileIdentifier == profileID && $0.localTaskIdentifier == localTaskID
-        })
-        guard let link = try context.fetch(descriptor).first else { return "link=missing" }
-        let remoteModifiedAt = link.remoteLastModifiedAt.map { ISO8601DateFormatter().string(from: $0) } ?? "nil"
-        return "linkState=\(link.state.rawValue) remoteETag=\(link.remoteETag ?? "nil") remoteModified=\(remoteModifiedAt)"
-    }
-
-    private func setDiagnosticStep(_ step: SyncDiagnosticStep, status: SyncDiagnosticStepStatus) {
-        guard let index = diagnosticSteps.firstIndex(where: { $0.step == step }) else { return }
-        diagnosticSteps[index].status = status
-    }
-
-    private func failActiveDiagnosticStep(with message: String) {
-        if let runningStep = diagnosticSteps.first(where: { $0.status == .running }) {
-            setDiagnosticStep(runningStep.step, status: .failed(message))
-        }
-    }
-
-    private func removeDiagnosticImport(localTaskID: UUID, profileID: UUID) throws {
-        guard let context = modelContext else { throw SyncError.notConfigured }
-        if let task = try localTask(id: localTaskID) {
-            context.delete(task)
-        }
-        let descriptor = FetchDescriptor<MicrosoftTodoTaskLink>(predicate: #Predicate {
-            $0.profileIdentifier == profileID && $0.localTaskIdentifier == localTaskID
-        })
-        for link in try context.fetch(descriptor) {
-            context.delete(link)
-        }
-        try context.save()
-    }
-
-    private func makeDiagnosticProbe() -> QuadrantTask {
-        let identifier = String(UUID().uuidString.prefix(8))
-        let title = ["Review", "Plan", "Focus", "Prepare", "Follow up", "Organize"].randomElement()!
-        let note = ["source-check", "cloud-roundtrip", "metadata-audit", "delta-import"].randomElement()!
-        let importance = ImportanceLevel.allCases.randomElement()!
-        let dueAt = Calendar.current.date(
-            byAdding: .day,
-            value: Int.random(in: 1 ... 90),
-            to: Calendar.current.startOfDay(for: Date())
-        )!
-        return QuadrantTask(
-            title: "[FourQuadrants Sync Probe] \(title) \(identifier)",
-            notes: "\(note) \(identifier)",
-            dueAt: dueAt,
-            completedAt: Bool.random() ? Date() : nil,
-            importance: importance,
-            isUrgent: Bool.random(),
-            urgentThresholdDays: Int.random(in: 1 ... 30),
-            originalUrgentThresholdDays: Int.random(in: 1 ... 30),
-            originalImportance: ImportanceLevel.allCases.randomElement()!,
-            isTop: Bool.random()
-        )
-    }
-
-    private func cleanUpDiagnostic(
-        probes: [QuadrantTask],
-        remoteTasks: [MicrosoftTodoTask],
-        profile: MicrosoftTodoSyncProfile,
-        token: String
-    ) async throws {
-        for remoteTask in remoteTasks {
-            do {
-                try await graph.deleteTask(
-                    listID: profile.defaultListIdentifier,
-                    taskID: remoteTask.id,
-                    eTag: remoteTask.eTag,
-                    token: token
-                )
-            } catch let error as MicrosoftGraphError {
-                guard isNotFound(error) else { throw error }
-            }
-        }
-        for probe in probes {
-            try removeDiagnosticImport(localTaskID: probe.id, profileID: profile.id)
-        }
-    }
-
-    private func diagnosticMismatches(expected: SyncDiagnosticTaskSnapshot, actual: QuadrantTask) -> [String] {
-        var mismatches: [String] = []
-        if expected.id != actual.id { mismatches.append("任务标识") }
-        if expected.title != actual.title { mismatches.append("标题") }
-        if expected.notes != actual.notes { mismatches.append("备注") }
-        if expected.importance != actual.importance { mismatches.append("重要性") }
-        if expected.manualIsUrgent != actual.manualIsUrgent { mismatches.append("手动紧急") }
-        if expected.urgentThresholdDays != actual.urgentThresholdDays { mismatches.append("紧急阈值") }
-        if expected.originalUrgentThresholdDays != actual.originalUrgentThresholdDays { mismatches.append("原始紧急阈值") }
-        if expected.originalImportance != actual.originalImportance { mismatches.append("原始重要性") }
-        if expected.isTop != actual.isTop { mismatches.append("置顶") }
-        if expected.dueDateKey != actual.effectiveDueDateKey { mismatches.append("目标日期") }
-        if expected.isCompleted != actual.isCompleted { mismatches.append("完成状态") }
-        return mismatches
-    }
-
     private func makeLocalTask(from remote: MicrosoftTodoTask) -> QuadrantTask {
         let modifiedAt = parseDate(remote.lastModifiedDateTime) ?? Date()
         let metadata = remote.fourQuadrantsMetadata
@@ -1423,12 +1238,43 @@ final class SyncService: ObservableObject {
 
     private func update(_ task: QuadrantTask, from remote: MicrosoftTodoTask) {
         let modifiedAt = parseDate(remote.lastModifiedDateTime) ?? Date()
-        task.title = remote.title ?? task.title
-        task.notes = remote.body?.content
-        task.dueDateKey = dueDateKey(from: remote.dueDateTime)
-        task.dueAt = task.dueDateKey.flatMap { TaskDueDate.date(for: $0) }
-        task.completedAt = remote.status == "completed" ? (parseDate(remote.completedDateTime) ?? modifiedAt) : nil
-        task.importance = importance(from: remote.importance)
+        let hasTaskFieldObservation = remote.titleObservation.isObserved ||
+            remote.bodyObservation.isObserved ||
+            remote.dueDateTimeObservation.isObserved ||
+            remote.statusObservation.isObserved ||
+            remote.completedDateTimeObservation.isObserved ||
+            remote.importanceObservation.isObserved
+        switch remote.titleObservation {
+        case let .value(title): task.title = title
+        case .null: task.title = ""
+        case .unobserved: break
+        }
+        switch remote.bodyObservation {
+        case let .value(body): task.notes = body.content
+        case .null: task.notes = nil
+        case .unobserved: break
+        }
+        switch remote.dueDateTimeObservation {
+        case let .value(dueDateTime):
+            task.dueDateKey = dueDateKey(from: dueDateTime)
+            task.dueAt = task.dueDateKey.flatMap { TaskDueDate.date(for: $0) }
+        case .null:
+            task.dueDateKey = nil
+            task.dueAt = nil
+        case .unobserved: break
+        }
+        switch remote.statusObservation {
+        case let .value(status):
+            task.completedAt = status == "completed" ? (parseDate(remote.completedDateTime) ?? modifiedAt) : nil
+        case .null:
+            task.completedAt = nil
+        case .unobserved: break
+        }
+        switch remote.importanceObservation {
+        case let .value(remoteImportance): task.importance = importance(from: remoteImportance)
+        case .null: task.importance = .normal
+        case .unobserved: break
+        }
         if let metadata = remote.fourQuadrantsMetadata {
             task.manualIsUrgent = metadata.manualIsUrgent ?? task.manualIsUrgent
             task.urgentThresholdDays = metadata.hasUrgentThresholdDays == true ? metadata.urgentThresholdDays : nil
@@ -1436,7 +1282,35 @@ final class SyncService: ObservableObject {
             task.originalImportance = metadata.hasOriginalImportance == true ? ImportanceLevel(rawValue: metadata.originalImportance ?? "") : nil
             task.isTop = metadata.isTop ?? task.isTop
         }
-        task.updatedAt = modifiedAt
+        if hasTaskFieldObservation { task.updatedAt = modifiedAt }
+    }
+
+    private func recordDiagnosticObservation(_ remote: MicrosoftTodoTask) {
+        guard activeDiagnosticReport != nil else { return }
+        recordObservation("title", remote.titleObservation)
+        recordObservation("body", remote.bodyObservation)
+        recordObservation("importance", remote.importanceObservation)
+        recordObservation("status", remote.statusObservation)
+        recordObservation("dueDateTime", remote.dueDateTimeObservation)
+        recordObservation("completedDateTime", remote.completedDateTimeObservation)
+        let recurrence: String
+        switch remote.recurrence { case .unobserved: recurrence = "unobserved"; case .null: recurrence = "null"; case .value: recurrence = "value" }
+        activeDiagnosticReport?.observations["recurrence", default: [:]][recurrence, default: 0] += 1
+    }
+
+    private func recordObservation<Value>(_ name: String, _ field: MicrosoftGraphField<Value>) where Value: Sendable {
+        let state: String
+        switch field { case .unobserved: state = "unobserved"; case .null: state = "null"; case .value: state = "value" }
+        activeDiagnosticReport?.observations[name, default: [:]][state, default: 0] += 1
+    }
+
+    private func recordPatchFields(_ payload: MicrosoftTodoTaskPayload) {
+        guard activeDiagnosticReport != nil else { return }
+        if payload.includesTitle { activeDiagnosticReport?.patchFields["title", default: 0] += 1 }
+        if payload.includesBody { activeDiagnosticReport?.patchFields["body", default: 0] += 1 }
+        if payload.includesImportance { activeDiagnosticReport?.patchFields["importance", default: 0] += 1 }
+        if payload.includesStatus { activeDiagnosticReport?.patchFields["status", default: 0] += 1 }
+        if payload.includesDueDateTime { activeDiagnosticReport?.patchFields["dueDateTime", default: 0] += 1 }
     }
 
     private func payload(
@@ -1457,6 +1331,87 @@ final class SyncService: ObservableObject {
         )
     }
 
+    /// Operations are deltas. In particular, do not serialize recurrence, and do
+    /// not rebuild Graph's time-bearing dueDateTime from Four Quadrants' civil day.
+    private func patchPayload(
+        for task: QuadrantTask,
+        remote: MicrosoftTodoTask,
+        link: MicrosoftTodoTaskLink,
+        profile: MicrosoftTodoSyncProfile
+    ) -> MicrosoftTodoTaskPayload {
+        let titleChanged = link.shadowTitleObserved ? link.shadowTitle != task.title : remote.title != task.title
+        let notes = task.notes ?? ""
+        let remoteNotes = remote.body?.content ?? ""
+        let notesChanged = link.shadowNotesObserved ? (link.shadowNotes ?? "") != notes : remoteNotes != notes
+        let importanceChanged = link.shadowImportanceObserved ? link.shadowImportanceRaw != task.importance.rawValue : remote.importance != task.importance.rawValue
+        // Graph has richer status values. Keep deferred/waitingOnOthers/inProgress
+        // unless the user explicitly toggled Four Quadrants completion.
+        let completionChanged = link.shadowCompletedObserved ? link.shadowCompleted != task.isCompleted : ((remote.status == "completed") != task.isCompleted)
+        let remoteDueKey = dueDateKey(from: remote.dueDateTime)
+        let dueChanged = link.shadowDueDateObserved ? link.shadowDueDateKey != task.effectiveDueDateKey : remoteDueKey != task.effectiveDueDateKey
+        return MicrosoftTodoTaskPayload(
+            title: titleChanged ? task.title : nil,
+            body: notesChanged ? .init(content: notes) : nil,
+            importance: importanceChanged ? task.importance.rawValue : nil,
+            status: completionChanged ? (task.isCompleted ? "completed" : "notStarted") : nil,
+            dueDateTime: dueChanged ? task.effectiveDueDateKey.map { .init(dueDateKey: $0, timeZoneIdentifier: profile.taskTimeZoneIdentifier) } : nil,
+            includesTitle: titleChanged,
+            includesBody: notesChanged,
+            includesImportance: importanceChanged,
+            includesStatus: completionChanged,
+            includesDueDateTime: dueChanged
+        )
+    }
+
+    private func metadataNeedsUpdate(_ task: QuadrantTask, remote: MicrosoftTodoTask) -> Bool {
+        guard let remoteMetadata = remote.fourQuadrantsMetadata else { return true }
+        return remoteMetadata.manualIsUrgent != task.manualIsUrgent ||
+            (remoteMetadata.hasUrgentThresholdDays == true ? remoteMetadata.urgentThresholdDays : nil) != task.urgentThresholdDays ||
+            (remoteMetadata.hasOriginalUrgentThresholdDays == true ? remoteMetadata.originalUrgentThresholdDays : nil) != task.originalUrgentThresholdDays ||
+            (remoteMetadata.hasOriginalImportance == true ? remoteMetadata.originalImportance : nil) != task.originalImportance?.rawValue ||
+            remoteMetadata.isTop != task.isTop
+    }
+
+    private func updateRemoteShadow(
+        _ link: MicrosoftTodoTaskLink,
+        from remote: MicrosoftTodoTask,
+        local task: QuadrantTask,
+        remoteModifiedAt: Date
+    ) {
+        link.remoteTaskIdentifier = remote.id
+        link.remoteETag = remote.eTag
+        link.remoteLastModifiedAt = remoteModifiedAt
+        link.lastSyncedLocalUpdatedAt = task.updatedAt
+        if remote.recurrence.rawValue != "unobserved" {
+            link.recurrenceObservationRaw = remote.recurrence.rawValue
+            link.recurrenceJSON = remote.recurrence.encodedData
+        }
+        if remote.dueDateTimeObservation.isObserved {
+            link.remoteDueDateTimeJSON = remote.dueDateTime.flatMap { try? JSONEncoder().encode($0) }
+            link.shadowDueDateKey = task.effectiveDueDateKey
+            link.shadowDueDateObserved = true
+        }
+        if remote.statusObservation.isObserved {
+            link.remoteStatusRaw = remote.status
+            link.shadowCompleted = task.isCompleted
+            link.shadowCompletedObserved = true
+        }
+        if remote.titleObservation.isObserved {
+            link.shadowTitle = task.title
+            link.shadowTitleObserved = true
+        }
+        if remote.bodyObservation.isObserved {
+            link.shadowNotes = task.notes
+            link.shadowNotesObserved = true
+        }
+        if remote.importanceObservation.isObserved {
+            link.shadowImportanceRaw = task.importance.rawValue
+            link.shadowImportanceObserved = true
+        }
+        link.state = .linked
+        link.updatedAt = Date()
+    }
+
     private func metadata(for task: QuadrantTask, operationIdentifier: UUID? = nil) -> MicrosoftTodoTaskMetadata {
         MicrosoftTodoTaskMetadata(
             localTaskIdentifier: task.id.uuidString,
@@ -1471,6 +1426,10 @@ final class SyncService: ObservableObject {
 
     private func importance(from remoteValue: String?) -> ImportanceLevel {
         ImportanceLevel(rawValue: remoteValue ?? "") ?? .normal
+    }
+
+    static func isLocalMutationOperation(_ operation: MicrosoftTodoSyncOperation) -> Bool {
+        operation.operationKind == .update || operation.operationKind == .create
     }
 
     private func deltaQueryVersionKey(for profile: MicrosoftTodoSyncProfile) -> String {
@@ -1667,9 +1626,6 @@ final class SyncService: ObservableObject {
     private enum SyncError: LocalizedError {
         case notConfigured, notAuthenticated, defaultListNotFound, authenticationFailed, presentationUnavailable
         case pendingOperationsFailed(Int)
-        case diagnosticImportMissing(String)
-        case diagnosticMismatch(String, [String])
-        case diagnosticMoveFailed(String)
         var errorDescription: String? {
             switch self {
             case .notConfigured: "同步服务尚未准备好。"
@@ -1678,9 +1634,6 @@ final class SyncService: ObservableObject {
             case .authenticationFailed: "Microsoft 登录没有返回有效令牌。"
             case .presentationUnavailable: "当前无法打开 Microsoft 登录页面。"
             case let .pendingOperationsFailed(count): "有 \(count) 个 Microsoft To Do 变更尚未送达，系统会自动重试。"
-            case let .diagnosticImportMissing(title): "同步诊断未能从远端恢复测试任务：\(title)。"
-            case let .diagnosticMismatch(title, fields): "同步诊断发现字段不一致：\(title)，\(fields.joined(separator: "、"))。"
-            case let .diagnosticMoveFailed(title): "同步诊断未能将测试任务移动到目标象限：\(title)。"
             }
         }
     }

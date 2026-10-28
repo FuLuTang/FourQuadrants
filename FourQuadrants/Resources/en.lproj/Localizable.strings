@@ -35,12 +35,35 @@
 /* Quadrant View */
 "quadrant_board_title" = "Matrix";
 "category_important_urgent" = "Important & Urgent";
-"category_important_not_urgent" = "Important, Not Urgent";
-"category_urgent_not_important" = "Urgent, Not Important";
-"category_not_important_not_urgent" = "Not Important & Not Urgent";
+"category_important_not_urgent" = "Important";
+"category_urgent_not_important" = "Urgent";
+"category_not_important_not_urgent" = "✗Important✗Urgent";
 "quadrant_card_important" = "Important";
 "quadrant_card_urgent" = "Urgent";
+"quadrant_card_separator" = " & ";
 "no_tasks" = "No tasks";
+
+/* Sync status */
+"sync_status_connecting" = "Connecting to Microsoft To Do";
+"sync_status_connecting_detail" = "Preparing the sync service";
+"sync_status_syncing" = "Syncing";
+"sync_status_syncing_detail" = "Exchanging tasks with Microsoft To Do";
+"sync_status_succeeded" = "Sync complete";
+"sync_status_failed" = "Sync failed";
+"sync_status_inactive" = "Sync is off";
+"sync_status_inactive_detail" = "Connect Microsoft To Do to view sync status here";
+"sync_status_never_synced" = "No successful sync yet";
+"sync_status_details_hint" = "Double tap to view sync details";
+"sync_status_details_title" = "Sync Details";
+"sync_status_details_section" = "Sync Information";
+"sync_status_account" = "Account";
+"sync_status_last_sync" = "Last sync";
+"sync_status_last_sync_format" = "Last sync: %@";
+"sync_status_automatic_sync" = "Automatic sync";
+"sync_status_enabled" = "On";
+"sync_status_disabled" = "Off";
+"sync_status_error_section" = "Error Details";
+"done" = "Done";
 
 /* List View */
 "category_title" = "Categories";
@@ -54,6 +77,11 @@
 "menu_edit" = "Edit";
 "menu_complete_task" = "Complete Task";
 "menu_mark_incomplete" = "Mark Incomplete";
+"sort_by" = "Sort tasks";
+"sort_intelligence" = "Recommended";
+"sort_due_date" = "Due date";
+"sort_creation_date" = "Creation date";
+"sort_name" = "Name";
 
 /* Settings View */
 "settings_title" = "Settings";
@@ -156,6 +184,7 @@
 "daily_end_time" = "End Time";
 "daily_cross_day" = "Continues to next day";
 "daily_minutes" = "min";
+"daily_toggle_completion_hint" = "Double tap to change completion status";
 "daily_smart_link_section" = "Smart Link (AI)";
 "daily_linked_quadrant_task" = "Linked to Matrix Task";
 "daily_mock_task_title" = "Complete iOS Specs";
@@ -193,9 +222,14 @@
 "preview_more_tasks" = "%d more...";
 "widget_no_due_date" = "No due date";
 "widget_no_open_tasks" = "No open tasks";
+"widget_undo_completion" = "Undo completion";
 "widget_today_focus" = "Today focus";
 "widget_open_count" = "%d open";
 "widget_more_tasks" = "+%d more";
+"sync_diagnostic_run" = "Run Sync Diagnostic";
+"sync_diagnostic_privacy" = "Runs a normal sync and summarizes the result. It creates no extra tasks and stores no task content or account identifier.";
+"sync_diagnostic_latest_report" = "Latest Report";
+"sync_diagnostic_copy" = "Copy Privacy-Safe Report";
 
 /* Native macOS interface */
 "四象限" = "Four Quadrants";

@@ -25,7 +25,7 @@
 			<string>Microsoft Authentication</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>msauth.$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+				<string>msauth.com.fulu.FourQuadrants$(BUNDLE_ID_SUFFIX)</string>
 			</array>
 		</dict>
 		<dict>

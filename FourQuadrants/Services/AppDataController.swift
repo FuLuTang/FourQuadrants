@@ -66,7 +66,6 @@ final class AppDataController {
             WidgetTaskCompletionBridge.complete = { [weak taskStore, context = container.mainContext] id in
                 let descriptor = FetchDescriptor<QuadrantTask>(predicate: #Predicate { $0.id == id })
                 guard let task = try? context.fetch(descriptor).first else { return false }
-                guard !task.isCompleted else { return true }
                 return taskStore?.toggleTask(task) ?? false
             }
             state = .ready(AppDataSession(container: container, taskStore: taskStore))

@@ -44,21 +44,166 @@ nonisolated struct MicrosoftTodoTask: Decodable, Sendable {
 
     let id: String
     let eTag: String?
-    let title: String?
-    let body: Body?
-    let importance: String?
-    let status: String?
+    /// The optional projections below are kept for call sites, while the
+    /// observations retain the important distinction between an omitted delta
+    /// property and an explicit JSON null.
+    let titleObservation: MicrosoftGraphField<String>
+    let bodyObservation: MicrosoftGraphField<Body>
+    let importanceObservation: MicrosoftGraphField<String>
+    let statusObservation: MicrosoftGraphField<String>
     let createdDateTime: String?
     let lastModifiedDateTime: String?
-    let dueDateTime: DateTimeValue?
-    let completedDateTime: DateTimeValue?
+    let dueDateTimeObservation: MicrosoftGraphField<DateTimeValue>
+    let completedDateTimeObservation: MicrosoftGraphField<DateTimeValue>
+    /// Kept opaque on purpose: Four Quadrants does not own Microsoft To Do
+    /// recurrence semantics and must not reduce an unfamiliar rule to a local enum.
+    let recurrence: MicrosoftGraphJSONField
     let removed: Removed?
     let extensions: [FourQuadrantsMetadata]?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, body, importance, status, createdDateTime, lastModifiedDateTime, dueDateTime, completedDateTime, extensions
+        case id, title, body, importance, status, createdDateTime, lastModifiedDateTime, dueDateTime, completedDateTime, recurrence, extensions
         case eTag = "@odata.etag"
         case removed = "@removed"
+    }
+
+    init(
+        id: String, eTag: String?, title: String?, body: Body?, importance: String?, status: String?,
+        createdDateTime: String?, lastModifiedDateTime: String?, dueDateTime: DateTimeValue?,
+        completedDateTime: DateTimeValue?, recurrence: MicrosoftGraphJSONField = .unobserved,
+        removed: Removed?, extensions: [FourQuadrantsMetadata]?
+    ) {
+        self.init(
+            id: id,
+            eTag: eTag,
+            titleObservation: title.map { .value($0) } ?? .null,
+            bodyObservation: body.map { .value($0) } ?? .null,
+            importanceObservation: importance.map { .value($0) } ?? .null,
+            statusObservation: status.map { .value($0) } ?? .null,
+            createdDateTime: createdDateTime,
+            lastModifiedDateTime: lastModifiedDateTime,
+            dueDateTimeObservation: dueDateTime.map { .value($0) } ?? .null,
+            completedDateTimeObservation: completedDateTime.map { .value($0) } ?? .null,
+            recurrence: recurrence,
+            removed: removed,
+            extensions: extensions
+        )
+    }
+
+    init(
+        id: String,
+        eTag: String?,
+        titleObservation: MicrosoftGraphField<String>,
+        bodyObservation: MicrosoftGraphField<Body>,
+        importanceObservation: MicrosoftGraphField<String>,
+        statusObservation: MicrosoftGraphField<String>,
+        createdDateTime: String?,
+        lastModifiedDateTime: String?,
+        dueDateTimeObservation: MicrosoftGraphField<DateTimeValue>,
+        completedDateTimeObservation: MicrosoftGraphField<DateTimeValue>,
+        recurrence: MicrosoftGraphJSONField = .unobserved,
+        removed: Removed?,
+        extensions: [FourQuadrantsMetadata]?
+    ) {
+        self.id = id
+        self.eTag = eTag
+        self.titleObservation = titleObservation
+        self.bodyObservation = bodyObservation
+        self.importanceObservation = importanceObservation
+        self.statusObservation = statusObservation
+        self.createdDateTime = createdDateTime
+        self.lastModifiedDateTime = lastModifiedDateTime
+        self.dueDateTimeObservation = dueDateTimeObservation
+        self.completedDateTimeObservation = completedDateTimeObservation
+        self.recurrence = recurrence
+        self.removed = removed; self.extensions = extensions
+    }
+
+    var title: String? { titleObservation.value }
+    var body: Body? { bodyObservation.value }
+    var importance: String? { importanceObservation.value }
+    var status: String? { statusObservation.value }
+    var dueDateTime: DateTimeValue? { dueDateTimeObservation.value }
+    var completedDateTime: DateTimeValue? { completedDateTimeObservation.value }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        eTag = try container.decodeIfPresent(String.self, forKey: .eTag)
+        titleObservation = try container.decodeMicrosoftGraphField(String.self, forKey: .title)
+        bodyObservation = try container.decodeMicrosoftGraphField(Body.self, forKey: .body)
+        importanceObservation = try container.decodeMicrosoftGraphField(String.self, forKey: .importance)
+        statusObservation = try container.decodeMicrosoftGraphField(String.self, forKey: .status)
+        createdDateTime = try container.decodeIfPresent(String.self, forKey: .createdDateTime)
+        lastModifiedDateTime = try container.decodeIfPresent(String.self, forKey: .lastModifiedDateTime)
+        dueDateTimeObservation = try container.decodeMicrosoftGraphField(DateTimeValue.self, forKey: .dueDateTime)
+        completedDateTimeObservation = try container.decodeMicrosoftGraphField(DateTimeValue.self, forKey: .completedDateTime)
+        if !container.contains(.recurrence) {
+            recurrence = .unobserved
+        } else if try container.decodeNil(forKey: .recurrence) {
+            recurrence = .null
+        } else {
+            recurrence = .value(try container.decode(MicrosoftGraphJSON.self, forKey: .recurrence))
+        }
+        removed = try container.decodeIfPresent(Removed.self, forKey: .removed)
+        extensions = try container.decodeIfPresent([FourQuadrantsMetadata].self, forKey: .extensions)
+    }
+}
+
+/// A Graph delta response is a projection, so `nil` alone cannot tell us
+/// whether a property was omitted or explicitly cleared.
+nonisolated enum MicrosoftGraphField<Value: Sendable>: Sendable {
+    case unobserved
+    case null
+    case value(Value)
+
+    var value: Value? {
+        guard case let .value(value) = self else { return nil }
+        return value
+    }
+
+    var isObserved: Bool {
+        if case .unobserved = self { return false }
+        return true
+    }
+}
+
+private extension KeyedDecodingContainer {
+    nonisolated func decodeMicrosoftGraphField<Value: Decodable & Sendable>(
+        _ type: Value.Type,
+        forKey key: Key
+    ) throws -> MicrosoftGraphField<Value> {
+        guard contains(key) else { return .unobserved }
+        if try decodeNil(forKey: key) { return .null }
+        return .value(try decode(type, forKey: key))
+    }
+}
+
+/// Distinguishes an omitted delta property from an explicit JSON null. The value
+/// is persisted as JSON data in the bridge store, never interpreted as a local rule.
+nonisolated enum MicrosoftGraphJSONField: Sendable {
+    case unobserved
+    case null
+    case value(MicrosoftGraphJSON)
+
+    var rawValue: String { switch self { case .unobserved: "unobserved"; case .null: "null"; case .value: "value" } }
+    var encodedData: Data? { guard case let .value(value) = self else { return nil }; return try? JSONEncoder().encode(value) }
+}
+
+nonisolated enum MicrosoftGraphJSON: Codable, Sendable {
+    case object([String: MicrosoftGraphJSON]), array([MicrosoftGraphJSON]), string(String), number(Double), bool(Bool), null
+    init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if c.decodeNil() { self = .null }
+        else if let value = try? c.decode(Bool.self) { self = .bool(value) }
+        else if let value = try? c.decode(Double.self) { self = .number(value) }
+        else if let value = try? c.decode(String.self) { self = .string(value) }
+        else if let value = try? c.decode([String: MicrosoftGraphJSON].self) { self = .object(value) }
+        else { self = .array(try c.decode([MicrosoftGraphJSON].self)) }
+    }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer()
+        switch self { case let .object(v): try c.encode(v); case let .array(v): try c.encode(v); case let .string(v): try c.encode(v); case let .number(v): try c.encode(v); case let .bool(v): try c.encode(v); case .null: try c.encodeNil() }
     }
 }
 
@@ -71,14 +216,15 @@ nonisolated extension MicrosoftTodoTask {
         MicrosoftTodoTask(
             id: id,
             eTag: eTag,
-            title: title,
-            body: body,
-            importance: importance,
-            status: status,
+            titleObservation: titleObservation,
+            bodyObservation: bodyObservation,
+            importanceObservation: importanceObservation,
+            statusObservation: statusObservation,
             createdDateTime: createdDateTime,
             lastModifiedDateTime: lastModifiedDateTime,
-            dueDateTime: dueDateTime,
-            completedDateTime: completedDateTime,
+            dueDateTimeObservation: dueDateTimeObservation,
+            completedDateTimeObservation: completedDateTimeObservation,
+            recurrence: recurrence,
             removed: removed,
             extensions: extensions
         )
@@ -121,20 +267,34 @@ nonisolated struct MicrosoftTodoTaskPayload: Encodable, Sendable {
         }
     }
 
-    let title: String
-    let body: Body
-    let importance: String
-    let status: String
+    let title: String?
+    let body: Body?
+    let importance: String?
+    let status: String?
     let dueDateTime: DateTimeValue?
     let extensions: [MicrosoftTodoTaskMetadata]?
+    let includesTitle: Bool
+    let includesBody: Bool
+    let includesImportance: Bool
+    let includesStatus: Bool
+    let includesDueDateTime: Bool
+
+    var isEmptyPatch: Bool {
+        !includesTitle && !includesBody && !includesImportance && !includesStatus && !includesDueDateTime && extensions == nil
+    }
 
     init(
-        title: String,
-        body: Body,
-        importance: String,
-        status: String,
+        title: String?,
+        body: Body?,
+        importance: String?,
+        status: String?,
         dueDateTime: DateTimeValue?,
-        extensions: [MicrosoftTodoTaskMetadata]? = nil
+        extensions: [MicrosoftTodoTaskMetadata]? = nil,
+        includesTitle: Bool = true,
+        includesBody: Bool = true,
+        includesImportance: Bool = true,
+        includesStatus: Bool = true,
+        includesDueDateTime: Bool = true
     ) {
         self.title = title
         self.body = body
@@ -142,6 +302,11 @@ nonisolated struct MicrosoftTodoTaskPayload: Encodable, Sendable {
         self.status = status
         self.dueDateTime = dueDateTime
         self.extensions = extensions
+        self.includesTitle = includesTitle
+        self.includesBody = includesBody
+        self.includesImportance = includesImportance
+        self.includesStatus = includesStatus
+        self.includesDueDateTime = includesDueDateTime
     }
 
     enum CodingKeys: String, CodingKey {
@@ -150,12 +315,11 @@ nonisolated struct MicrosoftTodoTaskPayload: Encodable, Sendable {
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(title, forKey: .title)
-        try container.encode(body, forKey: .body)
-        try container.encode(importance, forKey: .importance)
-        try container.encode(status, forKey: .status)
-        // A missing due date must clear the Graph field during PATCH instead of leaving it stale.
-        try container.encode(dueDateTime, forKey: .dueDateTime)
+        if includesTitle { try container.encode(title, forKey: .title) }
+        if includesBody { try container.encode(body, forKey: .body) }
+        if includesImportance { try container.encode(importance, forKey: .importance) }
+        if includesStatus { try container.encode(status, forKey: .status) }
+        if includesDueDateTime { try container.encode(dueDateTime, forKey: .dueDateTime) }
         try container.encodeIfPresent(extensions, forKey: .extensions)
     }
 }
