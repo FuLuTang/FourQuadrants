@@ -13,6 +13,7 @@ struct MacTaskCommonFields: View {
     let hasAutomaticUrgency: Bool
     let effectiveUrgency: Bool
     let onSubmitTitle: (() -> Void)?
+    var autoFocusTitle = false
     @FocusState private var titleFocused: Bool
 
     var body: some View {
@@ -20,6 +21,7 @@ struct MacTaskCommonFields: View {
             TextField("任务名称", text: $title)
                 .focused($titleFocused)
                 .onSubmit { onSubmitTitle?() }
+                .onAppear { if autoFocusTitle { titleFocused = true } }
             LabeledContent("备注") {
                 TextEditor(text: $notes)
                     .frame(minHeight: 76)

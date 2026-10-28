@@ -83,7 +83,8 @@ struct MacTaskFormView: View {
                     showsCompletion: existingTask != nil,
                     hasAutomaticUrgency: hasAutomaticUrgency,
                     effectiveUrgency: effectiveUrgency,
-                    onSubmitTitle: save
+                    onSubmitTitle: save,
+                    autoFocusTitle: existingTask == nil
                 )
 
                 if hasDueDate {

@@ -2,12 +2,6 @@ import AppKit
 import SwiftData
 import SwiftUI
 
-extension Notification.Name {
-    static let macCreateTask = Notification.Name("FourQuadrantsMac.createTask")
-    static let macShowTask = Notification.Name("FourQuadrantsMac.showTask")
-    static let macNavigate = Notification.Name("FourQuadrantsMac.navigate")
-}
-
 @main
 struct FourQuadrantsMacApp: App {
     @NSApplicationDelegateAdaptor(MacApplicationDelegate.self) private var delegate
@@ -19,45 +13,38 @@ struct FourQuadrantsMacApp: App {
                 .frame(minWidth: 900, minHeight: 600)
         }
         .defaultSize(width: 1240, height: 820)
-        .commands {
-            SidebarCommands()
-            CommandGroup(after: .newItem) {
-                Button("新建任务") {
-                    NotificationCenter.default.post(name: .macCreateTask, object: nil)
-                }
-                .keyboardShortcut("n")
-                .disabled(runtime.stickies == nil)
-            }
-            CommandMenu("ToDo便笺") {
-                Menu("添加ToDo便笺浮窗") {
-                    ForEach([
-                        TaskCategory.importantAndUrgent,
-                        .urgentButNotImportant,
-                        .importantButNotUrgent,
-                        .notImportantAndNotUrgent
-                    ], id: \.self) { category in
-                        Button {
-                            runtime.stickies?.createNote(source: .category(category))
-                        } label: {
-                            MacQuadrantHeading(category: category, font: .body)
-                        }
-                    }
-                    Divider()
-                    Button("四合一") { runtime.stickies?.createNote(source: .combined) }
-                    Button("智能排列") { runtime.stickies?.createNote(source: .smart) }
-                }
-                .disabled(runtime.stickies == nil)
-            }
-        }
+        .commands { MacCommands(runtime: runtime) }
 
         Settings {
             MacSettingsRootView(runtime: runtime)
         }
 
-        MenuBarExtra("FourQuadrants", systemImage: "square.grid.2x2.fill") {
+        MenuBarExtra {
             MacMenuBarContent(runtime: runtime)
+        } label: {
+            MacMenuBarLabel(runtime: runtime)
         }
         .menuBarExtraStyle(.menu)
+    }
+}
+
+/// The status item label is alive for the whole app lifetime, unlike the main
+/// window, so it hands `openWindow` to the runtime for AppKit-originated routes.
+private struct MacMenuBarLabel: View {
+    let runtime: MacApplicationRuntime
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Label("FourQuadrants", systemImage: "square.grid.2x2.fill")
+            .task { registerOpener(runtime: runtime, openWindow: openWindow) }
+    }
+}
+
+@MainActor
+private func registerOpener(runtime: MacApplicationRuntime, openWindow: OpenWindowAction) {
+    runtime.registerMainWindowOpener {
+        openWindow(id: "main")
+        NSApp.activate(ignoringOtherApps: true)
     }
 }
 
@@ -78,21 +65,7 @@ private struct MacMenuBarContent: View {
         }
         Divider()
         Menu("添加ToDo便笺浮窗", systemImage: "note.text.badge.plus") {
-            ForEach([
-                TaskCategory.importantAndUrgent,
-                .urgentButNotImportant,
-                .importantButNotUrgent,
-                .notImportantAndNotUrgent
-            ], id: \.self) { category in
-                Button {
-                    runtime.stickies?.createNote(source: .category(category))
-                } label: {
-                    MacQuadrantHeading(category: category, font: .body)
-                }
-            }
-            Divider()
-            Button("四合一") { runtime.stickies?.createNote(source: .combined) }
-            Button("智能排列") { runtime.stickies?.createNote(source: .smart) }
+            MacStickyCreationMenuItems(stickies: runtime.stickies)
         }
         .disabled(runtime.stickies == nil)
 
@@ -136,19 +109,8 @@ private struct MacRootView: View {
         MacSessionContent(runtime: runtime)
             .environment(runtime)
             .preferredColorScheme(themeMode == 1 ? .light : themeMode == 2 ? .dark : nil)
-            .onReceive(NotificationCenter.default.publisher(for: .macShowTask)) { _ in
-                openWindow(id: "main")
-                NSApp.activate(ignoringOtherApps: true)
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .macNavigate)) { _ in
-                openWindow(id: "main")
-                NSApp.activate(ignoringOtherApps: true)
-            }
-            .onOpenURL { url in
-                guard url.scheme == "fourquadrants", url.host == "task",
-                      let id = UUID(uuidString: url.lastPathComponent) else { return }
-                NotificationCenter.default.post(name: .macShowTask, object: id)
-            }
+            .task { registerOpener(runtime: runtime, openWindow: openWindow) }
+            .onOpenURL { runtime.handle(url: $0) }
     }
 }
 
@@ -167,6 +129,15 @@ private struct MacSessionContent: View {
                         .environment(session.taskStore)
                         .environment(stickies)
                         .task { runtime.restoreWindowsIfNeeded() }
+                } else {
+                    ContentUnavailableView {
+                        Label("便笺服务未就绪", systemImage: "note.text")
+                    } description: {
+                        Text("任务数据已打开，但桌面便笺尚未准备好。")
+                    } actions: {
+                        Button("重新连接", action: runtime.reconnectWindows)
+                            .buttonStyle(.borderedProminent)
+                    }
                 }
             case .recoveryRequired(let error):
                 MacRecoveryView(error: error, retry: runtime.retry, reset: runtime.reset)

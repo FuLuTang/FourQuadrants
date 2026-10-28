@@ -123,29 +123,9 @@ struct MacWorkspaceView: View {
             }
             if needsCompletionRefresh { refreshDate = instant }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .macCreateTask)) { _ in
-            presentNewTask()
-        }
-        .onAppear(perform: presentMenuBarTaskRequest)
-        .onChange(of: runtime.createTaskRequestID) { _, _ in
-            presentMenuBarTaskRequest()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .macShowTask)) { notification in
-            guard let id = notification.object as? UUID else { return }
-            selection = .all
-            searchText = ""
-            selectedTaskID = id
-            prefersInspectorPresented = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .macNavigate)) { notification in
-            guard let destination = notification.object as? String else { return }
-            switch destination {
-            case "quadrants": selection = .quadrants
-            case "daily": selection = .daily
-            case "all": selection = .all
-            case "completed": selection = .completed
-            default: break
-            }
+        .onAppear(perform: handlePendingRoute)
+        .onChange(of: runtime.pendingRoute) { _, _ in
+            handlePendingRoute()
         }
     }
 
@@ -155,23 +135,7 @@ struct MacWorkspaceView: View {
             if (selection ?? .quadrants) == .quadrants {
                 Menu {
                     Section("新建浮窗") {
-                        ForEach(MacWorkspaceSidebar.quadrants, id: \.self) { category in
-                            Button {
-                                stickyCoordinator.createNote(source: .category(category))
-                            } label: {
-                                Label {
-                                    MacQuadrantHeading(category: category, font: .body)
-                                } icon: {
-                                    Image(systemName: category.icon)
-                                }
-                            }
-                        }
-                        Button("四合一", systemImage: "square.grid.2x2") {
-                            stickyCoordinator.createNote(source: .combined)
-                        }
-                        Button("智能排列", systemImage: "sparkles.rectangle.stack") {
-                            stickyCoordinator.createNote(source: .smart)
-                        }
+                        MacStickyCreationMenuItems(stickies: stickyCoordinator, showsIcons: true)
                     }
 
                     if !stickyCoordinator.configurations.isEmpty {
@@ -209,7 +173,7 @@ struct MacWorkspaceView: View {
             Menu {
                 Button("新建任务", systemImage: "plus") { presentNewTask() }
                 Menu("放到桌面") {
-                    ForEach(MacWorkspaceSidebar.quadrants, id: \.self) { category in
+                    ForEach(TaskCategory.allQuadrants, id: \.self) { category in
                         Button {
                             stickyCoordinator.createNote(source: .category(category))
                         } label: {
@@ -252,10 +216,18 @@ struct MacWorkspaceView: View {
         isTaskFormPresented = true
     }
 
-    private func presentMenuBarTaskRequest() {
-        guard runtime.createTaskRequestID != nil else { return }
-        runtime.consumeNewTaskRequest()
-        presentNewTask()
+    private func handlePendingRoute() {
+        switch runtime.consumePendingRoute() {
+        case .newTask:
+            presentNewTask()
+        case .showTask(let id):
+            selection = .all
+            searchText = ""
+            selectedTaskID = id
+            prefersInspectorPresented = true
+        case nil:
+            break
+        }
     }
 
     private func presentEditForm(_ task: QuadrantTask) {
@@ -269,10 +241,10 @@ struct MacWorkspaceView: View {
     }
 
     private func deletePendingTask() {
+        defer { pendingDeleteID = nil }
         guard let id = pendingDeleteID, let task = tasks.first(where: { $0.id == id }) else { return }
         let deleted = taskStore.removeTask(task)
         if deleted && selectedTaskID == id { selectedTaskID = nil }
-        pendingDeleteID = nil
     }
 
     private func pinTask(_ task: QuadrantTask) {
@@ -283,13 +255,6 @@ struct MacWorkspaceView: View {
 private struct MacWorkspaceSidebar: View {
     @Binding var selection: MacWorkspaceRoute?
     let tasks: [QuadrantTask]
-
-    static let quadrants: [TaskCategory] = [
-        .importantAndUrgent,
-        .urgentButNotImportant,
-        .importantButNotUrgent,
-        .notImportantAndNotUrgent
-    ]
 
     var body: some View {
         List(selection: $selection) {
@@ -307,7 +272,7 @@ private struct MacWorkspaceSidebar: View {
             }
 
             Section("象限") {
-                ForEach(Self.quadrants, id: \.self) { category in
+                ForEach(TaskCategory.allQuadrants, id: \.self) { category in
                     Label {
                         MacQuadrantHeading(category: category, font: .body)
                     } icon: {

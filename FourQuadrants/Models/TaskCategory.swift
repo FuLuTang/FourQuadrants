@@ -9,7 +9,15 @@ enum TaskCategory: String, CaseIterable, Codable, Identifiable, Hashable {
     case urgentButNotImportant = "urgent_not_important"
     case notImportantAndNotUrgent = "not_important_not_urgent"
     case completed = "completed"
-    
+
+    /// The four real quadrants in display order (excludes `.all` and `.completed`).
+    static let allQuadrants: [TaskCategory] = [
+        .importantAndUrgent,
+        .urgentButNotImportant,
+        .importantButNotUrgent,
+        .notImportantAndNotUrgent
+    ]
+
     var displayName: String {
         switch self {
         case .all: return String(localized: "category_all")

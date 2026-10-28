@@ -72,17 +72,11 @@ struct MacQuadrantBoard: View {
     let onPin: (QuadrantTask) -> Void
 
     private let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
-    private let categories: [TaskCategory] = [
-        .importantAndUrgent,
-        .urgentButNotImportant,
-        .importantButNotUrgent,
-        .notImportantAndNotUrgent
-    ]
 
     var body: some View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 14) {
-                ForEach(categories, id: \.self) { category in
+                ForEach(TaskCategory.allQuadrants, id: \.self) { category in
                     MacQuadrantCard(
                         category: category,
                         allTasks: tasks,
@@ -299,7 +293,7 @@ private struct MacTaskRow: View {
                 Button("添加所属象限ToDo便笺", systemImage: "note.text.badge.plus", action: onPin)
                 Divider()
                 Menu("移动到象限") {
-                    ForEach([TaskCategory.importantAndUrgent, .urgentButNotImportant, .importantButNotUrgent, .notImportantAndNotUrgent], id: \.self) { category in
+                    ForEach(TaskCategory.allQuadrants, id: \.self) { category in
                         Button { onMove(category) } label: {
                             Label {
                                 MacQuadrantHeading(category: category, font: .body)
@@ -328,7 +322,7 @@ private struct MacTaskRow: View {
             Button(task.isCompleted ? "标记为未完成" : "标记为已完成", systemImage: "checkmark", action: onToggle)
             Button("添加所属象限ToDo便笺", systemImage: "note.text.badge.plus", action: onPin)
             Menu("移动到象限") {
-                ForEach([TaskCategory.importantAndUrgent, .urgentButNotImportant, .importantButNotUrgent, .notImportantAndNotUrgent], id: \.self) { category in
+                ForEach(TaskCategory.allQuadrants, id: \.self) { category in
                     Button { onMove(category) } label: {
                         Label {
                             MacQuadrantHeading(category: category, font: .body)

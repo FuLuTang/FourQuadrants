@@ -1,12 +1,9 @@
 import AppKit
 import SwiftUI
-import UserNotifications
 
 struct MacSettingsView: View {
     @AppStorage("themeMode") private var themeMode = 0
-    @AppStorage("notificationsEnabled") private var notificationsEnabled = true
     @Environment(\.openURL) private var openURL
-    @State private var notificationNotice: String?
 
     var body: some View {
         NavigationSplitView {
@@ -14,7 +11,7 @@ struct MacSettingsView: View {
                 NavigationLink {
                     MacAppearanceSettingsView(themeMode: $themeMode)
                 } label: {
-                    Label("外观与通知", systemImage: "paintbrush")
+                    Label("外观", systemImage: "paintbrush")
                 }
                 NavigationLink {
                     MacSyncSettingsView()
@@ -33,25 +30,6 @@ struct MacSettingsView: View {
             MacAppearanceSettingsView(themeMode: $themeMode)
         }
         .frame(minWidth: 720, minHeight: 480)
-        .alert("通知设置", isPresented: Binding(get: { notificationNotice != nil }, set: { if !$0 { notificationNotice = nil } })) {
-            Button("好", role: .cancel) { notificationNotice = nil }
-        } message: {
-            Text(notificationNotice ?? "")
-        }
-        .onChange(of: notificationsEnabled) { _, enabled in
-            guard enabled else { return }
-            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
-                Task { @MainActor in
-                    if let error {
-                        notificationsEnabled = false
-                        notificationNotice = error.localizedDescription
-                    } else if !granted {
-                        notificationsEnabled = false
-                        notificationNotice = "系统未授予通知权限。你可以在系统设置的通知页面中更改此选项。"
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -67,33 +45,12 @@ private struct MacAppearanceSettingsView: View {
                     Text("深色").tag(2)
                 }
                 .pickerStyle(.segmented)
-                Text("主题偏好由主窗口统一应用。")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("通知") {
-                Toggle("允许任务通知", isOn: notificationBinding)
-                Text("开启时，系统会请求通知权限。你可以随时在 macOS 系统设置中调整权限。")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("外观与通知")
+        .navigationTitle("外观")
         .frame(maxWidth: 720, alignment: .leading)
         .padding(20)
-    }
-
-    @AppStorage("notificationsEnabled") private var notificationsEnabled = true
-
-    private var notificationBinding: Binding<Bool> {
-        Binding(
-            get: { notificationsEnabled },
-            set: { enabled in
-                notificationsEnabled = enabled
-            }
-        )
     }
 }
 

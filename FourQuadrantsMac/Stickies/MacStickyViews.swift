@@ -90,17 +90,6 @@ private enum MacStickyMode: CaseIterable, Identifiable {
     }
 }
 
-/// Compatibility surface for callers that still route to the former library screen.
-struct MacStickiesLibraryView: View {
-    var body: some View {
-        ContentUnavailableView(
-            "桌面任务浮窗",
-            systemImage: "list.bullet.rectangle",
-            description: Text("请从主页入口创建和管理任务浮窗。")
-        )
-    }
-}
-
 struct MacStickyNoteView: View {
     let configurationID: UUID
     @Environment(MacStickyCoordinator.self) private var coordinator
@@ -189,7 +178,7 @@ private struct MacStickyTitleBar: View {
                 Section("ToDo便笺分类") {
                     ForEach(MacStickyMode.allCases) { choice in
                         Button {
-                            coordinator.updateSource(id: configuration.id, source: choice.source)
+                            coordinator.updateSource(choice.source, for: configuration.id)
                         } label: {
                             if choice == mode {
                                 Label(choice.title, systemImage: "checkmark")
@@ -295,7 +284,7 @@ private struct MacStickySettingsMenu: View {
             Section("显示模式") {
                 ForEach(MacStickyMode.allCases) { choice in
                     Button {
-                        coordinator.updateSource(id: configuration.id, source: choice.source)
+                        coordinator.updateSource(choice.source, for: configuration.id)
                     } label: {
                         if choice == mode {
                             Label(choice.title, systemImage: "checkmark")

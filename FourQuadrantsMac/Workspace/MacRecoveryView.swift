@@ -1,6 +1,6 @@
 import SwiftUI
 
-public struct MacRecoveryView: View {
+struct MacRecoveryView: View {
     let error: PersistenceError
     let retry: () -> Void
     let reset: () -> Void
@@ -12,7 +12,7 @@ public struct MacRecoveryView: View {
         self.reset = reset
     }
 
-    public var body: some View {
+    var body: some View {
         ContentUnavailableView {
             Label("无法打开本地数据", systemImage: "externaldrive.badge.exclamationmark")
         } description: {

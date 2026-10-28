@@ -13,6 +13,8 @@ final class MacStickyCoordinator {
     let defaults: UserDefaults
     private(set) var configurations: [MacStickyConfiguration] = []
     private(set) var persistenceError: String?
+    /// Routes "show this task" requests to the app runtime without depending on its type.
+    @ObservationIgnored var onOpenTask: ((UUID) -> Void)?
     @ObservationIgnored private var hasUnreadableStoredConfigurations = false
     @ObservationIgnored private var windows: [UUID: MacStickyWindowController] = [:]
 
@@ -26,17 +28,6 @@ final class MacStickyCoordinator {
             hasUnreadableStoredConfigurations = true
             persistenceError = "无法读取便笺配置：\(error.localizedDescription)"
         }
-    }
-
-    func pinTasks(_ ids: [UUID], title: String) {
-        let config = MacStickyConfiguration(
-            title: title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "便笺" : title,
-            source: .selectedTaskIDs(Self.unique(ids)),
-            isVisible: true
-        )
-        configurations.append(config)
-        persist()
-        showWindow(for: config.id)
     }
 
     @discardableResult
@@ -62,59 +53,6 @@ final class MacStickyCoordinator {
         persist()
         showWindow(for: configuration.id)
         return configuration.id
-    }
-
-    func pinCategory(_ category: TaskCategory) {
-        let config = MacStickyConfiguration(title: category.displayName, source: .category(category), isVisible: true)
-        configurations.append(config)
-        persist()
-        showWindow(for: config.id)
-    }
-
-    @discardableResult
-    func createTodoMode(_ category: TaskCategory, title: String? = nil, showDetails: Bool = false) -> UUID {
-        let displayTitle = title?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return createTodoMode(.category(category), title: displayTitle?.isEmpty == false ? displayTitle : category.displayName, showDetails: showDetails)
-    }
-
-    @discardableResult
-    func createTodoMode(_ source: MacStickySource, title: String? = nil, showDetails: Bool = false) -> UUID {
-        let displayTitle = title?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let paper: MacStickyPaper
-        if case .category(let category) = source {
-            paper = .default(for: category)
-        } else {
-            paper = .yellow
-        }
-        var frame = MacStickyWindowFrame.initial
-        if case .combined = source {
-            frame.width = max(frame.width, Double(Self.combinedMinimumWidth))
-        }
-        let configuration = MacStickyConfiguration(
-            title: displayTitle?.isEmpty == false ? displayTitle! : source.title,
-            source: source,
-            paper: paper,
-            frame: frame,
-            isVisible: true,
-            showDetails: showDetails
-        )
-        configurations.append(configuration)
-        persist()
-        showWindow(for: configuration.id)
-        return configuration.id
-    }
-
-    func switchTodoMode(_ category: TaskCategory, for id: UUID) {
-        updateSource(.category(category), for: id)
-    }
-
-    func switchTodoMode(_ source: MacStickySource, for id: UUID) {
-        updateSource(source, for: id)
-    }
-
-    func createEmptyNote(title: String = "便笺") {
-        configurations.append(MacStickyConfiguration(title: title, source: .selectedTaskIDs([])))
-        persist()
     }
 
     func restoreWindows() {
@@ -174,19 +112,6 @@ final class MacStickyCoordinator {
         persist()
     }
 
-    func setShowsDetails(_ showDetails: Bool, for id: UUID) {
-        guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
-        configurations[index].showDetails = showDetails
-        persist()
-    }
-
-    func setFloating(_ isFloating: Bool, for id: UUID) {
-        guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
-        configurations[index].isFloating = isFloating
-        windows[id]?.apply(configurations[index])
-        persist()
-    }
-
     func updateSource(_ source: MacStickySource, for id: UUID) {
         guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
         configurations[index].source = source
@@ -201,10 +126,6 @@ final class MacStickyCoordinator {
             }
         }
         persist()
-    }
-
-    func updateSource(id: UUID, source: MacStickySource) {
-        updateSource(source, for: id)
     }
 
     func updatePreferences(id: UUID, isFloating: Bool, showDetails: Bool) {
@@ -222,80 +143,6 @@ final class MacStickyCoordinator {
         persist()
     }
 
-    func addTaskReference(_ taskID: UUID, to id: UUID) {
-        guard let index = configurations.firstIndex(where: { $0.id == id }),
-              case .selectedTaskIDs(var ids) = configurations[index].source else { return }
-        if !ids.contains(taskID) { ids.append(taskID) }
-        configurations[index].source = .selectedTaskIDs(ids)
-        persist()
-    }
-
-    func removeTaskReference(_ taskID: UUID, from id: UUID) {
-        guard let index = configurations.firstIndex(where: { $0.id == id }),
-              case .selectedTaskIDs(let ids) = configurations[index].source else { return }
-        configurations[index].source = .selectedTaskIDs(ids.filter { $0 != taskID })
-        persist()
-    }
-
-    func replaceTaskReferences(_ ids: [UUID], for id: UUID) {
-        guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
-        configurations[index].source = .selectedTaskIDs(Self.unique(ids))
-        persist()
-    }
-
-    @discardableResult
-    func setTaskPinned(_ taskID: UUID, isPinned: Bool) -> Bool {
-        guard let task = try? container.mainContext.fetch(
-            FetchDescriptor<QuadrantTask>(predicate: #Predicate { $0.id == taskID })
-        ).first else { return false }
-        guard task.isTop != isPinned else { return true }
-        return taskStore.updateTask(
-            task,
-            title: task.title,
-            notes: task.notes,
-            importance: task.importance,
-            isUrgent: task.manualIsUrgent,
-            isTop: isPinned,
-            dueAt: task.displayDueDate,
-            urgentThresholdDays: task.urgentThresholdDays,
-            originalUrgentThresholdDays: task.originalUrgentThresholdDays,
-            originalImportance: task.originalImportance
-        )
-    }
-
-    @discardableResult
-    func toggleTaskPinned(_ taskID: UUID) -> Bool {
-        guard let task = try? container.mainContext.fetch(
-            FetchDescriptor<QuadrantTask>(predicate: #Predicate { $0.id == taskID })
-        ).first else { return false }
-        return setTaskPinned(taskID, isPinned: !task.isTop)
-    }
-
-    @discardableResult
-    func createTask(title: String, for id: UUID) -> Bool {
-        let cleanedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanedTitle.isEmpty,
-              let configuration = configurations.first(where: { $0.id == id }) else { return false }
-        let category: TaskCategory
-        if case .category(let selectedCategory) = configuration.source {
-            category = selectedCategory == .completed ? .notImportantAndNotUrgent : selectedCategory
-        } else {
-            category = .notImportantAndNotUrgent
-        }
-        let important = category == .importantAndUrgent || category == .importantButNotUrgent
-        let urgent = category == .importantAndUrgent || category == .urgentButNotImportant
-        let taskID = UUID()
-        guard taskStore.addTask(id: taskID, title: cleanedTitle, importance: important ? .high : .normal, isUrgent: urgent,
-                                isTop: false, urgentThresholdDays: nil) else { return false }
-        if case .selectedTaskIDs = configuration.source {
-            addTaskReference(taskID, to: id)
-        } else if case .category(.completed) = configuration.source,
-                  let task = try? container.mainContext.fetch(FetchDescriptor<QuadrantTask>(predicate: #Predicate { $0.id == taskID })).first {
-            _ = taskStore.toggleTask(task)
-        }
-        return true
-    }
-
     func recordFrame(_ frame: NSRect, id: UUID) {
         guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
         configurations[index].frame = MacStickyWindowFrame(x: frame.minX, y: frame.minY, width: frame.width, height: frame.height)
@@ -303,8 +150,7 @@ final class MacStickyCoordinator {
     }
 
     func openTaskInMainApp(_ id: UUID) {
-        NSApp.activate(ignoringOtherApps: true)
-        NotificationCenter.default.post(name: .macShowTask, object: id)
+        onOpenTask?(id)
     }
 
     func visibleTasks(from source: MacStickySource, in tasks: [QuadrantTask], now: Date) -> [QuadrantTask] {
@@ -354,11 +200,6 @@ final class MacStickyCoordinator {
 
     static func encode(_ configurations: [MacStickyConfiguration]) throws -> Data {
         try JSONEncoder().encode(configurations)
-    }
-
-    private static func unique(_ ids: [UUID]) -> [UUID] {
-        var seen = Set<UUID>()
-        return ids.filter { seen.insert($0).inserted }
     }
 
     fileprivate static let collapsedWindowHeight: CGFloat = 32

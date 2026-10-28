@@ -11,15 +11,13 @@ private struct MacDailyTaskPresentation: Identifiable {
 
 /// Native macOS daily planner. The host supplies the shared SwiftData container
 /// and the shared `TaskStore` through the environment.
-public struct MacDailyView: View {
+struct MacDailyView: View {
     @Environment(TaskStore.self) private var taskStore
     @State private var selectedDate = Calendar.current.startOfDay(for: .now)
     @State private var selectedTask: DailyTask?
     @State private var taskPresentation: MacDailyTaskPresentation?
 
-    public init() {}
-
-    public var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             MacDailyHeader(
                 date: selectedDate,
@@ -191,7 +189,7 @@ private struct MacDailyHeader: View {
                 Label("新建日程", systemImage: "plus")
             }
             .buttonStyle(.borderedProminent)
-            .keyboardShortcut("n", modifiers: [.command])
+            .keyboardShortcut("n", modifiers: [.command, .shift])
         }
         .padding(.horizontal, 22)
         .padding(.vertical, 14)
@@ -297,7 +295,6 @@ private struct MacDailyTimeline: View {
             }
             .background(Color(nsColor: .textBackgroundColor))
             .onAppear { scrollToRelevantHour(using: proxy) }
-            .onChange(of: date) { _, _ in scrollToRelevantHour(using: proxy) }
         }
     }
 

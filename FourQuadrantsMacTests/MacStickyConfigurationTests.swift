@@ -145,8 +145,7 @@ struct MacStickyConfigurationTests {
             taskStore: TaskStore(modelContext: container.mainContext),
             defaults: defaults
         )
-        coordinator.createEmptyNote(title: "原始标题")
-        let id = try #require(coordinator.configurations.first?.id)
+        let id = coordinator.createNote(source: .smart)
 
         coordinator.updateConfiguration(id, title: "  新标题  ", paper: .pink, isFloating: true, opacity: 0.4)
 
@@ -167,8 +166,7 @@ struct MacStickyConfigurationTests {
             taskStore: TaskStore(modelContext: container.mainContext),
             defaults: defaults
         )
-        coordinator.createEmptyNote(title: "便笺")
-        let id = try #require(coordinator.configurations.first?.id)
+        let id = coordinator.createNote(source: .smart)
         coordinator.showWindow(for: id)
         #expect(coordinator.configurations.first?.isVisible == true)
 
@@ -185,8 +183,7 @@ struct MacStickyConfigurationTests {
             taskStore: TaskStore(modelContext: container.mainContext),
             defaults: try makeDefaults()
         )
-        coordinator.createEmptyNote(title: "原始标题")
-        let id = try #require(coordinator.configurations.first?.id)
+        let id = coordinator.createNote(source: .smart)
 
         coordinator.updateConfiguration(id, title: "   ", paper: .pink, isFloating: false, opacity: 1)
 
@@ -201,14 +198,13 @@ struct MacStickyConfigurationTests {
             taskStore: TaskStore(modelContext: container.mainContext),
             defaults: defaults
         )
-        coordinator.createEmptyNote(title: "保留")
-        coordinator.createEmptyNote(title: "删除")
-        let removedID = try #require(coordinator.configurations.first(where: { $0.title == "删除" })?.id)
+        let keptID = coordinator.createNote(source: .smart)
+        let removedID = coordinator.createNote(source: .combined)
 
         coordinator.removeConfiguration(id: removedID)
 
-        #expect(coordinator.configurations.map(\.title) == ["保留"])
-        #expect(try MacStickyCoordinator.loadConfigurations(from: defaults).map(\.title) == ["保留"])
+        #expect(coordinator.configurations.map(\.id) == [keptID])
+        #expect(try MacStickyCoordinator.loadConfigurations(from: defaults).map(\.id) == [keptID])
     }
 
     @Test func unreadableConfigurationDataIsPreservedWhenEditing() throws {
@@ -222,7 +218,7 @@ struct MacStickyConfigurationTests {
             defaults: defaults
         )
 
-        coordinator.createEmptyNote()
+        coordinator.createNote(source: .smart)
 
         #expect(defaults.data(forKey: MacStickyCoordinator.persistenceKey) == originalData)
         #expect(coordinator.persistenceError != nil)
