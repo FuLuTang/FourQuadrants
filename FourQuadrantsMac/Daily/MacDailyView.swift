@@ -28,7 +28,10 @@ public struct MacDailyView: View {
                 onPrevious: { changeDay(by: -1) },
                 onNext: { changeDay(by: 1) },
                 onToday: { selectToday() },
-                onDateChange: { selectedDate = Calendar.current.startOfDay(for: $0) },
+                onDateChange: {
+                    selectedDate = Calendar.current.startOfDay(for: $0)
+                    selectedTask = nil
+                },
                 onNew: { presentNewTask(at: defaultStartTime()) },
                 onEdit: presentSelectedTask,
                 onToggleCompletion: toggleSelectedTask,

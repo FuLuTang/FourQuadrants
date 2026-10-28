@@ -10,6 +10,7 @@ struct MacTaskInspector: View {
         Group {
             if let task {
                 MacTaskInspectorEditor(task: task, taskStore: taskStore, onEditDetails: { onEditDetails(task) }, onPin: { onPin(task) })
+                    .id(task.id)
             } else {
                 ContentUnavailableView("选择一个任务", systemImage: "sidebar.right", description: Text("标题、备注、分类和日期可以直接在检查器中修改。"))
             }

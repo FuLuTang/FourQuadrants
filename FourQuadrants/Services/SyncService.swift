@@ -399,12 +399,13 @@ final class SyncService: ObservableObject {
         guard let context = modelContext else { throw SyncError.notConfigured }
         let profileIdentifier = profile.id
         let links = try context.fetch(FetchDescriptor<MicrosoftTodoTaskLink>(predicate: #Predicate { $0.profileIdentifier == profileIdentifier }))
-        let linksByRemoteID = Dictionary(uniqueKeysWithValues: links.compactMap { link in
+        // Duplicate links keep the one canonicalLink would select.
+        let linksByRemoteID = Dictionary(links.compactMap { link in
             link.remoteTaskIdentifier.map { ($0, link) }
-        })
-        let linksByLocalID = Dictionary(uniqueKeysWithValues: links.map { ($0.localTaskIdentifier, $0) })
+        }, uniquingKeysWith: { linkSortOrder($1, $0) ? $1 : $0 })
+        let linksByLocalID = Dictionary(links.map { ($0.localTaskIdentifier, $0) }, uniquingKeysWith: { linkSortOrder($1, $0) ? $1 : $0 })
         let localTasks = try context.fetch(FetchDescriptor<QuadrantTask>())
-        let localByID = Dictionary(uniqueKeysWithValues: localTasks.map { ($0.id, $0) })
+        let localByID = Dictionary(localTasks.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let tombstones = try context.fetch(FetchDescriptor<MicrosoftTodoDeletionTombstone>(predicate: #Predicate { $0.profileIdentifier == profileIdentifier }))
         let deletedRemoteIDs = Set(tombstones.map(\.remoteTaskIdentifier))
         let operations = try context.fetch(FetchDescriptor<MicrosoftTodoSyncOperation>(predicate: #Predicate {

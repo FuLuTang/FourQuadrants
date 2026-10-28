@@ -126,7 +126,7 @@ struct MacStickyConfigurationTests {
             .importantAndUrgent: [importantAndUrgent.id],
             .importantButNotUrgent: [important.id],
             .urgentButNotImportant: [urgent.id],
-            .notImportantAndNotUrgent: [neither.id],
+            .notImportantAndNotUrgent: [neither.id, recentlyCompleted.id],
             .completed: [recentlyCompleted.id, oldCompleted.id]
         ]
 
@@ -157,6 +157,40 @@ struct MacStickyConfigurationTests {
         #expect(updated.opacity == 0.65)
         let reloaded = try MacStickyCoordinator.loadConfigurations(from: defaults)
         #expect(reloaded == [updated])
+    }
+
+    @Test func closingAllWindowsKeepsConfigurationVisibility() throws {
+        let container = try PersistenceController.inMemoryContainer()
+        let defaults = try makeDefaults()
+        let coordinator = MacStickyCoordinator(
+            container: container,
+            taskStore: TaskStore(modelContext: container.mainContext),
+            defaults: defaults
+        )
+        coordinator.createEmptyNote(title: "便笺")
+        let id = try #require(coordinator.configurations.first?.id)
+        coordinator.showWindow(for: id)
+        #expect(coordinator.configurations.first?.isVisible == true)
+
+        coordinator.closeAllWindows()
+
+        #expect(coordinator.configurations.first?.isVisible == true)
+        #expect(try MacStickyCoordinator.loadConfigurations(from: defaults).first?.isVisible == true)
+    }
+
+    @Test func updatingConfigurationTrimsTitleAndFallsBackWhenEmpty() throws {
+        let container = try PersistenceController.inMemoryContainer()
+        let coordinator = MacStickyCoordinator(
+            container: container,
+            taskStore: TaskStore(modelContext: container.mainContext),
+            defaults: try makeDefaults()
+        )
+        coordinator.createEmptyNote(title: "原始标题")
+        let id = try #require(coordinator.configurations.first?.id)
+
+        coordinator.updateConfiguration(id, title: "   ", paper: .pink, isFloating: false, opacity: 1)
+
+        #expect(coordinator.configurations.first?.title == "便笺")
     }
 
     @Test func removingConfigurationPersistsDeletion() throws {

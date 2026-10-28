@@ -126,7 +126,6 @@ final class MacStickyCoordinator {
     func closeAllWindows() {
         for id in Array(windows.keys) {
             guard let controller = windows[id] else { continue }
-            hideWindow(id: id)
             controller.schedulePermanentClose()
         }
         windows.removeAll()
@@ -165,7 +164,8 @@ final class MacStickyCoordinator {
 
     func updateConfiguration(_ id: UUID, title: String, paper: MacStickyPaper, isFloating: Bool, opacity: Double, showDetails: Bool? = nil) {
         guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
-        configurations[index].title = title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "便笺" : title
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        configurations[index].title = trimmedTitle.isEmpty ? "便笺" : trimmedTitle
         configurations[index].paper = paper
         configurations[index].isFloating = isFloating
         configurations[index].opacity = min(max(opacity, 0.65), 1)
@@ -402,6 +402,7 @@ private final class MacStickyWindowController: NSObject, NSWindowDelegate {
         }
         window = MacStickyWindow(contentRect: frame, styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
         super.init()
+        window.isReleasedWhenClosed = false
         if configuration.isCollapsed {
             window.styleMask.remove(.resizable)
         }
