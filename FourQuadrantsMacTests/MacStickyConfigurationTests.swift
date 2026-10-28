@@ -123,6 +123,22 @@ struct MacStickyConfigurationTests {
         #expect(wide.widened(toAtLeast: MacStickyLayout.combinedMinimumWidth) == wide)
     }
 
+    @Test func collapsingUpdatesConfigurationImmediatelyWithoutChangingExpandedFrame() throws {
+        let container = try PersistenceController.inMemoryContainer()
+        let coordinator = MacStickyCoordinator(container: container, taskStore: TaskStore(modelContext: container.mainContext), defaults: try makeDefaults())
+        let original = MacStickyWindowFrame(x: 100, y: 200, width: 220, height: 260)
+        let id = coordinator.createNote(source: .category(.importantAndUrgent), frame: original)
+
+        coordinator.setCollapsed(true, id: id)
+        coordinator.setCollapsed(false, id: id)
+        coordinator.setCollapsed(true, id: id)
+
+        // 动画只影响窗口 frame，配置立即是最新状态，展开态框架不被中间 frame 污染。
+        #expect(coordinator.configurations.first?.isCollapsed == true)
+        #expect(coordinator.configurations.first?.frame == original)
+        coordinator.closeAllWindows()
+    }
+
     @Test func switchingToCombinedWidensNarrowNoteIncludingCollapsedOnes() throws {
         let container = try PersistenceController.inMemoryContainer()
         let coordinator = MacStickyCoordinator(container: container, taskStore: TaskStore(modelContext: container.mainContext), defaults: try makeDefaults())

@@ -131,7 +131,7 @@ final class MacStickyCoordinator {
     func setCollapsed(_ collapsed: Bool, id: UUID) {
         guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
         configurations[index].isCollapsed = collapsed
-        windows[id]?.apply(configurations[index])
+        windows[id]?.apply(configurations[index], animated: true)
         save()
     }
 
@@ -186,7 +186,7 @@ final class MacStickyCoordinator {
     }
 
     #if DEBUG
-    /// 视觉验收用：清空已有便笺，创建单象限、四合一与收起态各一张。
+    /// 视觉验收用：清空已有便笺，创建单象限、四合一、收起态与智能排列各一张。
     func createPreviewNotes() {
         for configuration in configurations { removeConfiguration(id: configuration.id) }
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
@@ -199,6 +199,7 @@ final class MacStickyCoordinator {
         createNote(source: .combined, frame: frame(.combined, column: 260))
         let collapsed = createNote(source: .category(.importantButNotUrgent), frame: frame(.category(.importantButNotUrgent), column: 650))
         setCollapsed(true, id: collapsed)
+        createNote(source: .smart, frame: frame(.smart, column: 910))
     }
     #endif
 }

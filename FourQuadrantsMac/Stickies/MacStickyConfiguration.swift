@@ -57,6 +57,10 @@ enum MacStickySource: Codable, Equatable {
 enum MacStickyLayout {
     /// 标题条高度，同时也是收起态窗口的高度。
     static let titleBarHeight: Double = 16
+    /// 标题条两端控件向内缩进的距离，让方框点击区域避开窗口边缘的缩放热区。
+    static let titleBarEdgeInset: Double = 8
+    /// 收起/展开的窗口动画时长。
+    static let collapseAnimationDuration: Double = 0.18
     static let minimumSize = (width: 160.0, height: 80.0)
     /// 四合一需要容纳 2×2 两列，窄于此宽度时向右扩展。
     static let combinedMinimumWidth: Double = 320

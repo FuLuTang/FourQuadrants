@@ -9,6 +9,10 @@ private enum MacStickyPalette {
     static let yellowBody = Color(red: 254 / 255, green: 244 / 255, blue: 156 / 255)
     static let yellowBar = Color(red: 254 / 255, green: 234 / 255, blue: 61 / 255)
 
+    /// 单象限便笺的纸色（正文）与标题条色，四合一的格子与智能排列的行底复用。
+    static func body(for category: TaskCategory) -> Color { tint(category.themeColor, toward: 0.84) }
+    static func bar(for category: TaskCategory) -> Color { tint(category.themeColor, toward: 0.64) }
+
     /// 向白色混合，得到分类色的浅色调。
     static func tint(_ color: Color, toward fraction: Double) -> Color {
         let base = NSColor(color).usingColorSpace(.sRGB) ?? .gray
@@ -47,12 +51,12 @@ enum MacStickyMode: CaseIterable, Identifiable {
 
     fileprivate var bodyColor: Color {
         guard let category else { return MacStickyPalette.yellowBody }
-        return MacStickyPalette.tint(category.themeColor, toward: 0.84)
+        return MacStickyPalette.body(for: category)
     }
 
     fileprivate var barColor: Color {
         guard let category else { return MacStickyPalette.yellowBar }
-        return MacStickyPalette.tint(category.themeColor, toward: 0.64)
+        return MacStickyPalette.bar(for: category)
     }
 
     init(source: MacStickySource) {
@@ -73,6 +77,8 @@ struct MacStickyNoteView: View {
     @Query(sort: \QuadrantTask.updatedAt, order: .reverse) private var allTasks: [QuadrantTask]
     /// 刚完成的任务显示 3 秒后消失；只在到期时刷新一次，不做逐秒刷新。
     @State private var expiryTick = 0
+    /// 内容区是否显示：收起时立即隐藏；展开时等窗口动画结束再显示，避免内容随窗口逐帧重排。
+    @State private var contentShown = true
 
     var body: some View {
         if let configuration = coordinator.configurations.first(where: { $0.id == configurationID }) {
@@ -87,12 +93,12 @@ struct MacStickyNoteView: View {
                     mode: mode,
                     openCount: configuration.isCollapsed ? tasks.filter { !$0.isCompleted }.count : nil
                 )
-                if !configuration.isCollapsed {
+                if !configuration.isCollapsed && contentShown {
                     Group {
                         if mode == .combined {
                             MacStickyCombinedGrid(tasks: tasks, showDetails: configuration.showDetails, onToggle: toggle, onOpen: open)
                         } else {
-                            MacStickyTaskList(tasks: tasks, showDetails: configuration.showDetails, onToggle: toggle, onOpen: open)
+                            MacStickyTaskList(tasks: tasks, showDetails: configuration.showDetails, tintsRows: mode == .smart, onToggle: toggle, onOpen: open)
                         }
                     }
                     if let error {
@@ -109,9 +115,21 @@ struct MacStickyNoteView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(mode.bodyColor)
             .overlay(Rectangle().strokeBorder(.black.opacity(0.28), lineWidth: 1))
+            .overlay {
+                // 收起态不可缩放，不显示缩放光标。
+                if !configuration.isCollapsed { MacStickyResizeCursors() }
+            }
             .overlay(alignment: .bottomTrailing) {
-                if !configuration.isCollapsed {
+                if !configuration.isCollapsed && contentShown {
                     MacStickyResizeCorner().frame(width: 10, height: 10)
+                }
+            }
+            .task(id: configuration.isCollapsed) {
+                if configuration.isCollapsed {
+                    contentShown = false
+                } else if !contentShown {
+                    try? await Task.sleep(for: .seconds(MacStickyLayout.collapseAnimationDuration))
+                    if !Task.isCancelled { contentShown = true }
                 }
             }
             .task(id: nextExpiry(after: now)) {
@@ -156,12 +174,13 @@ private struct MacStickyTitleBar: View {
                     coordinator.setCollapsed(!configuration.isCollapsed, id: configuration.id)
                 }
             }
+            .padding(.horizontal, MacStickyLayout.titleBarEdgeInset)
         }
         .frame(height: MacStickyLayout.titleBarHeight)
         .background(mode.barColor)
     }
 
-    /// 8pt 空心方框，外围 20×16 为点击区域。收起框内多一道横线，与关闭框区分。
+    /// 8pt 空心方框，外围 20×16 为点击区域；整体向内缩进，避开窗口边缘的缩放热区。收起框内多一道横线，与关闭框区分。
     private func controlBox(label: LocalizedStringKey, showsShade: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Rectangle()
@@ -289,11 +308,63 @@ private final class MacStickyResizeView: NSView {
     }
 }
 
+/// 四边与四角的缩放光标：铺满窗口但不拦截点击，只用 tracking area 在边缘热区内换光标。
+/// `.activeAlways` 保证非激活的面板也能显示；热区宽度与系统对无边框面板的边缘缩放热区一致（约 5pt）。
+private struct MacStickyResizeCursors: NSViewRepresentable {
+    func makeNSView(context: Context) -> MacStickyResizeCursorView { MacStickyResizeCursorView() }
+    func updateNSView(_ nsView: MacStickyResizeCursorView, context: Context) {}
+}
+
+private final class MacStickyResizeCursorView: NSView {
+    /// 边缘热区宽度；角落热区边长与右下角缩放把手一致。
+    private static let edge: CGFloat = 5
+    private static let corner: CGFloat = 10
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        let e = Self.edge, c = Self.corner, w = bounds.width, h = bounds.height
+        guard w > 2 * c, h > 2 * c else { return }
+        // 坐标系非翻转：原点在左下。
+        let zones: [(NSRect, NSCursor.FrameResizePosition)] = [
+            (NSRect(x: c, y: 0, width: w - 2 * c, height: e), .bottom),
+            (NSRect(x: c, y: h - e, width: w - 2 * c, height: e), .top),
+            (NSRect(x: 0, y: c, width: e, height: h - 2 * c), .left),
+            (NSRect(x: w - e, y: c, width: e, height: h - 2 * c), .right),
+            (NSRect(x: 0, y: 0, width: c, height: c), .bottomLeft),
+            (NSRect(x: w - c, y: 0, width: c, height: c), .bottomRight),
+            (NSRect(x: 0, y: h - c, width: c, height: c), .topLeft),
+            (NSRect(x: w - c, y: h - c, width: c, height: c), .topRight),
+        ]
+        for (rect, position) in zones {
+            addTrackingArea(NSTrackingArea(
+                rect: rect,
+                options: [.cursorUpdate, .activeAlways],
+                owner: self,
+                userInfo: ["position": position.rawValue]
+            ))
+        }
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        guard let raw = event.trackingArea?.userInfo?["position"] as? UInt,
+              let position = NSCursor.FrameResizePosition(rawValue: raw) else {
+            super.cursorUpdate(with: event)
+            return
+        }
+        NSCursor.frameResize(position: position, directions: .all).set()
+    }
+}
+
 // MARK: - 内容
 
 private struct MacStickyTaskList: View {
     let tasks: [QuadrantTask]
     let showDetails: Bool
+    /// 智能排列：每条任务用对应象限的纸色作行底。
+    let tintsRows: Bool
     let onToggle: (QuadrantTask) -> Void
     let onOpen: (QuadrantTask) -> Void
 
@@ -305,9 +376,9 @@ private struct MacStickyTaskList: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
-                VStack(spacing: 0) {
+                VStack(spacing: tintsRows ? 2 : 0) {
                     ForEach(tasks, id: \.id) { task in
-                        MacStickyTaskRow(task: task, showDetails: showDetails, onToggle: { onToggle(task) }, onOpen: { onOpen(task) })
+                        MacStickyTaskRow(task: task, showDetails: showDetails, tintsRow: tintsRows, onToggle: { onToggle(task) }, onOpen: { onOpen(task) })
                     }
                 }
                 .padding(.vertical, 3)
@@ -354,15 +425,17 @@ private struct MacStickyCombinedGrid: View {
             .foregroundStyle(MacStickyPalette.ink.opacity(0.75))
             .padding(.horizontal, 6)
             .frame(height: 14)
+            .background(MacStickyPalette.bar(for: category))
             ScrollView {
                 VStack(spacing: 0) {
                     ForEach(open, id: \.id) { task in
-                        MacStickyTaskRow(task: task, showDetails: showDetails, onToggle: { onToggle(task) }, onOpen: { onOpen(task) })
+                        MacStickyTaskRow(task: task, showDetails: showDetails, tintsRow: false, onToggle: { onToggle(task) }, onOpen: { onOpen(task) })
                     }
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(MacStickyPalette.body(for: category))
     }
 }
 
@@ -370,6 +443,8 @@ private struct MacStickyCombinedGrid: View {
 private struct MacStickyTaskRow: View {
     let task: QuadrantTask
     let showDetails: Bool
+    /// 为 true 时用任务所属象限的纸色作圆角行底。
+    let tintsRow: Bool
     let onToggle: () -> Void
     let onOpen: () -> Void
 
@@ -409,6 +484,12 @@ private struct MacStickyTaskRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 6)
+        .background {
+            if tintsRow {
+                RoundedRectangle(cornerRadius: 3).fill(MacStickyPalette.body(for: task.category))
+            }
+        }
+        .padding(.horizontal, tintsRow ? 3 : 0)
         .contentShape(Rectangle())
         .onTapGesture(count: 2, perform: onOpen)
         .contextMenu {
