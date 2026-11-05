@@ -20,7 +20,7 @@ struct TaskPreviewView: View {
                         .lineLimit(3)
                     
                     // 象限分类标签
-                    Text(task.category.displayName)
+                    task.category.styledDisplayName
                         .font(.caption)
                         .fontWeight(.medium)
                         .padding(.horizontal, 8)
@@ -32,6 +32,12 @@ struct TaskPreviewView: View {
             }
             
             Divider()
+
+            if let notes = task.notes, !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                MarkdownTaskNotesView(text: notes)
+                    .font(.subheadline)
+                Divider()
+            }
             
             // 参数列表
             VStack(spacing: 12) {
@@ -63,11 +69,11 @@ struct TaskPreviewView: View {
                 )
                 
                 // 截止日期（不再附带"已逾期"badge）
-                if let targetDate = task.targetDate {
+                if let dueAt = task.displayDueDate {
                     previewRow(
                         icon: "calendar",
                         title: String(localized: "preview_due_date"),
-                        value: formattedFullDate(targetDate),
+                        value: formattedFullDate(dueAt),
                         color: task.isOverdue ? .red : .blue
                     )
                 }
@@ -176,12 +182,13 @@ struct QuadrantPreviewView: View {
                     .fill(category.themeColor)
                     .frame(width: 12, height: 12)
                 
-                Text(category.displayName)
-                    .font(.headline.bold())
+                category.styledDisplayName
+                    .font(.headline)
                 
                 Spacer()
                 
-                Text(String(format: String(localized: "preview_task_count"), tasks.count))
+                // 数量只统计未完成任务；最近完成、仍在保留期内的任务照常列出但不计入
+                Text(String(format: String(localized: "preview_task_count"), tasks.filter { !$0.isCompleted }.count))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -246,11 +253,11 @@ struct QuadrantPreviewView: View {
                     .lineLimit(1)
                     .strikethrough(task.isCompleted)
                 
-                if let targetDate = task.targetDate {
+                if let dueAt = task.displayDueDate {
                     HStack(spacing: 4) {
                         Image(systemName: "calendar")
                             .font(.system(size: 9))
-                        Text(formattedDate(targetDate))
+                        Text(formattedDate(dueAt))
                             .font(.caption2)
                     }
                     .foregroundColor(task.isOverdue ? .red : .secondary)
@@ -279,8 +286,8 @@ struct QuadrantPreviewView: View {
 #Preview("Task Preview") {
     TaskPreviewView(task: QuadrantTask(
         title: "完成项目文档",
-        date: Date(),
-        targetDate: Date().addingTimeInterval(86400 * 3),
+        createdAt: Date(),
+        dueAt: Date().addingTimeInterval(86400 * 3),
         importance: .high,
         isUrgent: true,
         isTop: true
@@ -291,8 +298,8 @@ struct QuadrantPreviewView: View {
     QuadrantPreviewView(
         category: .importantAndUrgent,
         tasks: [
-            QuadrantTask(title: "任务1", date: Date(), importance: .high, isUrgent: true),
-            QuadrantTask(title: "任务2", date: Date(), targetDate: Date(), importance: .high, isUrgent: true)
+            QuadrantTask(title: "任务1", createdAt: Date(), importance: .high, isUrgent: true),
+            QuadrantTask(title: "任务2", createdAt: Date(), dueAt: Date(), importance: .high, isUrgent: true)
         ]
     )
 }

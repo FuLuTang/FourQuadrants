@@ -1,80 +1,106 @@
-import Foundation
 import CoreTransferable
+import Foundation
+import SwiftData
 import UniformTypeIdentifiers
 
-enum ImportanceLevel: String, Codable {
+enum ImportanceLevel: String, Codable, CaseIterable {
     case low, normal, high
 }
 
-import SwiftData
+/// A task due date is a calendar day, not an absolute instant in time.
+/// `dueAt` remains stored for the existing UI while `dueDateKey` is the sync source of truth.
+enum TaskDueDate {
+    static func key(for date: Date, calendar: Calendar = .current) -> String {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let year = components.year, let month = components.month, let day = components.day else {
+            preconditionFailure("A calendar date must contain year, month, and day components.")
+        }
+        return String(format: "%04d-%02d-%02d", year, month, day)
+    }
 
-// MARK: - ⚠️ Schema 版本提醒
-// 修改 @Model 结构（添加/删除/重命名字段）时，必须同步操作：
-// 1. 在 AppLifecycleManager.swift 中递增 currentSchemaVersion
-// 2. 添加对应的 migrateSchemaToVX() 迁移函数
-// 3. 在 performSchemaMigrationIfNeeded() 中调用新迁移
-//
-// 当前 Schema 版本：V3
-// - V1: 初始版本 (QuadrantTask + DailyTask)
-// - V2: 新增 originalUrgentThresholdDays
-// - V3: 新增 originalImportance
+    static func date(for key: String, calendar: Calendar = .current) -> Date? {
+        let components = key.split(separator: "-").compactMap { Int($0) }
+        guard components.count == 3 else { return nil }
+        let requested = DateComponents(year: components[0], month: components[1], day: components[2])
+        guard let date = calendar.date(from: requested) else { return nil }
+        let resolved = calendar.dateComponents([.year, .month, .day], from: date)
+        guard resolved.year == requested.year,
+              resolved.month == requested.month,
+              resolved.day == requested.day else { return nil }
+        return date
+    }
+
+    static func isValid(_ key: String) -> Bool {
+        date(for: key, calendar: Calendar(identifier: .gregorian)) != nil
+    }
+}
 
 @Model
 final class QuadrantTask {
     var id: UUID = UUID()
     var title: String = ""
-    var date: Date = Date()
-    var dateLatestModified: Date = Date()
-    var targetDate: Date? = nil
-    var isCompleted: Bool = false
+    var notes: String?
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
+    /// Legacy display value retained for the existing UI and V2 migration.
+    var dueAt: Date?
+    /// Stable civil-date representation used for sync and cross-time-zone comparisons.
+    var dueDateKey: String?
+    var completedAt: Date?
     var importance: ImportanceLevel = ImportanceLevel.normal
-    
-    // Mapping: High -> Important; Normal/Low -> Not Important
-    @Transient var isImportantQuadrant: Bool {
-        return importance == .high
-    }
-    
-    // Renamed backing storage for manual urgency
     var manualIsUrgent: Bool = false
-    
-    var urgentThresholdDays: Int? = nil
-    var originalUrgentThresholdDays: Int? = nil
-    var originalImportance: ImportanceLevel? = nil
-    var completionDate: Date?
+    var urgentThresholdDays: Int?
+    var originalUrgentThresholdDays: Int?
+    var originalImportance: ImportanceLevel?
     var isTop: Bool = false
-    
-    // MARK: - 智能关联 (New)
-    var linkedDailyTaskIDs: [UUID]? = [] // 关联的每日任务 (反向引用)
-    var embeddingData: Data?             // 语义向量数据 (预留)
-    
-    // Computed property for auto-urgency
+
+    @Relationship(deleteRule: .nullify, inverse: \DailyTask.quadrantTask)
+    var dailyTasks: [DailyTask]?
+
+    @Transient var isCompleted: Bool {
+        get { completedAt != nil }
+        set { completedAt = newValue ? (completedAt ?? Date()) : nil }
+    }
+
+    @Transient var isImportantQuadrant: Bool {
+        importance == .high
+    }
+
     @Transient var isUrgent: Bool {
         get {
-            if let threshold = urgentThresholdDays, let target = targetDate {
-                let now = Calendar.current.startOfDay(for: Date())
-                let targetDay = Calendar.current.startOfDay(for: target)
-                let daysRemaining = Calendar.current.dateComponents([.day], from: now, to: targetDay).day ?? Int.max
-                return daysRemaining <= threshold
-            } else {
+            guard let threshold = urgentThresholdDays,
+                  let dueDateKey,
+                  let dueDate = TaskDueDate.date(for: dueDateKey) else {
                 return manualIsUrgent
             }
+            let calendar = Calendar.current
+            let remaining = calendar.dateComponents(
+                [.day],
+                from: calendar.startOfDay(for: Date()),
+                to: dueDate
+            ).day ?? .max
+            return remaining <= threshold
         }
-        set {
-            manualIsUrgent = newValue
-        }
+        set { manualIsUrgent = newValue }
     }
-    
+
     @Transient var isOverdue: Bool {
-        guard !isCompleted, let targetDate = targetDate else { return false }
-        // Use targetDate + 1 day as the deadline
-        return targetDate.advanced(by: 86400) < Date()
+        guard !isCompleted,
+              let dueDateKey,
+              let dueDate = TaskDueDate.date(for: dueDateKey) else { return false }
+        return dueDate < Calendar.current.startOfDay(for: Date())
     }
-    
-    /// 根据紧急和重要状态计算所属象限
+
+    @Transient var effectiveDueDateKey: String? {
+        dueDateKey ?? dueAt.map { TaskDueDate.key(for: $0) }
+    }
+
+    @Transient var displayDueDate: Date? {
+        effectiveDueDateKey.flatMap { TaskDueDate.date(for: $0) }
+    }
+
     @Transient var category: TaskCategory {
-        if isCompleted {
-            return .completed
-        }
+        guard !isCompleted else { return .completed }
         switch (isImportantQuadrant, isUrgent) {
         case (true, true): return .importantAndUrgent
         case (true, false): return .importantButNotUrgent
@@ -82,48 +108,63 @@ final class QuadrantTask {
         case (false, false): return .notImportantAndNotUrgent
         }
     }
-    
-    // Sync metadata
-    var msTodoId: String? = nil
-    var msLastModified: Date? = nil
-    
-    // Custom initializer to match existing calls that use 'isUrgent'
-    init(id: UUID = UUID(), title: String, date: Date, dateLatestModified: Date = Date(), targetDate: Date? = nil, isCompleted: Bool = false, importance: ImportanceLevel = ImportanceLevel.normal, isUrgent: Bool = false, urgentThresholdDays: Int? = nil, originalUrgentThresholdDays: Int? = nil, originalImportance: ImportanceLevel? = nil, completionDate: Date? = nil, isTop: Bool = false, msTodoId: String? = nil, msLastModified: Date? = nil) {
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        notes: String? = nil,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date(),
+        dueAt: Date? = nil,
+        completedAt: Date? = nil,
+        importance: ImportanceLevel = .normal,
+        isUrgent: Bool = false,
+        urgentThresholdDays: Int? = nil,
+        originalUrgentThresholdDays: Int? = nil,
+        originalImportance: ImportanceLevel? = nil,
+        isTop: Bool = false
+    ) {
         self.id = id
         self.title = title
-        self.date = date
-        self.dateLatestModified = dateLatestModified
-        self.targetDate = targetDate
-        self.isCompleted = isCompleted
+        self.notes = notes
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.dueAt = dueAt
+        self.dueDateKey = dueAt.map { TaskDueDate.key(for: $0) }
+        self.completedAt = completedAt
         self.importance = importance
         self.manualIsUrgent = isUrgent
         self.urgentThresholdDays = urgentThresholdDays
         self.originalUrgentThresholdDays = originalUrgentThresholdDays
         self.originalImportance = originalImportance
-        self.completionDate = completionDate
         self.isTop = isTop
-        self.msTodoId = msTodoId
-        self.msLastModified = msLastModified
+    }
+
+    func setDueDate(_ date: Date?, calendar: Calendar = .current) {
+        dueDateKey = date.map { TaskDueDate.key(for: $0, calendar: calendar) }
+        dueAt = dueDateKey.flatMap { TaskDueDate.date(for: $0, calendar: calendar) }
+    }
+
+    func restoreLegacyDueDateKeyIfNeeded(calendar: Calendar = .current) {
+        guard dueDateKey == nil, let dueAt else { return }
+        dueDateKey = TaskDueDate.key(for: dueAt, calendar: calendar)
     }
 }
 
-// MARK: - 轻量级传输对象（用于拖放）
-// SwiftData @Model 不能直接遵循 Codable，因此使用独立的结构体
 struct TaskTransferItem: Codable, Transferable {
     let taskId: UUID
     let title: String
     let isCompleted: Bool
-    let targetDate: Date?
-    
+    let dueAt: Date?
+
     static var transferRepresentation: some TransferRepresentation {
-        // 使用简单的 Codable 表示，避免复杂的多重表示可能导致的问题
         CodableRepresentation(contentType: .json)
     }
-    
+
     init(task: QuadrantTask) {
-        self.taskId = task.id
-        self.title = task.title
-        self.isCompleted = task.isCompleted
-        self.targetDate = task.targetDate
+        taskId = task.id
+        title = task.title
+        isCompleted = task.isCompleted
+        dueAt = task.displayDueDate
     }
 }

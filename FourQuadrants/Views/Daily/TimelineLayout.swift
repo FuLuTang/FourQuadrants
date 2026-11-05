@@ -1,7 +1,7 @@
 import UIKit
 
 protocol TimelineLayoutDelegate: AnyObject {
-    func collectionView(_ collectionView: UICollectionView, startTimeForItemAt indexPath: IndexPath) -> Date
+    func collectionView(_ collectionView: UICollectionView, startAtForItemAt indexPath: IndexPath) -> Date
     func collectionView(_ collectionView: UICollectionView, durationForItemAt indexPath: IndexPath) -> TimeInterval
 }
 
@@ -34,7 +34,7 @@ class TimelineLayout: UICollectionViewLayout {
         var tasks: [(index: Int, start: Date, end: Date, duration: TimeInterval)] = []
         for i in 0..<itemCount {
             let indexPath = IndexPath(item: i, section: section)
-            let start = delegate?.collectionView(collectionView, startTimeForItemAt: indexPath) ?? Date()
+            let start = delegate?.collectionView(collectionView, startAtForItemAt: indexPath) ?? Date()
             let duration = delegate?.collectionView(collectionView, durationForItemAt: indexPath) ?? 3600
             tasks.append((index: i, start: start, end: start.addingTimeInterval(duration), duration: duration))
         }
@@ -75,8 +75,8 @@ class TimelineLayout: UICollectionViewLayout {
         for idx in clusterIndices {
             let task = tasks.first { $0.index == idx }!
             var placed = false
-            for (colIdx, endTime) in columns.enumerated() {
-                if task.start >= endTime {
+            for (colIdx, endAt) in columns.enumerated() {
+                if task.start >= endAt {
                     columns[colIdx] = task.end
                     taskColumnMap[idx] = colIdx
                     placed = true

@@ -12,7 +12,6 @@ import SwiftUI
 struct FourQuadrantsWidgetBundle: WidgetBundle {
     var body: some Widget {
         FourQuadrantsWidget()
-        FourQuadrantsWidgetControl()
         FourQuadrantsWidgetLiveActivity()
     }
 }

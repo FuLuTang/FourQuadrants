@@ -58,3 +58,6 @@ xcuserdata/
 ## Other
 *.log
 build_log*.txt
+
+## CodeGraph
+.codegraph/

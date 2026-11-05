@@ -1,23 +1,32 @@
 import Foundation
 
 struct MSALConfig {
-    // ⚠️ 必填：请在 Azure Portal 注册后替换此 ID
-    // Register here: https://portal.azure.com/#blade/Microsoft_AAD_PCM/AppRegistrationBlade
-    static let clientID = "ENTER_YOUR_CLIENT_ID_HERE"
+    static let clientID = "e39c7bc1-88ee-4a9f-9e02-b41078368e03"
     
     // 你的 Bundle ID
-    #if DEBUG
+#if os(macOS) && DEBUG
+    static let bundleID = "com.fulu.FourQuadrants.macOS.dev"
+#elseif os(macOS)
+    static let bundleID = "com.fulu.FourQuadrants.macOS"
+#elseif DEBUG
     static let bundleID = "com.fulu.FourQuadrants.dev"
-    #else
+#else
     static let bundleID = "com.fulu.FourQuadrants"
     #endif
     
-    // Redirect URI Scheme: msauth.$(PRODUCT_BUNDLE_IDENTIFIER)://auth
+    // The native Mac target keeps its own bundle ID, while reusing the iOS
+    // redirect URIs already registered in Microsoft Entra.
+#if os(macOS) && DEBUG
+    static let redirectUri = "msauth.com.fulu.FourQuadrants.dev://auth"
+#elseif os(macOS)
+    static let redirectUri = "msauth.com.fulu.FourQuadrants://auth"
+#else
     static let redirectUri = "msauth.\(bundleID)://auth"
+#endif
     
     // Microsoft Graph Scopes
     static let scopes = ["User.Read", "Tasks.ReadWrite"]
     
     // Interaction settings
-    static let authority = "https://login.microsoftonline.com/common"
+    static let authority = "https://login.microsoftonline.com/consumers"
 }

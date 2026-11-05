@@ -3,7 +3,7 @@ import SwiftData
 
 struct DailyTaskFormView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
+    @Environment(TaskStore.self) private var taskStore
     @FocusState private var isTitleFocused: Bool
     
     // 编辑模式传入 task，新建模式为 nil
@@ -14,17 +14,10 @@ struct DailyTaskFormView: View {
     
     // Form States
     @State private var title: String = ""
-    @State private var startTime: Date = Date()
-    @State private var endTime: Date = Date().addingTimeInterval(3600)
+    @State private var startAt: Date = Date()
+    @State private var endAt: Date = Date().addingTimeInterval(3600)
     @State private var colorHex: String = "#5E81F4"
     @State private var notes: String = ""
-    
-    // 智能关联模拟状态
-    @State private var isCalculatingLink = false
-    @State private var showRecommendation = false
-    @State private var isLinked = false
-    @State private var linkedTaskTitle: String = ""
-    @State private var linkedTaskInfo: String = ""
     
     // Delete Alert
     @State private var showDeleteAlert = false
@@ -36,6 +29,10 @@ struct DailyTaskFormView: View {
         self.onSave = onSave
     }
     
+    /// 保存时使用去掉首尾空白后的标题与备注，与 Mac 端规则一致。
+    private var cleanTitle: String { title.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var cleanNotes: String { notes.trimmingCharacters(in: .whitespacesAndNewlines) }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -45,14 +42,7 @@ struct DailyTaskFormView: View {
                         .font(.title3)
                         .focused($isTitleFocused)
                         .onSubmit {
-                            // 按回车时触发推荐
-                            triggerLinkCalculation()
-                        }
-                        .onChange(of: isTitleFocused) { oldValue, newValue in
-                            // 失去焦点且内容非空时触发
-                            if !newValue && !title.isEmpty {
-                                triggerLinkCalculation()
-                            }
+                            isTitleFocused = false
                         }
                     
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -79,23 +69,23 @@ struct DailyTaskFormView: View {
                 
                 // 2. 时间规划
                 Section("daily_time_planning") {
-                    DatePicker("daily_start_time", selection: $startTime, displayedComponents: .hourAndMinute)
-                        .onChange(of: startTime) {
-                            // 保持 duration 不变，自动推导 endTime
+                    DatePicker("daily_start_time", selection: $startAt, displayedComponents: .hourAndMinute)
+                        .onChange(of: startAt) {
+                            // 保持 duration 不变，自动推导 endAt
                             if let oldTask = task {
-                                endTime = startTime.addingTimeInterval(oldTask.duration)
+                                endAt = startAt.addingTimeInterval(oldTask.duration)
                             } else {
                                 // 新建时默认 1 小时
-                                if endTime <= startTime {
-                                     endTime = startTime.addingTimeInterval(3600)
+                                if endAt <= startAt {
+                                     endAt = startAt.addingTimeInterval(3600)
                                 }
                             }
                         }
                     
-                    DatePicker("daily_end_time", selection: $endTime, displayedComponents: .hourAndMinute)
+                    DatePicker("daily_end_time", selection: $endAt, displayedComponents: .hourAndMinute)
                     
                     // 跨天任务提示
-                    if endTime <= startTime {
+                    if endAt <= startAt {
                         HStack {
                             Image(systemName: "moon.fill")
                                 .foregroundColor(.purple)
@@ -111,7 +101,7 @@ struct DailyTaskFormView: View {
                             ForEach([15, 30, 60, 90, 120], id: \.self) { min in
                                 Button("\(min) \(String(localized: "daily_minutes"))") {
                                     withAnimation {
-                                        endTime = startTime.addingTimeInterval(TimeInterval(min * 60))
+                                        endAt = startAt.addingTimeInterval(TimeInterval(min * 60))
                                     }
                                 }
                                 .buttonStyle(.bordered)
@@ -121,124 +111,13 @@ struct DailyTaskFormView: View {
                     }
                 }
                 
-                // 3. 智能关联 (Placeholder UI)
-                Section("daily_smart_link_section") {
-                    if isLinked {
-                        // 已关联状态
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
-                                    .font(.title3)
-                                Text("daily_linked_quadrant_task")
-                                    .font(.subheadline.bold())
-                                    .foregroundColor(.green)
-                            }
-                            
-                            // 关联任务卡片
-                            HStack {
-                                Circle()
-                                    .fill(AppTheme.Colors.urgentImportant)
-                                    .frame(width: 8, height: 8)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(linkedTaskTitle)
-                                        .font(.subheadline.bold())
-                                    Text(linkedTaskInfo)
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                }
-                                Spacer()
-                            }
-                            .padding()
-                            .background(Color.green.opacity(0.1))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.green.opacity(0.3), lineWidth: 1)
-                            )
-                            .cornerRadius(12)
-                            
-                            Button(role: .destructive) {
-
-                                withAnimation {
-                                    isLinked = false
-                                    showRecommendation = true
-                                }
-                            } label: {
-                                Label("daily_unlink", systemImage: "xmark.circle")
-                                    .font(.caption)
-                            }
-                        }
-                        .transition(.opacity)
-                        
-                    } else if isCalculatingLink {
-                        HStack {
-                            ProgressView()
-                                .padding(.trailing, 8)
-                            Text("daily_analyzing")
-                                .foregroundColor(.secondary)
-                        }
-                    } else if showRecommendation {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("daily_related_tasks")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            // 模拟推荐卡片
-                            HStack {
-                                Circle()
-                                    .fill(AppTheme.Colors.urgentImportant)
-                                    .frame(width: 8, height: 8)
-                                VStack(alignment: .leading) {
-                                    Text("daily_mock_task_title")
-                                        .font(.subheadline.bold())
-                                    Text("daily_mock_task_info")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                Button {
-                                    // 点击关联
-                                    withAnimation {
-                                        isLinked = true
-                                        linkedTaskTitle = String(localized: "daily_mock_task_title")
-                                        linkedTaskInfo = String(localized: "daily_mock_task_info")
-                                        showRecommendation = false
-                                    }
-                                } label: {
-                                    Text("daily_link")
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .tint(.blue)
-                                .controlSize(.small)
-                            }
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
-                            
-                            Button {
-                                // Todo: 手动选择逻辑
-                            } label: {
-                                Text("daily_select_other")
-                            }
-                            .font(.caption)
-                        }
-                        .transition(.opacity)
-                    } else if !title.isEmpty {
-                         Text("daily_auto_recommend")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-
-                
-                // 4. 备注
+                // 3. 备注
                 Section("daily_notes") {
                     TextEditor(text: $notes)
                         .frame(minHeight: 80)
                 }
                 
-                // 5. 删除按钮
+                // 4. 删除按钮
                 if task != nil {
                     Section {
                         Button(role: .destructive) {
@@ -261,10 +140,11 @@ struct DailyTaskFormView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("save") {
-                        saveTask()
-                        dismiss()
+                        if saveTask() {
+                            dismiss()
+                        }
                     }
-                    .disabled(title.isEmpty)
+                    .disabled(cleanTitle.isEmpty)
                 }
             }
             .alert(String(localized: "confirm_delete_task_title"), isPresented: $showDeleteAlert) {
@@ -279,19 +159,11 @@ struct DailyTaskFormView: View {
                 if let task = task {
                     // 编辑模式：填充数据
                     title = task.title
-                    startTime = task.startTime
-                    endTime = task.startTime.addingTimeInterval(task.duration)
+                    startAt = task.startAt
+                    endAt = task.startAt.addingTimeInterval(task.duration)
                     colorHex = task.colorHex ?? "#5E81F4"
                     notes = task.notes ?? ""
                     
-                    // 检查是否已有关联
-                    if task.linkedQuadrantTaskID != nil {
-                        // Todo: 根据 linkedQuadrantTaskID 查询 QuadrantTask 的信息
-                        // 这里先模拟
-                        isLinked = true
-                        linkedTaskTitle = String(localized: "daily_linked_quadrant_task_title")
-                        linkedTaskInfo = String(localized: "daily_loading")
-                    }
                 } else {
                     // 新建模式：设置默认时间
                     let now = Date()
@@ -300,8 +172,8 @@ struct DailyTaskFormView: View {
                     if let hour = components.hour {
                         components.hour = hour + 1
                     }
-                    startTime = calendar.date(from: components) ?? now
-                    endTime = startTime.addingTimeInterval(3600)
+                    startAt = calendar.date(from: components) ?? now
+                    endAt = startAt.addingTimeInterval(3600)
                     
                     // 设置颜色为随机
                     colorHex = colors.randomElement() ?? "#5E81F4"
@@ -321,8 +193,9 @@ struct DailyTaskFormView: View {
         "#FF8B94"  // Pink
     ]
     
-    private func saveTask() {
-        var duration = endTime.timeIntervalSince(startTime)
+    @discardableResult
+    private func saveTask() -> Bool {
+        var duration = endAt.timeIntervalSince(startAt)
         
         // 处理跨天任务：如果结束时间早于开始时间，说明跨越午夜
         // 例如 23:15 → 2:30，需要加 24 小时
@@ -330,68 +203,19 @@ struct DailyTaskFormView: View {
             duration += 24 * 3600  // +24小时
         }
         
-        if let existingTask = task {
-            // 更新
-            existingTask.title = title
-            existingTask.startTime = startTime
-            existingTask.duration = duration
-            existingTask.colorHex = colorHex
-            existingTask.notes = notes
-            
-            if isNew, let onSave = onSave {
-                // Return the configured task to parent
-                onSave(existingTask)
-            } else if isNew {
-                 // Fallback: direct insert if no callback
-                 modelContext.insert(existingTask)
-            }
-            // else: regular update, already modified reference
-            
-        } else {
-            // 新建 (Legacy path or fallback)
-            let newTask = DailyTask(
-                title: title,
-                scheduledDate: selectedDate,
-                startTime: startTime,
-                duration: duration,
-                colorHex: colorHex
-            )
-            newTask.notes = notes
-            
-            if let onSave = onSave {
-                onSave(newTask)
-            } else {
-                modelContext.insert(newTask)
-            }
+        if let existingTask = task, !isNew {
+            return taskStore.updateDailyTask(existingTask, title: cleanTitle, startAt: startAt, duration: duration, colorHex: colorHex, notes: cleanNotes.isEmpty ? nil : cleanNotes, quadrantTask: existingTask.quadrantTask)
+        } else if let savedTask = taskStore.createDailyTask(title: cleanTitle, startAt: startAt, duration: duration, colorHex: colorHex, notes: cleanNotes.isEmpty ? nil : cleanNotes) {
+            onSave?(savedTask)
+            return true
         }
-        
-        // 立即触发灵动岛检查，确保新建/编辑后及时更新
-        LiveActivityManager.shared.checkTask(context: modelContext)
+        return false
     }
     
     private func deleteTask() {
         guard let task = task else { return }
-        modelContext.delete(task)
-        LiveActivityManager.shared.checkTask(context: modelContext)
-        dismiss()
-    }
-    
-    private func triggerLinkCalculation() {
-        guard !title.isEmpty else { return }
-        
-        // 避免重复触发
-        guard !isCalculatingLink && !showRecommendation else { return }
-        
-        withAnimation {
-            isCalculatingLink = true
-        }
-        
-        // 模拟计算延迟
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation {
-                isCalculatingLink = false
-                showRecommendation = true
-            }
+        if taskStore.removeDailyTask(task) {
+            dismiss()
         }
     }
 }

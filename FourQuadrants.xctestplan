@@ -1,0 +1,20 @@
+{
+  "configurations" : [
+    {
+      "id" : "DD8B2189-7A2C-49BB-86E0-54AD62385BFE",
+      "name" : "Configuration 1",
+      "options" : {}
+    }
+  ],
+  "defaultOptions" : {},
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:FourQuadrants.xcodeproj",
+        "identifier" : "2A9656BE2F2978EC00F5C0F7",
+        "name" : "FourQuadrantsTests"
+      }
+    }
+  ],
+  "version" : 1
+}

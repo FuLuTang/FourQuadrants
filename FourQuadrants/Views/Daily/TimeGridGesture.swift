@@ -9,6 +9,7 @@ struct TimeGridGesture: UIViewRepresentable {
     var onBegan: (CGPoint) -> Void
     var onChanged: (CGPoint) -> Void
     var onEnded: (CGPoint) -> Void
+    var onCancelled: () -> Void
     
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
@@ -22,7 +23,9 @@ struct TimeGridGesture: UIViewRepresentable {
         return view
     }
     
-    func updateUIView(_ uiView: UIView, context: Context) {}
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.parent = self
+    }
     
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -46,8 +49,10 @@ struct TimeGridGesture: UIViewRepresentable {
                 parent.onBegan(point)
             case .changed:
                 parent.onChanged(point)
-            case .ended, .cancelled, .failed:
+            case .ended:
                 parent.onEnded(point)
+            case .cancelled, .failed:
+                parent.onCancelled()
             default:
                 break
             }

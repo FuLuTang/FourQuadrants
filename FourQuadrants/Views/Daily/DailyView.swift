@@ -3,7 +3,7 @@ import SwiftData
 import Combine
 
 struct DailyView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(TaskStore.self) private var taskStore
     @State private var selectedDate: Date = Date()
     @State private var scrollProxy: ScrollViewProxy?
     @State private var showAddTaskSheet = false // Add Sheet State
@@ -34,7 +34,12 @@ struct DailyView: View {
                     // 背景网格 & 时间标签
                     // 1. 背景网格 (作为手势的载体)
 
-                    timeGrid
+                    DailyTimeGrid(
+                        hourHeight: hourHeight,
+                        timeColumnWidth: timeColumnWidth,
+                        startHour: startHour,
+                        endHour: endHour
+                    )
                         // ❌ 删除原来的 .gesture/simultaneousGesture
                         // ✅ 添加新的 UIKit 手势层
                         .overlay(
@@ -55,6 +60,9 @@ struct DailyView: View {
                                     if let ghost = ghostTask {
                                         commitGhostTask(ghost)
                                     }
+                                },
+                                onCancelled: {
+                                    resetGhostTask()
                                 }
                             )
                         )
@@ -127,15 +135,16 @@ struct DailyView: View {
         .overlay(alignment: .bottomTrailing) {
             // 右下角添加按钮
             Button {
-                let now = Date()
-                let nextHour = Calendar.current.date(byAdding: .hour, value: 1, to: now)!
-                let rounded = Calendar.current.date(bySetting: .minute, value: 0, of: nextHour)!
+                let rounded = DailyTaskDateHelper.defaultStartTime(
+                    for: selectedDate,
+                    now: Date(),
+                    calendar: .current
+                )
                 
                 // Create a "Draft" task for the sheet
                 let draft = DailyTask(
                     title: "",
-                    scheduledDate: selectedDate,
-                    startTime: rounded,
+                    startAt: rounded,
                     duration: 3600,
                     colorHex: "#5E81F4"
                 )
@@ -161,13 +170,7 @@ struct DailyView: View {
             resetGhostTask()
         }) {
             if let task = ghostTask {
-                DailyTaskFormView(task: task, selectedDate: selectedDate, isNew: true) { savedTask in
-                    // Callback when saved (inserted)
-                    modelContext.insert(savedTask)
-                    try? modelContext.save()
-                    // Immediately enter edit mode or just finish?
-                    // User said: "松手后会自动弹出来编辑页" -> which is this sheet.
-                }
+                DailyTaskFormView(task: task, selectedDate: selectedDate, isNew: true)
             } else {
                 // Fallback
                 DailyTaskFormView(selectedDate: selectedDate)
@@ -357,29 +360,6 @@ struct DailyView: View {
         }
     }
     
-    private var timeGrid: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(startHour..<endHour, id: \.self) { hour in
-                HStack(spacing: 0) {
-                    // 时间标签
-                    Text(String(format: "%02d:00", hour))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .frame(width: timeColumnWidth, alignment: .trailing)
-                        .padding(.trailing, 8)
-                        .offset(y: -7) // 稍微上移对齐线条
-                    
-                    // 分割线
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(height: 1)
-                }
-                .frame(height: hourHeight, alignment: .top)
-            }
-        }
-        .padding(.top, 10)
-    }
-    
     private func scrollToCurrentTime() {
         let calendar = Calendar.current
         let hour = calendar.component(.hour, from: Date())
@@ -400,12 +380,11 @@ struct DailyView: View {
         components.minute = minute
         components.second = 0
         
-        guard let startTime = calendar.date(from: components) else { return }
+        guard let startAt = calendar.date(from: components) else { return }
         
         ghostTask = DailyTask(
             title: String(localized: "new_task"),
-            scheduledDate: selectedDate,
-            startTime: startTime,
+            startAt: startAt,
             duration: 3600,
             colorHex: "#5E81F4"
         )
@@ -425,12 +404,12 @@ struct DailyView: View {
          components.minute = minute
          components.second = 0
          
-         guard let startTime = calendar.date(from: components) else { return }
+         guard let startAt = calendar.date(from: components) else { return }
          
-         if task.startTime != startTime {
+         if task.startAt != startAt {
              let feedback = UISelectionFeedbackGenerator()
              feedback.selectionChanged()
-             task.startTime = startTime
+             taskStore.previewDailyTaskLayout(task, startAt: startAt, duration: task.duration)
          }
     }
     
@@ -459,8 +438,8 @@ struct DailyView: View {
     // Modified to use the new calculation if needed, but keeping the old one for offsets
     private func calculateYOffset(for task: DailyTask) -> CGFloat {
         let calendar = Calendar.current
-        let hour = CGFloat(calendar.component(.hour, from: task.startTime))
-        let minute = CGFloat(calendar.component(.minute, from: task.startTime))
+        let hour = CGFloat(calendar.component(.hour, from: task.startAt))
+        let minute = CGFloat(calendar.component(.minute, from: task.startAt))
         return ((hour * 60 + minute) / 60) * hourHeight + 10
     }
     
@@ -469,6 +448,7 @@ struct DailyView: View {
     struct CurrentTimeLine: View {
         let hourHeight: CGFloat
         let timeColumnWidth: CGFloat
+        private let indicatorHeight: CGFloat = 32
         
         var body: some View {
             TimelineView(.periodic(from: .now, by: 60)) { context in
@@ -510,8 +490,13 @@ struct DailyView: View {
                         )
                         .frame(height: 1.5)
                 }
+                // `yOffset` is the time coordinate of the line itself. The
+                // capsule makes this HStack taller than the line, so place
+                // the whole indicator by its center instead of its top edge.
+                .frame(height: indicatorHeight, alignment: .center)
                 .padding(.leading, 4)
                 .offset(y: yOffset)
+                .offset(y: -indicatorHeight / 2)
                 .zIndex(999)
             }
         }
@@ -532,22 +517,32 @@ struct DailyView: View {
             self.timeColumnWidth = timeColumnWidth
             self._editingTaskId = editingTaskId
             
-            // 构造谓词查询当天的任务
+            // 查询当天开始前最多一天、且在当天结束前开始的任务。
+            // 这样可以包含跨午夜任务，同时避免把所有历史任务拉入视图。
             let startOfDay = Calendar.current.startOfDay(for: selectedDate)
             let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay)!
+            let queryStart = Calendar.current.date(byAdding: .day, value: -1, to: startOfDay)!
             
             self._tasks = Query(filter: #Predicate<DailyTask> { task in
-                task.scheduledDate >= startOfDay && task.scheduledDate < endOfDay
-            }, sort: \.startTime)
+                task.startAt >= queryStart && task.startAt < endOfDay
+            }, sort: \.startAt)
         }
         
         var body: some View {
             GeometryReader { geometry in
                 let availableWidth = geometry.size.width - timeColumnWidth - 24
-                let layout = DailyTaskLayout.calculateLayout(for: tasks, hourHeight: hourHeight)
+                let startOfDay = Calendar.current.startOfDay(for: selectedDate)
+                let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay)!
+                let visibleTasks = tasks.filter { $0.endAt > startOfDay }
+                let layout = DailyTaskLayout.calculateLayout(
+                    for: visibleTasks,
+                    hourHeight: hourHeight,
+                    visibleStart: startOfDay,
+                    visibleEnd: endOfDay
+                )
                 
                 ZStack(alignment: .topLeading) {
-                    ForEach(tasks) { task in
+                    ForEach(visibleTasks, id: \.id) { task in
                         if let geometryData = layout[task.id] {
                             // Calculate precise frame and position
                             let width = availableWidth * geometryData.frame.width
@@ -560,7 +555,13 @@ struct DailyView: View {
                             // Y position is top padding + offset + half height
                             let yPosition = geometryData.frame.origin.y + (height / 2)
                             
-                            DailyTaskBlock(task: task, hourHeight: hourHeight, editingTaskId: $editingTaskId)
+                            DailyTaskBlock(
+                                task: task,
+                                hourHeight: hourHeight,
+                                editingTaskId: $editingTaskId,
+                                displayStartAt: geometryData.startAt,
+                                displayDuration: geometryData.duration
+                            )
                                 .frame(width: width, height: height)
                                 .position(x: xPosition, y: yPosition)
                         }
@@ -570,6 +571,46 @@ struct DailyView: View {
             // Ensure container has enough height
             .frame(height: CGFloat(24) * hourHeight + 20)
         }
+    }
+}
+
+private struct DailyTimeGrid: View {
+    let hourHeight: CGFloat
+    let timeColumnWidth: CGFloat
+    let startHour: Int
+    let endHour: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(startHour..<endHour, id: \.self) { hour in
+                // The tick line shares the row's top-edge time coordinate with tasks and the current-time line.
+                HStack(alignment: .top, spacing: 0) {
+                    Text(String(format: "%02d:00", hour))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: timeColumnWidth, alignment: .trailing)
+                        .padding(.trailing, 8)
+                        .offset(y: -7)
+
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(height: 1)
+                }
+                .frame(height: hourHeight, alignment: .top)
+            }
+        }
+        .padding(.top, 10)
+    }
+}
+
+/// Date defaults used by the independent daily planner tool.
+/// The selected civil date always wins; the current time only supplies the hour.
+enum DailyTaskDateHelper {
+    static func defaultStartTime(for selectedDate: Date, now: Date, calendar: Calendar) -> Date {
+        let nextHour = calendar.date(byAdding: .hour, value: 1, to: now) ?? now
+        let hour = calendar.component(.hour, from: nextHour)
+        let dayStart = calendar.startOfDay(for: selectedDate)
+        return calendar.date(byAdding: .hour, value: hour, to: dayStart) ?? dayStart
     }
 }
 

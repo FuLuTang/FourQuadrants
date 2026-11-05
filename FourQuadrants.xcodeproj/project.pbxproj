@@ -12,6 +12,22 @@
 		2A96572E2F297ECC00F5C0F7 /* FourQuadrantsWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2A96571B2F297ECA00F5C0F7 /* FourQuadrantsWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2AEFEE9A2F3C078B003F94BB /* FourQuadrant项限.icon in Resources */ = {isa = PBXBuildFile; fileRef = 2AEFEE992F3C078B003F94BB /* FourQuadrant项限.icon */; };
 		2AEFEE9B2F3C078B003F94BB /* FourQuadrant项限.icon in Resources */ = {isa = PBXBuildFile; fileRef = 2AEFEE992F3C078B003F94BB /* FourQuadrant项限.icon */; };
+		4F4D53414C00000100000001 /* MSAL in Frameworks */ = {isa = PBXBuildFile; productRef = 4F4D53414C00000200000002 /* MSAL */; };
+		A92600000000000000000005 /* MSAL in Frameworks */ = {isa = PBXBuildFile; productRef = A92600000000000000000006 /* MSAL */; };
+		A92600000000000000000007 /* FourQuadrants/Views/Daily/DailyTaskLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000008 /* FourQuadrants/Views/Daily/DailyTaskLayout.swift */; };
+		A92600000000000000000009 /* FourQuadrant项限.icon in Resources */ = {isa = PBXBuildFile; fileRef = 2AEFEE992F3C078B003F94BB /* FourQuadrant项限.icon */; };
+		A92600000000000000000018 /* FourQuadrants/Views/Styles/DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000019 /* FourQuadrants/Views/Styles/DesignSystem.swift */; };
+		A92600000000000000000070 /* FourQuadrants/Services/CompleteWidgetTaskIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000071 /* FourQuadrants/Services/CompleteWidgetTaskIntent.swift */; };
+		A92600000000000000000072 /* WidgetTaskActionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000082 /* WidgetTaskActionService.swift */; };
+		A92600000000000000000073 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000083 /* PersistenceController.swift */; };
+		A92600000000000000000074 /* TaskStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000084 /* TaskStore.swift */; };
+		A92600000000000000000075 /* WidgetSnapshotService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000085 /* WidgetSnapshotService.swift */; };
+		A92600000000000000000076 /* AppSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000086 /* AppSchema.swift */; };
+		A92600000000000000000077 /* MicrosoftTodoSyncModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000087 /* MicrosoftTodoSyncModels.swift */; };
+		A92600000000000000000078 /* QuadrantTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000088 /* QuadrantTask.swift */; };
+		A92600000000000000000079 /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000089 /* DailyTask.swift */; };
+		A92600000000000000000080 /* TaskCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000090 /* TaskCategory.swift */; };
+		A92600000000000000000081 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92600000000000000000091 /* DesignSystem.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,6 +66,13 @@
 			remoteGlobalIDString = 2A9657362F2980D400F5C0F7;
 			remoteInfo = "FourQuadrantsWatch Watch App";
 		};
+		A92600000000000000000061 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2A9656A62F2978E900F5C0F7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A92600000000000000000001;
+			remoteInfo = FourQuadrantsMac;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -78,6 +101,21 @@
 		2A96574D2F2980D600F5C0F7 /* FourQuadrantsWatch Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "FourQuadrantsWatch Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A96575E2F2983C800F5C0F7 /* FourQuadrantsWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FourQuadrantsWidgetExtension.entitlements; sourceTree = "<group>"; };
 		2AEFEE992F3C078B003F94BB /* FourQuadrant项限.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "FourQuadrant项限.icon"; sourceTree = "<group>"; };
+		A92600000000000000000003 /* FourQuadrantsMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FourQuadrantsMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A92600000000000000000004 /* FourQuadrantsMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FourQuadrantsMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A92600000000000000000008 /* FourQuadrants/Views/Daily/DailyTaskLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Views/Daily/DailyTaskLayout.swift; sourceTree = SOURCE_ROOT; };
+		A92600000000000000000019 /* FourQuadrants/Views/Styles/DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Views/Styles/DesignSystem.swift; sourceTree = SOURCE_ROOT; };
+		A92600000000000000000071 /* FourQuadrants/Services/CompleteWidgetTaskIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Services/CompleteWidgetTaskIntent.swift; sourceTree = SOURCE_ROOT; };
+		A92600000000000000000082 /* WidgetTaskActionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Services/WidgetTaskActionService.swift; sourceTree = SOURCE_ROOT; };
+		A92600000000000000000083 /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Services/PersistenceController.swift; sourceTree = SOURCE_ROOT; };
+		A92600000000000000000084 /* TaskStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Services/TaskStore.swift; sourceTree = SOURCE_ROOT; };
+		A92600000000000000000085 /* WidgetSnapshotService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Services/WidgetSnapshotService.swift; sourceTree = SOURCE_ROOT; };
+		A92600000000000000000086 /* AppSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Models/AppSchema.swift; sourceTree = SOURCE_ROOT; };
+		A92600000000000000000087 /* MicrosoftTodoSyncModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Models/MicrosoftTodoSyncModels.swift; sourceTree = SOURCE_ROOT; };
+		A92600000000000000000088 /* QuadrantTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Models/QuadrantTask.swift; sourceTree = SOURCE_ROOT; };
+		A92600000000000000000089 /* DailyTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Models/DailyTask.swift; sourceTree = SOURCE_ROOT; };
+		A92600000000000000000090 /* TaskCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Models/TaskCategory.swift; sourceTree = SOURCE_ROOT; };
+		A92600000000000000000091 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FourQuadrants/Views/Styles/DesignSystem.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -94,6 +132,34 @@
 				Info.plist,
 			);
 			target = 2A96571A2F297ECA00F5C0F7 /* FourQuadrantsWidgetExtension */;
+		};
+		A92600000000000000000020 /* Exceptions for "FourQuadrantsMac" folder in "FourQuadrantsMac" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Resources/Info.plist,
+			);
+			target = A92600000000000000000001 /* FourQuadrantsMac */;
+		};
+		A92600000000000000000021 /* Exceptions for "FourQuadrants/Models" folder in "FourQuadrantsMac" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				LiveActivityAttributes.swift,
+			);
+			target = A92600000000000000000001 /* FourQuadrantsMac */;
+		};
+		A92600000000000000000022 /* Exceptions for "FourQuadrants/Services" folder in "FourQuadrantsMac" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				LiveActivityManager.swift,
+			);
+			target = A92600000000000000000001 /* FourQuadrantsMac */;
+		};
+		A92600000000000000000023 /* Exceptions for "FourQuadrants/Resources" folder in "FourQuadrantsMac" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ColorStyle.plist,
+			);
+			target = A92600000000000000000001 /* FourQuadrantsMac */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -139,6 +205,43 @@
 			path = "FourQuadrantsWatch Watch AppUITests";
 			sourceTree = "<group>";
 		};
+		A92600000000000000000010 /* FourQuadrantsMac */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A92600000000000000000020 /* Exceptions for "FourQuadrantsMac" folder in "FourQuadrantsMac" target */,
+			);
+			path = FourQuadrantsMac;
+			sourceTree = "<group>";
+		};
+		A92600000000000000000011 /* FourQuadrants/Models */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A92600000000000000000021 /* Exceptions for "FourQuadrants/Models" folder in "FourQuadrantsMac" target */,
+			);
+			path = FourQuadrants/Models;
+			sourceTree = "<group>";
+		};
+		A92600000000000000000012 /* FourQuadrants/Services */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A92600000000000000000022 /* Exceptions for "FourQuadrants/Services" folder in "FourQuadrantsMac" target */,
+			);
+			path = FourQuadrants/Services;
+			sourceTree = "<group>";
+		};
+		A92600000000000000000013 /* FourQuadrants/Resources */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A92600000000000000000023 /* Exceptions for "FourQuadrants/Resources" folder in "FourQuadrantsMac" target */,
+			);
+			path = FourQuadrants/Resources;
+			sourceTree = "<group>";
+		};
+		A92600000000000000000014 /* FourQuadrantsMacTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FourQuadrantsMacTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -146,6 +249,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4F4D53414C00000100000001 /* MSAL in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -193,6 +297,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A92600000000000000000031 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A92600000000000000000005 /* MSAL in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A92600000000000000000034 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -208,6 +327,24 @@
 				2A9657382F2980D400F5C0F7 /* FourQuadrantsWatch Watch App */,
 				2A9657462F2980D600F5C0F7 /* FourQuadrantsWatch Watch AppTests */,
 				2A9657502F2980D600F5C0F7 /* FourQuadrantsWatch Watch AppUITests */,
+				A92600000000000000000010 /* FourQuadrantsMac */,
+				A92600000000000000000011 /* FourQuadrants/Models */,
+				A92600000000000000000012 /* FourQuadrants/Services */,
+				A92600000000000000000013 /* FourQuadrants/Resources */,
+				A92600000000000000000014 /* FourQuadrantsMacTests */,
+				A92600000000000000000008 /* FourQuadrants/Views/Daily/DailyTaskLayout.swift */,
+				A92600000000000000000019 /* FourQuadrants/Views/Styles/DesignSystem.swift */,
+				A92600000000000000000071 /* FourQuadrants/Services/CompleteWidgetTaskIntent.swift */,
+				A92600000000000000000082 /* WidgetTaskActionService.swift */,
+				A92600000000000000000083 /* PersistenceController.swift */,
+				A92600000000000000000084 /* TaskStore.swift */,
+				A92600000000000000000085 /* WidgetSnapshotService.swift */,
+				A92600000000000000000086 /* AppSchema.swift */,
+				A92600000000000000000087 /* MicrosoftTodoSyncModels.swift */,
+				A92600000000000000000088 /* QuadrantTask.swift */,
+				A92600000000000000000089 /* DailyTask.swift */,
+				A92600000000000000000090 /* TaskCategory.swift */,
+				A92600000000000000000091 /* DesignSystem.swift */,
 				2A9656FC2F297C8300F5C0F7 /* Frameworks */,
 				2A9656AF2F2978E900F5C0F7 /* Products */,
 			);
@@ -223,6 +360,8 @@
 				2A9657372F2980D400F5C0F7 /* FourQuadrantsWatch Watch App.app */,
 				2A9657432F2980D600F5C0F7 /* FourQuadrantsWatch Watch AppTests.xctest */,
 				2A96574D2F2980D600F5C0F7 /* FourQuadrantsWatch Watch AppUITests.xctest */,
+				A92600000000000000000003 /* FourQuadrantsMac.app */,
+				A92600000000000000000004 /* FourQuadrantsMacTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -258,6 +397,7 @@
 			);
 			name = FourQuadrants;
 			packageProductDependencies = (
+				4F4D53414C00000200000002 /* MSAL */,
 			);
 			productName = FourQuadrants;
 			productReference = 2A9656AE2F2978E900F5C0F7 /* FourQuadrants.app */;
@@ -399,6 +539,55 @@
 			productReference = 2A96574D2F2980D600F5C0F7 /* FourQuadrantsWatch Watch AppUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		A92600000000000000000001 /* FourQuadrantsMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A92600000000000000000040 /* Build configuration list for PBXNativeTarget "FourQuadrantsMac" */;
+			buildPhases = (
+				A92600000000000000000030 /* Sources */,
+				A92600000000000000000031 /* Frameworks */,
+				A92600000000000000000032 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A92600000000000000000010 /* FourQuadrantsMac */,
+				A92600000000000000000011 /* FourQuadrants/Models */,
+				A92600000000000000000012 /* FourQuadrants/Services */,
+				A92600000000000000000013 /* FourQuadrants/Resources */,
+			);
+			name = FourQuadrantsMac;
+			packageProductDependencies = (
+				A92600000000000000000006 /* MSAL */,
+			);
+			productName = FourQuadrantsMac;
+			productReference = A92600000000000000000003 /* FourQuadrantsMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A92600000000000000000002 /* FourQuadrantsMacTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A92600000000000000000041 /* Build configuration list for PBXNativeTarget "FourQuadrantsMacTests" */;
+			buildPhases = (
+				A92600000000000000000033 /* Sources */,
+				A92600000000000000000034 /* Frameworks */,
+				A92600000000000000000035 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A92600000000000000000060 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A92600000000000000000014 /* FourQuadrantsMacTests */,
+			);
+			name = FourQuadrantsMacTests;
+			packageProductDependencies = (
+			);
+			productName = FourQuadrantsMacTests;
+			productReference = A92600000000000000000004 /* FourQuadrantsMacTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -407,7 +596,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2600;
-				LastUpgradeCheck = 2600;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					2A9656AD2F2978E900F5C0F7 = {
 						CreatedOnToolsVersion = 26.0.1;
@@ -434,6 +623,13 @@
 						CreatedOnToolsVersion = 26.0.1;
 						TestTargetID = 2A9657362F2980D400F5C0F7;
 					};
+					A92600000000000000000001 = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
+					A92600000000000000000002 = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = A92600000000000000000001;
+					};
 				};
 			};
 			buildConfigurationList = 2A9656A92F2978E900F5C0F7 /* Build configuration list for PBXProject "FourQuadrants" */;
@@ -446,6 +642,9 @@
 			);
 			mainGroup = 2A9656A52F2978E900F5C0F7;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4F4D53414C00000300000003 /* XCRemoteSwiftPackageReference "microsoft-authentication-library-for-objc" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2A9656AF2F2978E900F5C0F7 /* Products */;
 			projectDirPath = "";
@@ -458,6 +657,8 @@
 				2A9657362F2980D400F5C0F7 /* FourQuadrantsWatch Watch App */,
 				2A9657422F2980D600F5C0F7 /* FourQuadrantsWatch Watch AppTests */,
 				2A96574C2F2980D600F5C0F7 /* FourQuadrantsWatch Watch AppUITests */,
+				A92600000000000000000001 /* FourQuadrantsMac */,
+				A92600000000000000000002 /* FourQuadrantsMacTests */,
 			);
 		};
 /* End PBXProject section */
@@ -514,6 +715,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A92600000000000000000032 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A92600000000000000000009 /* FourQuadrant项限.icon in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A92600000000000000000035 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -542,6 +758,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A92600000000000000000070 /* FourQuadrants/Services/CompleteWidgetTaskIntent.swift in Sources */,
+				A92600000000000000000072 /* WidgetTaskActionService.swift in Sources */,
+				A92600000000000000000073 /* PersistenceController.swift in Sources */,
+				A92600000000000000000074 /* TaskStore.swift in Sources */,
+				A92600000000000000000075 /* WidgetSnapshotService.swift in Sources */,
+				A92600000000000000000076 /* AppSchema.swift in Sources */,
+				A92600000000000000000077 /* MicrosoftTodoSyncModels.swift in Sources */,
+				A92600000000000000000078 /* QuadrantTask.swift in Sources */,
+				A92600000000000000000079 /* DailyTask.swift in Sources */,
+				A92600000000000000000080 /* TaskCategory.swift in Sources */,
+				A92600000000000000000081 /* DesignSystem.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -560,6 +787,22 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		2A9657492F2980D600F5C0F7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A92600000000000000000030 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A92600000000000000000007 /* FourQuadrants/Views/Daily/DailyTaskLayout.swift in Sources */,
+				A92600000000000000000018 /* FourQuadrants/Views/Styles/DesignSystem.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A92600000000000000000033 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -594,6 +837,11 @@
 			target = 2A9657362F2980D400F5C0F7 /* FourQuadrantsWatch Watch App */;
 			targetProxy = 2A96574E2F2980D600F5C0F7 /* PBXContainerItemProxy */;
 		};
+		A92600000000000000000060 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A92600000000000000000001 /* FourQuadrantsMac */;
+			targetProxy = A92600000000000000000061 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -627,6 +875,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.fulu.FourQuadrants$(BUNDLE_ID_SUFFIX)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -666,6 +915,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.fulu.FourQuadrants$(BUNDLE_ID_SUFFIX)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -680,6 +930,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -731,11 +982,12 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.3.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				VERSIONING_SYSTEM = "";
@@ -747,6 +999,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -792,10 +1045,11 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.3.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 				VERSIONING_SYSTEM = "";
@@ -1086,6 +1340,112 @@
 			};
 			name = Release;
 		};
+		A92600000000000000000050 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "FourQuadrant项限";
+				BUNDLE_ID_SUFFIX = .dev;
+				CODE_SIGN_ENTITLEMENTS = FourQuadrantsMac/FourQuadrantsMac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 99C72SK45W;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FourQuadrantsMac/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.3.2;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.fulu.FourQuadrants.macOS$(BUNDLE_ID_SUFFIX)";
+				PRODUCT_NAME = FourQuadrantsMac;
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A92600000000000000000051 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "FourQuadrant项限";
+				BUNDLE_ID_SUFFIX = "";
+				CODE_SIGN_ENTITLEMENTS = FourQuadrantsMac/FourQuadrantsMac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 99C72SK45W;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FourQuadrantsMac/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.3.2;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.fulu.FourQuadrants.macOS$(BUNDLE_ID_SUFFIX)";
+				PRODUCT_NAME = FourQuadrantsMac;
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		A92600000000000000000052 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fulu.FourQuadrants.macOSTests.dev;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FourQuadrantsMac.app/Contents/MacOS/FourQuadrantsMac";
+				TEST_TARGET_NAME = FourQuadrantsMac;
+			};
+			name = Debug;
+		};
+		A92600000000000000000053 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fulu.FourQuadrants.macOSTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FourQuadrantsMac.app/Contents/MacOS/FourQuadrantsMac";
+				TEST_TARGET_NAME = FourQuadrantsMac;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1161,7 +1521,49 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		A92600000000000000000040 /* Build configuration list for PBXNativeTarget "FourQuadrantsMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A92600000000000000000050 /* Debug */,
+				A92600000000000000000051 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A92600000000000000000041 /* Build configuration list for PBXNativeTarget "FourQuadrantsMacTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A92600000000000000000052 /* Debug */,
+				A92600000000000000000053 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4F4D53414C00000300000003 /* XCRemoteSwiftPackageReference "microsoft-authentication-library-for-objc" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AzureAD/microsoft-authentication-library-for-objc";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.14.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4F4D53414C00000200000002 /* MSAL */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4F4D53414C00000300000003 /* XCRemoteSwiftPackageReference "microsoft-authentication-library-for-objc" */;
+			productName = MSAL;
+		};
+		A92600000000000000000006 /* MSAL */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4F4D53414C00000300000003 /* XCRemoteSwiftPackageReference "microsoft-authentication-library-for-objc" */;
+			productName = MSAL;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2A9656A62F2978E900F5C0F7 /* Project object */;
 }

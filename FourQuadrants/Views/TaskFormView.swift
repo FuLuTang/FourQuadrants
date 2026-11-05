@@ -2,36 +2,44 @@ import SwiftUI
 
 struct TaskFormView: View {
     @Environment(\.dismiss) var dismiss
-    @ObservedObject var taskManager: TaskManager
+    let taskStore: TaskStore
     var existingTask: QuadrantTask?
     
     // 状态变量
     @State private var title: String
+    @State private var notes: String
     @State private var importance: ImportanceLevel
     @State private var isUrgent: Bool
     @State private var hasTargetDate: Bool   // 是否设置目标日期
-    @State private var targetDate: Date      // 目标日期
+    @State private var dueAt: Date      // 目标日期
     // **新增紧急阈值相关变量**
     @State private var hasUrgentThreshold: Bool
     @State private var urgentThresholdDays: Int
     @State private var isTop: Bool = false
+    @State private var controlMode: TaskControlMode
     
     // 键盘焦点状态 - 修复第三方输入法卡死问题
     @FocusState private var isTitleFocused: Bool
     
-    init(taskManager: TaskManager, existingTask: QuadrantTask? = nil) {
-        self.taskManager = taskManager
+    init(taskStore: TaskStore, existingTask: QuadrantTask? = nil) {
+        self.taskStore = taskStore
         self.existingTask = existingTask
         _title = State(initialValue: existingTask?.title ?? "")
+        _notes = State(initialValue: existingTask?.notes ?? "")
         _importance = State(initialValue: existingTask?.importance ?? .normal)
-        _isUrgent = State(initialValue: existingTask?.isUrgent ?? false)
+        _isUrgent = State(initialValue: existingTask?.manualIsUrgent ?? false)
         _isTop = State(initialValue: existingTask?.isTop ?? false)
-        _hasTargetDate = State(initialValue: existingTask?.targetDate != nil)
-        _targetDate = State(initialValue: existingTask?.targetDate ?? Date())
+        _hasTargetDate = State(initialValue: existingTask?.effectiveDueDateKey != nil)
+        _dueAt = State(initialValue: existingTask?.displayDueDate ?? Date())
         _hasUrgentThreshold = State(initialValue: existingTask?.urgentThresholdDays != nil)
         _urgentThresholdDays = State(initialValue: existingTask?.urgentThresholdDays ?? existingTask?.originalUrgentThresholdDays ?? 3)
+        _controlMode = State(initialValue: existingTask?.importance == .low ? .detailed : .quick)
     }
     
+    /// 保存时使用去掉首尾空白后的标题与备注，与 Mac 端规则一致。
+    private var cleanTitle: String { title.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var cleanNotes: String { notes.trimmingCharacters(in: .whitespacesAndNewlines) }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -42,16 +50,37 @@ struct TaskFormView: View {
                         .onSubmit {
                             isTitleFocused = false
                         }
-                    Section(header: Text("importance")) {
+                    MarkdownTaskNotesEditor(text: $notes)
+                }
+
+                Section(header: Text("importance")) {
+                    Picker("control_mode", selection: $controlMode) {
+                        Text("detailed_control").tag(TaskControlMode.detailed)
+                        Text("quick_control").tag(TaskControlMode.quick)
+                    }
+                    .pickerStyle(.segmented)
+
+                    if controlMode == .detailed {
                         Picker("importance", selection: $importance) {
                             Text("low").tag(ImportanceLevel.low)
                             Text("normal").tag(ImportanceLevel.normal)
                             Text("high").tag(ImportanceLevel.high)
                         }
-                        .pickerStyle(SegmentedPickerStyle())
+                        .pickerStyle(.segmented)
+                        if hasAutomaticUrgency {
+                            Toggle("urgent", isOn: .constant(quickControlEffectiveUrgency ?? isUrgent))
+                                .disabled(true)
+                        } else {
+                            Toggle("urgent", isOn: $isUrgent)
+                        }
+                    } else {
+                        QuickQuadrantControl(
+                            importance: $importance,
+                            isUrgent: $isUrgent,
+                            effectiveUrgency: quickControlEffectiveUrgency
+                        )
                     }
-                    Toggle("urgent", isOn: $isUrgent)
-                        .disabled(hasUrgentThreshold) // **紧急阈值开启时禁用紧急开关**
+
                     Toggle("top", isOn: $isTop)
                 }
                 
@@ -62,7 +91,7 @@ struct TaskFormView: View {
                     if hasTargetDate {
                         DatePicker(
                             "select_date",
-                            selection: $targetDate,
+                            selection: $dueAt,
                             displayedComponents: .date
                         )
                         .datePickerStyle(.graphical)
@@ -80,18 +109,17 @@ struct TaskFormView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("cancel") {
-                        // 先关闭键盘，再 dismiss，避免手势冲突
                         isTitleFocused = false
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            dismiss()
-                        }
+                        dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(existingTask == nil ? "add" : "save") {
-                        saveTask()
+                        if saveTask() {
+                            dismiss()
+                        }
                     }
-                    .disabled(title.isEmpty)
+                    .disabled(cleanTitle.isEmpty)
                 }
                 // 键盘工具栏 Done 按钮
                 ToolbarItemGroup(placement: .keyboard) {
@@ -104,42 +132,60 @@ struct TaskFormView: View {
         }
         .presentationDetents([.large]) // 使用 .large 避免键盘冲突
     }
+
+    private var hasAutomaticUrgency: Bool {
+        hasTargetDate && hasUrgentThreshold
+    }
+
+    private var quickControlEffectiveUrgency: Bool? {
+        guard hasAutomaticUrgency else { return nil }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let dueDate = calendar.startOfDay(for: dueAt)
+        let remaining = calendar.dateComponents([.day], from: today, to: dueDate).day ?? .max
+        return remaining <= urgentThresholdDays
+    }
     
     // **统一保存逻辑**
-    private func saveTask() {
+    @discardableResult
+    private func saveTask() -> Bool {
         // 先关闭键盘
         isTitleFocused = false
         
-        let finalTargetDate = hasTargetDate ? targetDate : nil
+        let finalTargetDate = hasTargetDate ? dueAt : nil
         let finalUrgentThreshold = (hasTargetDate && hasUrgentThreshold) ? urgentThresholdDays : nil
-        let now = Date()  // 获取当前时间
-
         if let task = existingTask {
-            taskManager.updateTask(
+            // 只有用户实际改动的重要性或阈值才更新原始值，其余保持任务原有值。
+            let original = TaskOriginalValues.resolve(task: task, newImportance: importance, newThreshold: finalUrgentThreshold)
+            return taskStore.updateTask(
                 task,
-                title: title,
+                title: cleanTitle,
+                notes: cleanNotes.isEmpty ? nil : cleanNotes,
                 importance: importance,
                 isUrgent: isUrgent,
                 isTop: isTop,
-                targetDate: finalTargetDate,
+                dueAt: finalTargetDate,
                 urgentThresholdDays: finalUrgentThreshold,
-                originalUrgentThresholdDays: finalUrgentThreshold,
-                originalImportance: importance,
-                dateLatestModified: now
+                originalUrgentThresholdDays: original.urgentThresholdDays,
+                originalImportance: original.importance
             )
         } else {
-            taskManager.addTask(
-                title: title,
+            return taskStore.addTask(
+                title: cleanTitle,
+                notes: cleanNotes.isEmpty ? nil : cleanNotes,
                 importance: importance,
                 isUrgent: isUrgent,
                 isTop: isTop,
-                targetDate: finalTargetDate,
+                dueAt: finalTargetDate,
                 urgentThresholdDays: finalUrgentThreshold,
                 originalUrgentThresholdDays: finalUrgentThreshold,
-                originalImportance: importance,
-                dateLatestModified: now
+                originalImportance: importance
             )
         }
-        dismiss()
     }
+}
+
+private enum TaskControlMode: String, CaseIterable {
+    case detailed
+    case quick
 }

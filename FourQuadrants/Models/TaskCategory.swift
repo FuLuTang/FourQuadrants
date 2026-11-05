@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-enum TaskCategory: String, CaseIterable, Codable, Identifiable {
+enum TaskCategory: String, CaseIterable, Codable, Identifiable, Hashable {
     var id: String { rawValue }
     case all = "all"
     case importantAndUrgent = "important_urgent"
@@ -9,7 +9,15 @@ enum TaskCategory: String, CaseIterable, Codable, Identifiable {
     case urgentButNotImportant = "urgent_not_important"
     case notImportantAndNotUrgent = "not_important_not_urgent"
     case completed = "completed"
-    
+
+    /// The four real quadrants in display order (excludes `.all` and `.completed`).
+    static let allQuadrants: [TaskCategory] = [
+        .importantAndUrgent,
+        .urgentButNotImportant,
+        .importantButNotUrgent,
+        .notImportantAndNotUrgent
+    ]
+
     var displayName: String {
         switch self {
         case .all: return String(localized: "category_all")
@@ -19,6 +27,28 @@ enum TaskCategory: String, CaseIterable, Codable, Identifiable {
         case .notImportantAndNotUrgent: return String(localized: "category_not_important_not_urgent")
         case .completed: return String(localized: "category_completed")
         }
+    }
+
+    var styledDisplayName: Text {
+        var title = AttributedString(displayName)
+        switch self {
+        case .importantAndUrgent:
+            if let separator = title.range(of: "&") {
+                title[title.startIndex..<separator.lowerBound].inlinePresentationIntent = .stronglyEmphasized
+                title[separator.upperBound..<title.endIndex].inlinePresentationIntent = .stronglyEmphasized
+            }
+        case .importantButNotUrgent, .urgentButNotImportant:
+            title.inlinePresentationIntent = .stronglyEmphasized
+        case .notImportantAndNotUrgent:
+            if let firstMarker = title.range(of: "✗"),
+               let secondMarker = title[firstMarker.upperBound...].range(of: "✗") {
+                title[firstMarker.upperBound..<secondMarker.lowerBound].strikethroughStyle = .single
+                title[secondMarker.upperBound..<title.endIndex].strikethroughStyle = .single
+            }
+        case .all, .completed:
+            break
+        }
+        return Text(title)
     }
     
     var icon: String {

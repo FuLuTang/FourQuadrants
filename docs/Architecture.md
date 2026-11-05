@@ -1,57 +1,55 @@
 # 工程架构 (Architecture)
 
-## 🏛 核心模式：MVVM
+本文只记录能从代码核实的结构。Microsoft 字段映射见 `MicrosoftTodoCompatibility.md`，持久化细节见 `Persistence.md`，Mac 界面边界见 `macOS-Design.md`。
 
-本项目采用了标准的 **MVVM (Model-View-ViewModel)** 架构，以确保逻辑与界面的深度解耦：
+## Target 与共享关系
 
-- **Model (`TaskModel.swift`)**:
-  - 核心数据模型，使用 SwiftData (`@Model`) 管理字段。
-  - 包含 `isUrgent` (紧急判断) 和 `isOverdue` (逾期判断) 的精密计算逻辑。
-- **ViewModel (`TaskManager.swift`)**:
-  - 作为唯一的事实来源（Single Source of Truth）。
-  - 处理任务的数据库操作 (CRUD)。
-  - **核心逻辑**：执行 `filteredTasks` 分类算法、`sortTasks` 智能排序算法，以及 `dragTaskChangeCategory` 交互同步逻辑。
-- **View (`Views/`)**:
-  - 纯响应式界面，通过 `@ObservedObject` 观察 TaskManager 的状态变化。
-  - **高级交互**：在 `DailyView` 中引入了 UIKit 的 `UILongPressGestureRecognizer` (通过 `UIViewRepresentable`)，以解决复杂手势与 `ScrollView` 的冲突。
+| Target | 说明 |
+| --- | --- |
+| `FourQuadrants` | iOS 应用，同步目录 `FourQuadrants/`（`Models`、`Services`、`Views`、`Resources`）。 |
+| `FourQuadrantsMac` | 原生 macOS 应用，同步目录 `FourQuadrantsMac/`，同时编入 `FourQuadrants/` 中的共享代码；排除 `LiveActivityAttributes`、`LiveActivityManager` 与 `ColorStyle.plist`，`Info.plist` 使用 Mac 自己的。 |
+| `FourQuadrantsWidgetExtension` | 小组件，目录 `FourQuadrantsWidget/`；显式编入共享的 `Models`、`PersistenceController`、`TaskStore`、`WidgetSnapshotService`、`CompleteWidgetTaskIntent`、`WidgetTaskActionService`、`DesignSystem`。 |
+| `FourQuadrantsMacTests` / `FourQuadrantsTests` 等 | 测试与 Watch target。 |
 
-## 🧩 四象限与智能判定逻辑
+iOS 与 Mac 共用 `Resources/{en,zh-Hans}.lproj/Localizable.strings`。
 
-### 1. 象限映射原理
-系统根据 `importance` 和 `isUrgent` 进行动态映射：
-- **重要度**: 仅当 `importance == .high` 时视为重要。
-- **紧急度**: 基于以下双轨制逻辑计算：
+## 数据层（共享）
 
-### 2. 紧急判断“双轨制” (Urgency Logic)
-- **自动轨道 (Automatic)**: 若任务有“目标日期”和“紧急阈值”，系统自动计算剩余天数。若 `剩余天数 <= 阈值`，任务自动变为紧急。
-- **手动轨道 (Manual)**: 若无日期或手动干预，读取 `manualIsUrgent` 属性值作为准则。
+- **模型**（`Models/`）：`QuadrantTask`（四象限任务）、`DailyTask`（日程，可关联一个 `QuadrantTask`）、`TaskCategory`、以及 Microsoft 同步模型。全部登记在 `AppSchemaV1`。
+- **`PersistenceController`**：创建 `ModelContainer`、重置存储。路径见 `Persistence.md`。
+- **`AppDataController`**（`@Observable`）：持有 `state`（`loading` / `ready(AppDataSession)` / `recoveryRequired`）。`AppDataSession` 含 `ModelContainer` 与 `TaskStore`。打开存储后调用 `SyncService.shared.configure` 并设置小组件完成回调；提供 `retry()` 与 `resetLocalData()`。预览数据模式用独立内存容器创建，可不配置同步。
+- **`TaskStore`**（`@MainActor @Observable`）：任务与日程的所有写入口（增删改、完成切换、`moveTask(_:to:)`、日程移动与布局预览/提交）以及 `filteredTasks`、`sortTasks`。象限任务的写入通过 `commitQuadrantTaskMutation`：执行修改，调用 `quadrantTaskMutationRecorder`（同步 outbox 记录），保存，写小组件快照，最后调用 `quadrantTaskMutationDidCommit`；任一步失败则 `rollback()` 并设置 `lastErrorMessage`。
+- **`TaskOrdering`**（`TaskStore.swift` 内）：纯排序函数。`sorted(_:by:direction:)` 支持智能、截止日期、创建时间、名称；`recommended(_:limit:)` 供小组件推荐。
 
-### 3. 拖拽同步机制 (Drag & Drop Sync)
-当用户跨象限拖拽任务时，ViewModel 会自动调整底层数据以匹配视觉位置：
-- 拖入紧急区：若有日期，则自动倒推并设置 `urgentThresholdDays`；若无日期，则开启手动紧急开关。
-- 拖入重要区：强制设 `importance` 为 `.high`。
-- 这种机制实现了“所见即所得”的交互式数据维护。
+## 象限判定
 
-## 🌐 外部同步架构 (Sync Strategy)
+`QuadrantTask` 保存 `importance`、`manualIsUrgent`、`dueDateKey`（`yyyy-MM-dd` 形式的日期键）、`urgentThresholdDays` 以及 `originalImportance` / `originalUrgentThresholdDays`。紧急度由截止日期与阈值自动判定，无则读 `manualIsUrgent`；`TaskStore.moveTask` 在跨象限移动时调整这些字段。具体规则以 `QuadrantTask.swift` 与 `TaskStore.moveTask` 为准。
 
-为了支持 **Microsoft To Do** 同步，架构将引入新的层级：
+## Microsoft To Do 同步（`SyncService`）
 
-### 1. 外部 ID 映射
-- `Task` 模型将增加 `msTodoId: String?` 字段。
-- 只有具备该 ID 的任务才会参与远程更新，本地新建任务在首次同步成功后获取 ID。
+`SyncService`（`ObservableObject`，单例 `shared`）负责登录（MSAL）、拉取、推送与诊断。本地数据靠四个同步模型维持一致：
 
-### 2. 同步逻辑策略
-- **单向 Push**: 本地修改后，通过 `TaskManager` 监听并异步推送至 Graph API。
-- **全量 Pull**: App 启动或下拉刷新时，获取远程列表，对比 `dateLatestModified` 时间戳进行冲突解决。
+- `MicrosoftTodoSyncProfile`：账户、默认列表、`deltaLink`、是否启用、是否完成首次合并、最近成功同步时间。
+- `MicrosoftTodoTaskLink`：本地任务与远程任务的链接，含 etag、远程字段的 shadow 副本与 `MicrosoftTodoLinkState`（`linked`、`pendingUpload`、`pendingLocalDeletion` 等）。
+- `MicrosoftTodoSyncOperation`（outbox）：`create` / `update` / `delete` 操作，状态为 `queued`、`inFlight`、`uncertain`、`retryableFailure`、`conflict`、`permanentFailure`，记录尝试次数与下次尝试时间。
+- `MicrosoftTodoDeletionTombstone`：本地删除已同步任务时保留远程标识，防止删除被拉取结果覆盖。
 
-### 3. 数据映射字典
-- `Importance`: 本地 `.high` <-> 远程 `importance: high`。
-- `Urgency`: 本地 `isUrgent` <-> 远程 `categories` (添加 "Urgent" 标签)。
+流程：`TaskStore` 的 recorder 在保存前调用 `recordDurableMutation`，写入链接与 outbox 记录（删除时写 tombstone）；提交成功后 `quadrantTaskMutationDidCommit` 触发后台投递。`synchronize()` 先 `pullRemoteChanges`（delta 查询），再 `pushLocalChanges` 投递 outbox；有待投递本地修改的任务不会被拉取结果覆盖（`shouldKeepPendingLocalChange`）。首次登录需要用户在首次合并中选择上传哪些本地任务（`completeInitialMerge`）。日程（`DailyTask`）不参与同步。
 
-## 📂 目录说明
-- `FourQuadrants/Views/`: 包含主视图、象限视图、列表视图和表单视图。
-- `FourQuadrants/Services/`: 包含持久化、通知等服务类。
-- `FourQuadrants/Resources/`: 国际化、资源文件。
+## 小组件快照
 
+`WidgetSnapshotService.write(context:)` 在任务提交后写 App Group 中的 `widget-snapshot.json`（推荐任务、各象限计数与任务）。仅 iOS 编译写入与 `WidgetKit` 刷新；小组件通过 `WidgetSnapshotStore` 读取。macOS 不写快照。小组件中的完成操作经 `WidgetTaskCompletionBridge.complete` 回到 `TaskStore.toggleTask`。
 
-> 注意：如果使用Vibe Coding，可以尝试https://developer-docs-mcp.dev MCP插件，它能提供更详细的文档信息。
+## iOS 界面
+
+`FourQuadrantsApp` + `MainView`，视图在 `Views/`（含 `DailyView`、象限与表单组件）。
+
+## Mac 模块（`FourQuadrantsMac/`）
+
+- **App**：`FourQuadrantsMacApp`（主窗口、菜单栏、设置窗口）、`MacApplicationRuntime`（一个 `AppDataController` 会话、路由状态 `pendingRoute`、`fourquadrants://task/<uuid>` 链接、`--preview-data` 与 `--preview-stickies` 启动参数）、`MacCommands`（菜单命令）、`MacPreviewData`。
+- **Workspace**：`MacWorkspaceView` 与侧栏/工具栏/内容路由、四象限看板、任务列表与行、检查器、新建/编辑表单、`MacTaskDraft`（检查器与表单共用的草稿）、设置（外观、同步、关于）、同步状态与诊断、首次合并、数据恢复。
+- **Daily**：日程视图、时间轴布局与拖拽数学、日程表单、关联任务选择与关键词建议。
+- **Stickies**：ToDo便笺。`MacStickyCoordinator`（配置与对外接口）、`MacStickyConfigurationStore`（UserDefaults，防抖写入）、`MacStickyPanelController`（`NSPanel`）、`MacStickyViews` / `MacStickyMenu`。契约见 `FourQuadrantsMac/Stickies/IntegrationContract.md`。
+- **Platform**：系统适配（目前为 MSAL 认证窗口 `MacAuthenticationPresentation`）。
+
+所有窗口通过同一个 `TaskStore` 写入数据，Mac 不单独实现任务规则。

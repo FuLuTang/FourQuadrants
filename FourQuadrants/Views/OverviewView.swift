@@ -6,21 +6,26 @@ struct OverviewView: View {
     let title: String
     let color: Color
     let category: TaskCategory
-    @ObservedObject var taskManager: TaskManager
+    let taskStore: TaskStore
+    // 不再排除已完成任务：最近完成的任务需在原位保留 3 秒，由 filteredTasks 统一过滤
+    @Query(sort: \QuadrantTask.updatedAt, order: .reverse) private var tasks: [QuadrantTask]
     var onZoom: ((TaskCategory) -> Void)? = nil
     @State private var isTargeted: Bool = false
+    @State private var refreshDate = Date()
     @State private var selectedTaskForEditing: QuadrantTask? = nil
     @State private var showingEditTaskView: Bool = false
+    /// 等待用户确认删除的任务；为 nil 时不显示确认框。
+    @State private var pendingDeleteTask: QuadrantTask? = nil
 
 
     var body: some View {
         VStack(spacing: 0) {
             // Header - 仿照初始版本的黑字+简单布局
             HStack {
-                Text(title)
-                    .font(.system(.headline, design: .rounded))
-                    .fontWeight(.bold)
+                styledTitle
+                    .font(.system(.headline, design: .rounded, weight: .regular))
                     .foregroundColor(.primary) // 恢复黑字/深色字
+                    .accessibilityLabel(title)
                 
                 Spacer()
                 
@@ -53,12 +58,12 @@ struct OverviewView: View {
                         } else {
                             ForEach(filteredTasks) { task in
                                 TaskRow(task: task, onToggle: {
-                                    taskManager.toggleTask(task)
+                                    taskStore.toggleTask(task)
                                 }, onEdit: {
                                     selectedTaskForEditing = task
                                     showingEditTaskView = true
                                 }, onDelete: {
-                                    taskManager.removeTask(by: task.id)
+                                    pendingDeleteTask = task
                                 })
                                 // iOS 16+ 现代拖拽 API（使用 TaskTransferItem 包装）
                                 .draggable(TaskTransferItem(task: task)) {
@@ -87,8 +92,8 @@ struct OverviewView: View {
         .dropDestination(for: TaskTransferItem.self) { droppedItems, location in
             for item in droppedItems {
                 // 通过 ID 查找实际任务对象
-                if let actualTask = taskManager.tasks.first(where: { $0.id == item.taskId }) {
-                    taskManager.dragTaskChangeCategory(task: actualTask, targetCategory: self.category)
+                if let actualTask = tasks.first(where: { $0.id == item.taskId }) {
+                    taskStore.moveTask(actualTask, to: category)
                 }
             }
             return !droppedItems.isEmpty
@@ -102,12 +107,37 @@ struct OverviewView: View {
             QuadrantPreviewView(category: category, tasks: filteredTasks)
         }
         .sheet(item: $selectedTaskForEditing) { task in
-            TaskFormView(taskManager: taskManager, existingTask: task)
+            TaskFormView(taskStore: taskStore, existingTask: task)
+        }
+        .refreshingAtCompletionExpiry(of: tasks, refreshDate: $refreshDate)
+        .confirmationDialog(
+            "confirm_delete_task_title",
+            isPresented: Binding(
+                get: { pendingDeleteTask != nil },
+                set: { if !$0 { pendingDeleteTask = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("delete", role: .destructive) {
+                if let pendingDeleteTask {
+                    taskStore.removeTask(pendingDeleteTask)
+                }
+                pendingDeleteTask = nil
+            }
+            Button("cancel", role: .cancel) {
+                pendingDeleteTask = nil
+            }
+        } message: {
+            Text("confirm_delete_task_message")
         }
     }
-    
+
     var filteredTasks: [QuadrantTask] {
-        return taskManager.filteredTasks(in: category)
+        taskStore.filteredTasks(tasks, in: category, now: refreshDate)
+    }
+
+    private var styledTitle: Text {
+        category.styledDisplayName
     }
 }
 
@@ -168,7 +198,7 @@ struct TaskDragPreview: View {
         title: "重要且紧急",
         color: .red,
         category: .importantAndUrgent,
-        taskManager: TaskManager(modelContext: container.mainContext)
+        taskStore: TaskStore(modelContext: container.mainContext)
     )
     .frame(height: 300)
     .padding()
