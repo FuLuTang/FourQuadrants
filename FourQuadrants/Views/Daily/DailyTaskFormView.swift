@@ -29,6 +29,10 @@ struct DailyTaskFormView: View {
         self.onSave = onSave
     }
     
+    /// 保存时使用去掉首尾空白后的标题与备注，与 Mac 端规则一致。
+    private var cleanTitle: String { title.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var cleanNotes: String { notes.trimmingCharacters(in: .whitespacesAndNewlines) }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -140,7 +144,7 @@ struct DailyTaskFormView: View {
                             dismiss()
                         }
                     }
-                    .disabled(title.isEmpty)
+                    .disabled(cleanTitle.isEmpty)
                 }
             }
             .alert(String(localized: "confirm_delete_task_title"), isPresented: $showDeleteAlert) {
@@ -200,8 +204,8 @@ struct DailyTaskFormView: View {
         }
         
         if let existingTask = task, !isNew {
-            return taskStore.updateDailyTask(existingTask, title: title, startAt: startAt, duration: duration, colorHex: colorHex, notes: notes, quadrantTask: existingTask.quadrantTask)
-        } else if let savedTask = taskStore.createDailyTask(title: title, startAt: startAt, duration: duration, colorHex: colorHex, notes: notes) {
+            return taskStore.updateDailyTask(existingTask, title: cleanTitle, startAt: startAt, duration: duration, colorHex: colorHex, notes: cleanNotes.isEmpty ? nil : cleanNotes, quadrantTask: existingTask.quadrantTask)
+        } else if let savedTask = taskStore.createDailyTask(title: cleanTitle, startAt: startAt, duration: duration, colorHex: colorHex, notes: cleanNotes.isEmpty ? nil : cleanNotes) {
             onSave?(savedTask)
             return true
         }

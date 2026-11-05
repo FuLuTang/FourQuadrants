@@ -32,6 +32,7 @@ struct DailyTaskBlock: View {
     }
     @State private var showEditSheet = false
     @State private var showContextMenu = false // Custom Menu State
+    @State private var showDeleteConfirmation = false
     
     // Gesture State - Now using @State for UIKit-driven updates
     @State private var isDraggingBody = false
@@ -101,7 +102,8 @@ struct DailyTaskBlock: View {
                     },
                     onDelete: {
                         withAnimation {
-                            _ = taskStore.removeDailyTask(task)
+                            showContextMenu = false
+                            showDeleteConfirmation = true
                         }
                     }
                 )
@@ -114,6 +116,16 @@ struct DailyTaskBlock: View {
         .contentShape(Rectangle())
         .sheet(isPresented: $showEditSheet) {
             DailyTaskFormView(task: task, selectedDate: task.startAt)
+        }
+        .confirmationDialog("删除这条日程？", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+            Button("delete", role: .destructive) {
+                withAnimation {
+                    _ = taskStore.removeDailyTask(task)
+                }
+            }
+            Button("cancel", role: .cancel) {}
+        } message: {
+            Text("删除后无法恢复。关联的四象限任务会保留。")
         }
         .sensoryFeedback(.impact(weight: .light), trigger: task.startAt)
         .sensoryFeedback(.impact(weight: .light), trigger: task.duration)

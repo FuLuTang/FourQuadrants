@@ -36,6 +36,10 @@ struct TaskFormView: View {
         _controlMode = State(initialValue: existingTask?.importance == .low ? .detailed : .quick)
     }
     
+    /// 保存时使用去掉首尾空白后的标题与备注，与 Mac 端规则一致。
+    private var cleanTitle: String { title.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var cleanNotes: String { notes.trimmingCharacters(in: .whitespacesAndNewlines) }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -115,7 +119,7 @@ struct TaskFormView: View {
                             dismiss()
                         }
                     }
-                    .disabled(title.isEmpty)
+                    .disabled(cleanTitle.isEmpty)
                 }
                 // 键盘工具栏 Done 按钮
                 ToolbarItemGroup(placement: .keyboard) {
@@ -155,8 +159,8 @@ struct TaskFormView: View {
             let original = TaskOriginalValues.resolve(task: task, newImportance: importance, newThreshold: finalUrgentThreshold)
             return taskStore.updateTask(
                 task,
-                title: title,
-                notes: notes.isEmpty ? nil : notes,
+                title: cleanTitle,
+                notes: cleanNotes.isEmpty ? nil : cleanNotes,
                 importance: importance,
                 isUrgent: isUrgent,
                 isTop: isTop,
@@ -167,8 +171,8 @@ struct TaskFormView: View {
             )
         } else {
             return taskStore.addTask(
-                title: title,
-                notes: notes.isEmpty ? nil : notes,
+                title: cleanTitle,
+                notes: cleanNotes.isEmpty ? nil : cleanNotes,
                 importance: importance,
                 isUrgent: isUrgent,
                 isTop: isTop,

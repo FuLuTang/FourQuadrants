@@ -73,6 +73,8 @@ struct TaskListView: View {
     @State private var sortMethod: TaskStore.TaskSortMethod = .intelligence
     @State private var sortDirection: TaskStore.TaskSortDirection = .ascending
     @State private var refreshDate = Date()
+    /// 等待用户确认删除的任务；为 nil 时不显示确认框。
+    @State private var pendingDeleteTask: QuadrantTask?
 
     var body: some View {
         List {
@@ -88,7 +90,7 @@ struct TaskListView: View {
                 }, onEdit: {
                     edit(task)
                 }, onDelete: {
-                    taskStore.removeTask(task)
+                    pendingDeleteTask = task
                 })
                 .listRowBackground(
                     category == .all
@@ -97,9 +99,9 @@ struct TaskListView: View {
                 )
                 .listRowSeparator(.visible)
                 .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12)) // 紧凑的行内边距
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     Button(role: .destructive) {
-                        taskStore.removeTask(task)
+                        pendingDeleteTask = task
                     } label: {
                         Label("menu_delete", systemImage: "trash")
                     }
@@ -145,6 +147,26 @@ struct TaskListView: View {
             TaskFormView(taskStore: taskStore)
         }
         .refreshingAtCompletionExpiry(of: tasks, refreshDate: $refreshDate)
+        .confirmationDialog(
+            "confirm_delete_task_title",
+            isPresented: Binding(
+                get: { pendingDeleteTask != nil },
+                set: { if !$0 { pendingDeleteTask = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("delete", role: .destructive) {
+                if let pendingDeleteTask {
+                    taskStore.removeTask(pendingDeleteTask)
+                }
+                pendingDeleteTask = nil
+            }
+            Button("cancel", role: .cancel) {
+                pendingDeleteTask = nil
+            }
+        } message: {
+            Text("confirm_delete_task_message")
+        }
     }
 
     private func createTask() {

@@ -244,7 +244,7 @@ struct MacTaskDraftTests {
         #expect(task.originalUrgentThresholdDays == 5)
     }
 
-    @Test func turningOffAutomaticUrgencyClearsOriginalThreshold() throws {
+    @Test func turningOffAutomaticUrgencyKeepsOriginalThreshold() throws {
         let (container, store) = try makeStore()
         #expect(store.addTask(
             title: "有期限",
@@ -261,7 +261,28 @@ struct MacTaskDraftTests {
         draft.hasUrgentThreshold = false
         #expect(draft.save(to: task, using: store))
         #expect(task.urgentThresholdDays == nil)
-        #expect(task.originalUrgentThresholdDays == nil)
+        #expect(task.originalUrgentThresholdDays == 3)
+    }
+
+    @Test func dueDateRemovalKeepsOriginalThreshold() throws {
+        let (container, store) = try makeStore()
+        #expect(store.addTask(
+            title: "有期限",
+            importance: .normal,
+            isUrgent: false,
+            isTop: false,
+            dueAt: .now,
+            urgentThresholdDays: 3,
+            originalUrgentThresholdDays: 5
+        ))
+        let task = try onlyTask(in: container)
+
+        var draft = MacTaskDraft(task: task)
+        draft.hasDueDate = false
+        #expect(draft.save(to: task, using: store))
+        #expect(task.effectiveDueDateKey == nil)
+        #expect(task.urgentThresholdDays == nil)
+        #expect(task.originalUrgentThresholdDays == 5)
     }
 
     @Test func originalValueResolutionOnlyTakesManualChanges() throws {
@@ -284,6 +305,10 @@ struct MacTaskDraftTests {
 
         let changed = TaskOriginalValues.resolve(task: task, newImportance: .high, newThreshold: nil)
         #expect(changed.importance == .high)
-        #expect(changed.urgentThresholdDays == nil)
+        #expect(changed.urgentThresholdDays == 4)
+
+        let edited = TaskOriginalValues.resolve(task: task, newImportance: .low, newThreshold: 6)
+        #expect(edited.importance == .low)
+        #expect(edited.urgentThresholdDays == 6)
     }
 }

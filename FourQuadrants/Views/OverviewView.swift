@@ -14,6 +14,8 @@ struct OverviewView: View {
     @State private var refreshDate = Date()
     @State private var selectedTaskForEditing: QuadrantTask? = nil
     @State private var showingEditTaskView: Bool = false
+    /// 等待用户确认删除的任务；为 nil 时不显示确认框。
+    @State private var pendingDeleteTask: QuadrantTask? = nil
 
 
     var body: some View {
@@ -61,7 +63,7 @@ struct OverviewView: View {
                                     selectedTaskForEditing = task
                                     showingEditTaskView = true
                                 }, onDelete: {
-                                    taskStore.removeTask(task)
+                                    pendingDeleteTask = task
                                 })
                                 // iOS 16+ 现代拖拽 API（使用 TaskTransferItem 包装）
                                 .draggable(TaskTransferItem(task: task)) {
@@ -108,6 +110,26 @@ struct OverviewView: View {
             TaskFormView(taskStore: taskStore, existingTask: task)
         }
         .refreshingAtCompletionExpiry(of: tasks, refreshDate: $refreshDate)
+        .confirmationDialog(
+            "confirm_delete_task_title",
+            isPresented: Binding(
+                get: { pendingDeleteTask != nil },
+                set: { if !$0 { pendingDeleteTask = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("delete", role: .destructive) {
+                if let pendingDeleteTask {
+                    taskStore.removeTask(pendingDeleteTask)
+                }
+                pendingDeleteTask = nil
+            }
+            Button("cancel", role: .cancel) {
+                pendingDeleteTask = nil
+            }
+        } message: {
+            Text("confirm_delete_task_message")
+        }
     }
 
     var filteredTasks: [QuadrantTask] {
