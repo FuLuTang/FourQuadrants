@@ -4,10 +4,10 @@ import AppKit
 @MainActor
 enum MacStickyMenu {
     /// 六模式菜单：点击分类名与右键菜单共用。
-    static func modeItems(current: MacStickyMode, coordinator: MacStickyCoordinator, id: UUID) -> [NSMenuItem] {
-        MacStickyMode.allCases.map { mode in
+    static func modeItems(current: MacStickySource, coordinator: MacStickyCoordinator, id: UUID) -> [NSMenuItem] {
+        MacStickySource.allModes.map { mode in
             let item = ClosureMenuItem(title: mode.title) { [weak coordinator] in
-                coordinator?.setSource(mode.source, for: id)
+                coordinator?.setSource(mode, for: id)
             }
             item.state = mode == current ? .on : .off
             return item
@@ -16,7 +16,7 @@ enum MacStickyMenu {
 
     static func modeMenu(configuration: MacStickyConfiguration, coordinator: MacStickyCoordinator) -> NSMenu {
         let menu = NSMenu()
-        modeItems(current: MacStickyMode(source: configuration.source), coordinator: coordinator, id: configuration.id)
+        modeItems(current: configuration.source, coordinator: coordinator, id: configuration.id)
             .forEach(menu.addItem)
         return menu
     }
@@ -25,7 +25,7 @@ enum MacStickyMenu {
     static func fullMenu(configuration: MacStickyConfiguration, coordinator: MacStickyCoordinator) -> NSMenu {
         let id = configuration.id
         let menu = NSMenu()
-        modeItems(current: MacStickyMode(source: configuration.source), coordinator: coordinator, id: id)
+        modeItems(current: configuration.source, coordinator: coordinator, id: id)
             .forEach(menu.addItem)
         menu.addItem(.separator())
 

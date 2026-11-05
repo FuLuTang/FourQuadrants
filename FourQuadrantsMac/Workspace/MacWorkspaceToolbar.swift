@@ -5,6 +5,7 @@ struct MacWorkspaceToolbar: ToolbarContent {
     let route: MacWorkspaceRoute
     let stickyCoordinator: MacStickyCoordinator
     @Binding var sortMethod: TaskStore.TaskSortMethod
+    @Binding var sortDirection: TaskStore.TaskSortDirection
     @Binding var prefersInspectorPresented: Bool
     let onNewTask: () -> Void
 
@@ -37,6 +38,16 @@ struct MacWorkspaceToolbar: ToolbarContent {
                         Text("名称").tag(TaskStore.TaskSortMethod.byName)
                     }
                     .pickerStyle(.inline)
+
+                    // 与 iOS 一致：只有支持方向的排序方式才显示升降序；切换方式时方向在 MacWorkspaceView 中重置为升序。
+                    if sortMethod.supportsDirection {
+                        Divider()
+                        Picker("排序方向", selection: $sortDirection) {
+                            Text("升序").tag(TaskStore.TaskSortDirection.ascending)
+                            Text("降序").tag(TaskStore.TaskSortDirection.descending)
+                        }
+                        .pickerStyle(.inline)
+                    }
                 } label: {
                     Label("排序", systemImage: "arrow.up.arrow.down")
                 }

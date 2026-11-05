@@ -18,9 +18,8 @@ struct MacStickyConfigurationTests {
     }
 
     @Test func configurationEncodingPreservesSourceAndWindowPreferences() throws {
-        let taskID = UUID()
         let original = MacStickyConfiguration(
-            source: .selectedTaskIDs([taskID]),
+            source: .category(.urgentButNotImportant),
             frame: MacStickyWindowFrame(x: 80, y: 420, width: 310, height: 360),
             isCollapsed: true,
             isVisible: true,
@@ -55,7 +54,7 @@ struct MacStickyConfigurationTests {
 
         #expect(decoded == [MacStickyConfiguration(
             id: id,
-            source: .selectedTaskIDs([]),
+            source: .smart,
             frame: MacStickyWindowFrame(x: 12, y: 34, width: 280, height: 320),
             isCollapsed: true,
             isVisible: false,
@@ -63,6 +62,23 @@ struct MacStickyConfigurationTests {
             showDetails: false
         )])
         #expect(decoded.first?.source.title == "智能排列")
+    }
+
+    @Test func legacySelectedTaskIDsSourceDecodesAsSmartAndIsNotWrittenBack() throws {
+        let legacyJSON = #"{"kind":"selectedTaskIDs","taskIDs":["\#(UUID().uuidString)"]}"#
+        let source = try JSONDecoder().decode(MacStickySource.self, from: Data(legacyJSON.utf8))
+
+        #expect(source == .smart)
+        let encoded = try JSONEncoder().encode(source)
+        #expect(!String(decoding: encoded, as: UTF8.self).contains("selectedTaskIDs"))
+    }
+
+    @Test func legacyAllAndCompletedCategorySourcesDecodeAsSmart() throws {
+        for raw in ["all", "completed"] {
+            let legacyJSON = #"{"kind":"category","category":"\#(raw)"}"#
+            let source = try JSONDecoder().decode(MacStickySource.self, from: Data(legacyJSON.utf8))
+            #expect(source == .smart)
+        }
     }
 
     @Test func minimalLegacyConfigurationFillsMissingFieldsWithDefaults() throws {
@@ -171,11 +187,11 @@ struct MacStickyConfigurationTests {
         }
 
         #expect(coordinator.configurations.first?.frame.x == 30)
-        #expect(try MacStickyCoordinator.loadConfigurations(from: defaults).first?.frame.x == 10)
+        #expect(try MacStickyConfigurationStore.load(from: defaults).first?.frame.x == 10)
 
         coordinator.flushPendingChanges()
 
-        #expect(try MacStickyCoordinator.loadConfigurations(from: defaults).first?.frame.x == 30)
+        #expect(try MacStickyConfigurationStore.load(from: defaults).first?.frame.x == 30)
         coordinator.closeAllWindows()
     }
 
@@ -188,7 +204,7 @@ struct MacStickyConfigurationTests {
         coordinator.recordWindowFrame(NSRect(x: 77, y: 20, width: 220, height: 260), id: id)
         try await Task.sleep(for: .milliseconds(400))
 
-        #expect(try MacStickyCoordinator.loadConfigurations(from: defaults).first?.frame.x == 77)
+        #expect(try MacStickyConfigurationStore.load(from: defaults).first?.frame.x == 77)
         coordinator.closeAllWindows()
     }
 
@@ -205,7 +221,7 @@ struct MacStickyConfigurationTests {
             MacStickyConfiguration(source: source)
         }
 
-        let data = try MacStickyCoordinator.encode(configurations)
+        let data = try MacStickyConfigurationStore.encode(configurations)
         let decoded = try JSONDecoder().decode([MacStickyConfiguration].self, from: data)
 
         #expect(decoded == configurations)
@@ -276,7 +292,7 @@ struct MacStickyConfigurationTests {
         coordinator.closeAllWindows()
 
         #expect(coordinator.configurations.first?.isVisible == true)
-        #expect(try MacStickyCoordinator.loadConfigurations(from: defaults).first?.isVisible == true)
+        #expect(try MacStickyConfigurationStore.load(from: defaults).first?.isVisible == true)
     }
 
     @Test func removingConfigurationPersistsDeletion() throws {
@@ -293,7 +309,7 @@ struct MacStickyConfigurationTests {
         coordinator.removeConfiguration(id: removedID)
 
         #expect(coordinator.configurations.map(\.id) == [keptID])
-        #expect(try MacStickyCoordinator.loadConfigurations(from: defaults).map(\.id) == [keptID])
+        #expect(try MacStickyConfigurationStore.load(from: defaults).map(\.id) == [keptID])
     }
 
     @Test func unreadableConfigurationDataIsPreservedWhenEditing() throws {

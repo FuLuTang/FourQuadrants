@@ -11,7 +11,7 @@
 - `MacStickyCoordinator`：只管配置与对外接口（创建、显示/隐藏、删除、切换内容来源、置顶、显示详情、收起），并保存窗口位置。
 - `MacStickyConfigurationStore`：UserDefaults 存储。结构性修改立即写入；拖动、缩放产生的位置变化经 0.4 秒防抖再写，不会每个事件都编码。`flush()` 立即落盘，协调器在 `closeAllWindows()` 与 `NSApplication.willTerminateNotification` 时自动调用。存档无法识别时保持只读并保留原始数据。
 - `MacStickyPanelController`：每张便笺一个 `NSPanel`，负责创建、显示、层级、可调整尺寸与框架，以及把窗口移动/缩放回报给协调器。
-- `MacStickyViews` / `MacStickyMenu`：SwiftUI 内容与 AppKit 菜单。内容通过 `.modelContainer` 用 `@Query` 读取任务，不经协调器 fetch。
+- `MacStickyNoteView` / `MacStickyTitleBar` / `MacStickyContent` / `MacStickyResizeViews` / `MacStickyPalette`：SwiftUI 便笺视图与配色；`MacStickyMenu`：AppKit 菜单。内容通过 `.modelContainer` 用 `@Query` 读取任务，不经协调器 fetch。
 
 ## 窗口行为
 
@@ -23,7 +23,7 @@
 
 ## 配置与几何
 
-配置存放在 `UserDefaults`（键 `FourQuadrants.macStickies.configurations.v1`），不改 SwiftData schema。字段：`id`、`source`、`frame`（展开态框架）、`isCollapsed`、`isVisible`、`isFloating`、`showDetails`。旧存档中的 `title`、`paper`、`opacity` 等字段解码时忽略，缺失字段取默认值；`selectedTaskIDs` 来源仍可解码，显示时按智能排列处理。
+配置存放在 `UserDefaults`（键 `FourQuadrants.macStickies.configurations.v1`），不改 SwiftData schema。字段：`id`、`source`、`frame`（展开态框架）、`isCollapsed`、`isVisible`、`isFloating`、`showDetails`。旧存档中的 `title`、`paper`、`opacity` 等字段解码时忽略，缺失字段取默认值；旧版 `selectedTaskIDs` 来源与 `category` 为 `all`、`completed` 的来源解码后按智能排列处理，编码不再输出前者。
 
 - 收起：窗口框架由展开态框架推导（左边界、宽度、上边界不变，只有下边界上移）。拖动收起态窗口会更新展开态框架的位置，再展开时使用移动后的上边界。
 - 切换到四合一时宽度不足 320pt 则向右扩展（左边界不变），收起态同理。

@@ -15,6 +15,8 @@ struct MacDailyView: View {
     @State private var selectedDate = Calendar.current.startOfDay(for: .now)
     @State private var selectedTask: DailyTask?
     @State private var taskPresentation: MacDailyTaskPresentation?
+    /// 等待确认删除的日程；三个删除入口（头部按钮、Delete 键、时间轴右键）都只设置它。
+    @State private var pendingDeleteTask: DailyTask?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,7 +34,7 @@ struct MacDailyView: View {
                 onNew: { presentNewTask(at: defaultStartTime()) },
                 onEdit: presentSelectedTask,
                 onToggleCompletion: toggleSelectedTask,
-                onDelete: deleteSelectedTask
+                onDelete: requestDeleteSelectedTask
             )
 
             Divider()
@@ -45,9 +47,7 @@ struct MacDailyView: View {
                     selectedTask = task
                     presentTask(task)
                 },
-                onDelete: { task in
-                    if taskStore.removeDailyTask(task), selectedTask?.id == task.id { selectedTask = nil }
-                },
+                onDelete: requestDelete,
                 onNew: presentNewTask,
                 onDeselect: { selectedTask = nil }
             )
@@ -55,10 +55,23 @@ struct MacDailyView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
         // 与头部「删除」按钮行为一致；文本框聚焦时 Delete 键由文本框处理。
-        .onDeleteCommand(perform: deleteSelectedTask)
+        .onDeleteCommand(perform: requestDeleteSelectedTask)
         // This view lives in the Workspace split-view detail column; keep its
         // sizing flexible and let the window/container own minimum dimensions.
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .confirmationDialog(
+            "删除这条日程？",
+            isPresented: Binding(
+                get: { pendingDeleteTask != nil },
+                set: { if !$0 { pendingDeleteTask = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("删除日程", role: .destructive, action: confirmPendingDelete)
+            Button("取消", role: .cancel) { pendingDeleteTask = nil }
+        } message: {
+            Text("删除后无法恢复。关联的四象限任务会保留。")
+        }
         .sheet(item: $taskPresentation) { presentation in
             MacDailyTaskFormView(
                 task: presentation.task,
@@ -122,8 +135,20 @@ struct MacDailyView: View {
         _ = taskStore.toggleDailyTask(selectedTask)
     }
 
-    private func deleteSelectedTask() {
+    private func requestDeleteSelectedTask() {
         guard let selectedTask else { return }
-        if taskStore.removeDailyTask(selectedTask) { self.selectedTask = nil }
+        requestDelete(selectedTask)
+    }
+
+    private func requestDelete(_ task: DailyTask) {
+        pendingDeleteTask = task
+    }
+
+    /// 用户确认后才真正删除，并清理仍指向该日程的选中状态。
+    private func confirmPendingDelete() {
+        guard let task = pendingDeleteTask else { return }
+        let id = task.id
+        pendingDeleteTask = nil
+        if taskStore.removeDailyTask(task), selectedTask?.id == id { selectedTask = nil }
     }
 }

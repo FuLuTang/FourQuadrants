@@ -176,7 +176,7 @@ final class MacStickyCoordinator {
             return taskStore.filteredTasks(tasks, in: category, now: now)
         case .combined:
             return taskStore.filteredTasks(tasks, in: .all, now: now)
-        case .smart, .selectedTaskIDs:
+        case .smart:
             // 未完成任务按推荐顺序取前 8 条；刚完成且仍在可见期内的任务按同一顺序留在原位，不占用名额。
             let open = tasks.filter { !$0.isCompleted }
             let recent = taskStore.filteredTasks(tasks, in: .all, now: now).filter(\.isCompleted)
@@ -194,14 +194,6 @@ final class MacStickyCoordinator {
     private func save(debounced: Bool = false) {
         store.save(storedConfigurations, debounced: debounced)
         persistenceError = store.lastError
-    }
-
-    static func loadConfigurations(from defaults: UserDefaults) throws -> [MacStickyConfiguration] {
-        try MacStickyConfigurationStore.load(from: defaults)
-    }
-
-    static func encode(_ configurations: [MacStickyConfiguration]) throws -> Data {
-        try MacStickyConfigurationStore.encode(configurations)
     }
 
     #if DEBUG

@@ -4,10 +4,8 @@ struct MacQuadrantBoard: View {
     let tasks: [QuadrantTask]
     let taskStore: TaskStore
     let now: Date
-    @Binding var selectedTaskID: UUID?
-    let onEdit: (QuadrantTask) -> Void
-    let onDelete: (QuadrantTask) -> Void
-    let onPin: (QuadrantTask) -> Void
+    let selectedTaskID: UUID?
+    let actions: MacTaskActions
 
     private let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
 
@@ -20,10 +18,8 @@ struct MacQuadrantBoard: View {
                         allTasks: tasks,
                         taskStore: taskStore,
                         now: now,
-                        selectedTaskID: $selectedTaskID,
-                        onEdit: onEdit,
-                        onDelete: onDelete,
-                        onPin: onPin
+                        selectedTaskID: selectedTaskID,
+                        actions: actions
                     )
                 }
             }
@@ -39,10 +35,8 @@ private struct MacQuadrantCard: View {
     let allTasks: [QuadrantTask]
     let taskStore: TaskStore
     let now: Date
-    @Binding var selectedTaskID: UUID?
-    let onEdit: (QuadrantTask) -> Void
-    let onDelete: (QuadrantTask) -> Void
-    let onPin: (QuadrantTask) -> Void
+    let selectedTaskID: UUID?
+    let actions: MacTaskActions
 
     private var tasks: [QuadrantTask] {
         taskStore.filteredTasks(allTasks, in: category, now: now)
@@ -71,7 +65,7 @@ private struct MacQuadrantCard: View {
             } else {
                 VStack(spacing: 1) {
                     ForEach(tasks) { task in
-                        MacTaskRow(task: task, isSelected: selectedTaskID == task.id, taskStore: taskStore, onSelect: { selectedTaskID = task.id }, onEdit: { onEdit(task) }, onDelete: { onDelete(task) }, onPin: { onPin(task) })
+                        MacTaskRow(task: task, isSelected: selectedTaskID == task.id, actions: actions)
                             .draggable(TaskTransferItem(task: task))
                     }
                 }
@@ -93,8 +87,10 @@ private struct MacQuadrantCard: View {
         }
         .dropDestination(for: TaskTransferItem.self) { items, _ in
             guard let item = items.first,
-                  let task = allTasks.first(where: { $0.id == item.taskId }) else { return false }
-            return taskStore.moveTask(task, to: category)
+                  let task = allTasks.first(where: { $0.id == item.taskId }),
+                  // 已完成任务没有移动入口，拖放时同样拒绝。
+                  !task.isCompleted else { return false }
+            return actions.move(task, category)
         }
     }
 }

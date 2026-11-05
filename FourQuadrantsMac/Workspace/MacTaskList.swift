@@ -5,11 +5,10 @@ struct MacTaskList: View {
     var category: TaskCategory? = nil
     let tasks: [QuadrantTask]
     let sortMethod: TaskStore.TaskSortMethod
+    let sortDirection: TaskStore.TaskSortDirection
     let taskStore: TaskStore
     @Binding var selectedTaskID: UUID?
-    let onEdit: (QuadrantTask) -> Void
-    let onDelete: (QuadrantTask) -> Void
-    let onPin: (QuadrantTask) -> Void
+    let actions: MacTaskActions
 
     @State private var orderedTasks: [QuadrantTask] = []
 
@@ -47,7 +46,7 @@ struct MacTaskList: View {
                 List(selection: $selectedTaskID) {
                     ForEach(orderedTasks) { task in
                         // List 自带选中高亮，这里传 false 避免双重高亮。
-                        MacTaskRow(task: task, isSelected: false, taskStore: taskStore, onSelect: { selectedTaskID = task.id }, onEdit: { onEdit(task) }, onDelete: { onDelete(task) }, onPin: { onPin(task) })
+                        MacTaskRow(task: task, isSelected: false, actions: actions)
                             .tag(task.id)
                             .draggable(TaskTransferItem(task: task))
                     }
@@ -59,10 +58,11 @@ struct MacTaskList: View {
         .onAppear(perform: updateOrder)
         .onChange(of: orderSignature) { _, _ in updateOrder() }
         .onChange(of: sortMethod) { _, _ in updateOrder() }
+        .onChange(of: sortDirection) { _, _ in updateOrder() }
     }
 
     private func updateOrder() {
-        orderedTasks = taskStore.sortTasks(tasks, by: sortMethod)
+        orderedTasks = taskStore.sortTasks(tasks, by: sortMethod, direction: sortDirection)
     }
 }
 

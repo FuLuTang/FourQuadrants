@@ -3,15 +3,11 @@ import SwiftUI
 struct MacTaskRow: View {
     let task: QuadrantTask
     let isSelected: Bool
-    let taskStore: TaskStore
-    let onSelect: () -> Void
-    let onEdit: () -> Void
-    let onDelete: () -> Void
-    let onPin: () -> Void
+    let actions: MacTaskActions
 
     var body: some View {
         HStack(spacing: 9) {
-            Button(action: toggleCompletion) {
+            Button { actions.toggleCompletion(task) } label: {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(task.isCompleted ? .green : .secondary)
                     .font(.body)
@@ -47,11 +43,11 @@ struct MacTaskRow: View {
                 }
             }
             .contentShape(Rectangle())
-            .onTapGesture(count: 2, perform: onEdit)
-            .simultaneousGesture(TapGesture().onEnded { onSelect() })
+            .onTapGesture(count: 2) { actions.edit(task) }
+            .simultaneousGesture(TapGesture().onEnded { actions.select(task) })
 
             Menu {
-                actions
+                rowMenuItems
             } label: {
                 Image(systemName: "ellipsis")
                     .foregroundStyle(.secondary)
@@ -64,32 +60,31 @@ struct MacTaskRow: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .background(isSelected ? Color.accentColor.opacity(0.09) : .clear, in: RoundedRectangle(cornerRadius: 7))
-        .contextMenu { actions }
+        .contextMenu { rowMenuItems }
     }
 
-    /// Shared by the row's "more" menu and its context menu.
+    /// 「更多」菜单与右键菜单共用的操作项。
     @ViewBuilder
-    private var actions: some View {
-        Button("编辑任务", systemImage: "pencil", action: onEdit)
-        Button(task.isCompleted ? "标记为未完成" : "标记为已完成", systemImage: "checkmark", action: toggleCompletion)
-        Button("添加所属象限ToDo便笺", systemImage: "note.text.badge.plus", action: onPin)
-        Divider()
-        Menu("移动到象限") {
-            ForEach(TaskCategory.allQuadrants, id: \.self) { category in
-                Button { _ = taskStore.moveTask(task, to: category) } label: {
-                    Label {
-                        MacQuadrantHeading(category: category, font: .body)
-                    } icon: {
-                        Image(systemName: category.icon)
+    private var rowMenuItems: some View {
+        Button("编辑任务", systemImage: "pencil") { actions.edit(task) }
+        Button(task.isCompleted ? "标记为未完成" : "标记为已完成", systemImage: "checkmark") { actions.toggleCompletion(task) }
+        Button("添加所属象限ToDo便笺", systemImage: "note.text.badge.plus") { actions.pin(task) }
+        // 已完成任务不再参与象限划分，因此不提供移动入口（与 iOS 一致）。
+        if !task.isCompleted {
+            Divider()
+            Menu("移动到象限") {
+                ForEach(TaskCategory.allQuadrants, id: \.self) { category in
+                    Button { _ = actions.move(task, category) } label: {
+                        Label {
+                            MacQuadrantHeading(category: category, font: .body)
+                        } icon: {
+                            Image(systemName: category.icon)
+                        }
                     }
                 }
             }
         }
         Divider()
-        Button("删除任务", systemImage: "trash", role: .destructive, action: onDelete)
-    }
-
-    private func toggleCompletion() {
-        _ = taskStore.toggleTask(task)
+        Button("删除任务", systemImage: "trash", role: .destructive) { actions.delete(task) }
     }
 }

@@ -1,19 +1,35 @@
 import AppKit
 import Foundation
 
+/// 便笺的内容来源，同时也是菜单中的六种模式（四个象限、四合一、智能排列）。持久化格式不可随意改动。
 enum MacStickySource: Codable, Equatable {
-    /// 仅为兼容旧存档保留解码；显示时按智能排列处理。
-    case selectedTaskIDs([UUID])
     case category(TaskCategory)
     case combined
     case smart
 
-    private enum CodingKeys: String, CodingKey { case kind, taskIDs, category }
-    private enum Kind: String, Codable { case selectedTaskIDs, category, combined, smart }
+    private enum CodingKeys: String, CodingKey { case kind, category }
+    /// `selectedTaskIDs` 只出现在旧存档中，仅用于解码，编码从不输出。
+    private enum Kind: String, Codable { case category, combined, smart, selectedTaskIDs }
+
+    /// 菜单中的全部模式：四个象限在前（顺序与既有菜单一致），随后是四合一与智能排列。
+    static let allModes: [MacStickySource] = [
+        .category(.importantAndUrgent),
+        .category(.importantButNotUrgent),
+        .category(.urgentButNotImportant),
+        .category(.notImportantAndNotUrgent),
+        .combined,
+        .smart
+    ]
+
+    /// 单象限便笺对应的分类；四合一与智能排列没有。
+    var category: TaskCategory? {
+        if case .category(let category) = self { return category }
+        return nil
+    }
 
     var title: String {
         switch self {
-        case .selectedTaskIDs, .smart: String(localized: "智能排列")
+        case .smart: String(localized: "智能排列")
         case .category(let category): category.displayName
         case .combined: String(localized: "四合一")
         }
@@ -22,13 +38,14 @@ enum MacStickySource: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(Kind.self, forKey: .kind) {
-        case .selectedTaskIDs:
-            self = .selectedTaskIDs(try container.decode([UUID].self, forKey: .taskIDs))
         case .category:
-            self = .category(try container.decode(TaskCategory.self, forKey: .category))
+            let category = try container.decode(TaskCategory.self, forKey: .category)
+            // 「全部」「已完成」不是象限，旧存档中若出现，按智能排列处理，与旧版菜单显示一致。
+            self = category == .all || category == .completed ? .smart : .category(category)
         case .combined:
             self = .combined
-        case .smart:
+        case .smart, .selectedTaskIDs:
+            // 旧版按任务 ID 手动选择的来源已取消，忽略 taskIDs，按智能排列处理。
             self = .smart
         }
     }
@@ -36,9 +53,6 @@ enum MacStickySource: Codable, Equatable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .selectedTaskIDs(let ids):
-            try container.encode(Kind.selectedTaskIDs, forKey: .kind)
-            try container.encode(ids, forKey: .taskIDs)
         case .category(let category):
             try container.encode(Kind.category, forKey: .kind)
             try container.encode(category, forKey: .category)
@@ -48,7 +62,6 @@ enum MacStickySource: Codable, Equatable {
             try container.encode(Kind.smart, forKey: .kind)
         }
     }
-
 }
 
 /// 便笺窗口的几何常量与默认值。

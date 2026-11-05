@@ -1,3 +1,4 @@
+import Combine
 import SwiftData
 import SwiftUI
 
@@ -10,6 +11,7 @@ struct MacWorkspaceView: View {
     @State private var selection: MacWorkspaceRoute? = .quadrants
     @State private var searchText = ""
     @State private var sortMethod: TaskStore.TaskSortMethod = .intelligence
+    @State private var sortDirection: TaskStore.TaskSortDirection = .ascending
     @State private var selectedTaskID: UUID?
     @State private var prefersInspectorPresented = true
     @State private var isTaskFormPresented = false
@@ -18,6 +20,9 @@ struct MacWorkspaceView: View {
     @State private var taskToEdit: QuadrantTask?
     @State private var isShowingStoreError = false
     @State private var refreshDate = Date()
+
+    /// 当前路由；未选中任何侧边栏项时回到四象限。
+    private var route: MacWorkspaceRoute { selection ?? .quadrants }
 
     private var selectedTask: QuadrantTask? {
         tasks.first { $0.id == selectedTaskID }
@@ -35,11 +40,24 @@ struct MacWorkspaceView: View {
         MacCompletionVisibility.nextExpiry(of: tasks, after: refreshDate)
     }
 
+    /// 一次性构造的任务操作集合，向下传递给列表、看板与任务行。
+    private var taskActions: MacTaskActions {
+        MacTaskActions(
+            select: { selectedTaskID = $0.id },
+            edit: presentEditForm,
+            delete: requestDelete,
+            pin: pinTask,
+            toggleCompletion: { _ = taskStore.toggleTask($0) },
+            // 已完成任务没有移动入口，这里统一拒绝。
+            move: { task, category in !task.isCompleted && taskStore.moveTask(task, to: category) }
+        )
+    }
+
     private var inspectorPresentation: Binding<Bool> {
         Binding(
-            get: { (selection ?? .quadrants).supportsInspector && prefersInspectorPresented },
+            get: { route.supportsInspector && prefersInspectorPresented },
             set: { isPresented in
-                guard (selection ?? .quadrants).supportsInspector else { return }
+                guard route.supportsInspector else { return }
                 prefersInspectorPresented = isPresented
             }
         )
@@ -50,34 +68,34 @@ struct MacWorkspaceView: View {
             MacWorkspaceSidebar(selection: $selection, tasks: tasks)
         } detail: {
             MacWorkspaceContent(
-                selection: selection ?? .quadrants,
+                selection: route,
                 tasks: filteredTasks,
                 taskStore: taskStore,
                 sortMethod: sortMethod,
+                sortDirection: sortDirection,
                 now: refreshDate,
                 selectedTaskID: $selectedTaskID,
-                onEdit: presentEditForm,
-                onDelete: requestDelete,
-                onPin: pinTask
+                actions: taskActions
             )
             .searchable(text: $searchText, placement: .toolbar, prompt: "搜索任务")
             // 文本框聚焦时 Delete 键由文本框处理，不会走到这里，因此不会误删任务。
             .onDeleteCommand {
-                guard (selection ?? .quadrants).supportsInspector, let selectedTask else { return }
+                guard route.supportsInspector, let selectedTask else { return }
                 requestDelete(selectedTask)
             }
-            .navigationTitle((selection ?? .quadrants).navigationTitle)
+            .navigationTitle(route.navigationTitle)
             .toolbar {
                 MacWorkspaceToolbar(
-                    route: selection ?? .quadrants,
+                    route: route,
                     stickyCoordinator: stickyCoordinator,
                     sortMethod: $sortMethod,
+                    sortDirection: $sortDirection,
                     prefersInspectorPresented: $prefersInspectorPresented,
                     onNewTask: presentNewTask
                 )
             }
             .inspector(isPresented: inspectorPresentation) {
-                if (selection ?? .quadrants).supportsInspector {
+                if route.supportsInspector {
                     MacTaskInspector(
                         task: selectedTask,
                         taskStore: taskStore,
@@ -113,6 +131,17 @@ struct MacWorkspaceView: View {
         .onAppear(perform: handlePendingRoute)
         .onChange(of: runtime.pendingRoute) { _, _ in
             handlePendingRoute()
+        }
+        // 跨过零点后截止日期的紧急状态会变化，需要重新计算；回到前台时也刷新一次。
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged).receive(on: DispatchQueue.main)) { _ in
+            refreshDate = Date()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification).receive(on: DispatchQueue.main)) { _ in
+            refreshDate = Date()
+        }
+        // 切换到新的排序方式时方向重置为升序，与 iOS 一致。
+        .onChange(of: sortMethod) { _, _ in
+            sortDirection = .ascending
         }
     }
 

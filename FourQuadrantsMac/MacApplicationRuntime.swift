@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 import SwiftData
@@ -21,6 +22,7 @@ final class MacApplicationRuntime {
     private(set) var pendingRoute: MacRoute?
     let isPreview: Bool
     @ObservationIgnored private var mainWindowOpener: (() -> Void)?
+    @ObservationIgnored nonisolated(unsafe) private var activationObserver: NSObjectProtocol?
     private var didRestoreWindows = false
 
     init() {
@@ -40,6 +42,16 @@ final class MacApplicationRuntime {
             data = AppDataController()
         }
         connectWindows()
+        // 与 iOS 的 scenePhase 回到 active 对齐：应用启动后首次激活，以及之后每次回到前台，都尝试同步。
+        activationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.synchronizeOnActivation() }
+        }
+    }
+
+    deinit {
+        if let activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
     }
 
     func retry() {
@@ -97,6 +109,12 @@ final class MacApplicationRuntime {
 
     func reconnectWindows() {
         connectWindows()
+    }
+
+    /// 数据就绪且非预览模式才同步；未登录或未开启同步时 `SyncService.synchronize()` 会自行直接返回。
+    private func synchronizeOnActivation() {
+        guard !isPreview, let data, case .ready = data.state else { return }
+        Task { await SyncService.shared.synchronize() }
     }
 
     private func request(_ route: MacRoute) {
