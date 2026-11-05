@@ -96,7 +96,12 @@ struct MacStickyNoteView: View {
                 if !configuration.isCollapsed && contentShown {
                     Group {
                         if mode == .combined {
-                            MacStickyCombinedGrid(tasks: tasks, showDetails: configuration.showDetails, onToggle: toggle, onOpen: open)
+                            MacStickyCombinedGrid(
+                                tasksFor: { coordinator.visibleTasks(from: .category($0), in: allTasks, now: now) },
+                                showDetails: configuration.showDetails,
+                                onToggle: toggle,
+                                onOpen: open
+                            )
                         } else {
                             MacStickyTaskList(tasks: tasks, showDetails: configuration.showDetails, tintsRows: mode == .smart, onToggle: toggle, onOpen: open)
                         }
@@ -206,7 +211,10 @@ private struct MacStickyTitleBar: View {
         Button {
             guard let event = NSApp.currentEvent, let view = event.window?.contentView else { return }
             let menu = MacStickyMenu.modeMenu(configuration: currentConfiguration, coordinator: coordinator)
-            NSMenu.popUpContextMenu(menu, with: event, for: view)
+            // 锚点取点击的横向位置与标题条底边：菜单从分类名下方弹出，当前项对齐到锚点。
+            let point = view.convert(event.locationInWindow, from: nil)
+            let bottomY = view.isFlipped ? MacStickyLayout.titleBarHeight : view.bounds.height - MacStickyLayout.titleBarHeight
+            _ = menu.popUp(positioning: menu.items.first { $0.state == .on }, at: NSPoint(x: point.x, y: bottomY), in: view)
         } label: {
             HStack(spacing: 0) {
                 if let category = mode.category {
@@ -389,7 +397,8 @@ private struct MacStickyTaskList: View {
 
 /// 2×2 四合一：每格 14pt 小标题（象限名 + 数量），格间 1pt 分隔线。
 private struct MacStickyCombinedGrid: View {
-    let tasks: [QuadrantTask]
+    /// 每格的任务与单象限便笺一致（含刚完成、仍在可见期内的任务），格内计数只数未完成。
+    let tasksFor: (TaskCategory) -> [QuadrantTask]
     let showDetails: Bool
     let onToggle: (QuadrantTask) -> Void
     let onOpen: (QuadrantTask) -> Void
@@ -413,14 +422,15 @@ private struct MacStickyCombinedGrid: View {
     }
 
     private func quadrant(_ category: TaskCategory) -> some View {
-        let open = tasks.filter { $0.category == category && !$0.isCompleted }
+        let tasks = tasksFor(category)
+        let openCount = tasks.filter { !$0.isCompleted }.count
         return VStack(spacing: 0) {
             HStack(spacing: 4) {
                 Rectangle().fill(category.themeColor).frame(width: 6, height: 6)
                 MacQuadrantHeading(category: category, font: .system(size: 10))
                     .lineLimit(1)
                 Spacer(minLength: 0)
-                Text("\(open.count)").font(.system(size: 10)).monospacedDigit()
+                Text("\(openCount)").font(.system(size: 10)).monospacedDigit()
             }
             .foregroundStyle(MacStickyPalette.ink.opacity(0.75))
             .padding(.horizontal, 6)
@@ -428,7 +438,7 @@ private struct MacStickyCombinedGrid: View {
             .background(MacStickyPalette.bar(for: category))
             ScrollView {
                 VStack(spacing: 0) {
-                    ForEach(open, id: \.id) { task in
+                    ForEach(tasks, id: \.id) { task in
                         MacStickyTaskRow(task: task, showDetails: showDetails, tintsRow: false, onToggle: { onToggle(task) }, onOpen: { onOpen(task) })
                     }
                 }

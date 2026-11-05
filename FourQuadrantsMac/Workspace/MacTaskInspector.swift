@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 struct MacTaskInspector: View {
@@ -91,6 +92,11 @@ private struct MacTaskInspectorEditor: View {
             .scrollContentBackground(.hidden)
         }
         .onChange(of: task.updatedAt) { _, _ in session.taskDidChange(task) }
+        // 切换到其他任务时编辑器会被 `.id(task.id)` 重建，这里先保存未提交的修改。
+        .onDisappear {
+            guard session.shouldAutosave, task.modelContext != nil, !task.isDeleted else { return }
+            _ = save()
+        }
     }
 
     private func save() -> Bool {

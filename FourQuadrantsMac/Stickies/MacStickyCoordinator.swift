@@ -76,12 +76,25 @@ final class MacStickyCoordinator {
         windows.removeAll()
     }
 
+    /// 从任务「添加所属象限ToDo便笺」使用：已有同来源的便笺时直接显示它，否则新建。
+    @discardableResult
+    func showOrCreateNote(source: MacStickySource) -> UUID {
+        if let existing = configurations.first(where: { $0.source == source }) {
+            showWindow(for: existing.id)
+            return existing.id
+        }
+        return createNote(source: source)
+    }
+
     func showWindow(for id: UUID) {
         guard let index = configurations.firstIndex(where: { $0.id == id }) else { return }
         configurations[index].isVisible = true
+        // 外接屏拔掉后存档位置可能完全在屏幕外，显示前拉回可见区域。
+        configurations[index].frame = configurations[index].frame.clamped(toVisible: NSScreen.screens.map(\.visibleFrame))
         save()
         let controller = windows[id] ?? makeWindow(for: configurations[index])
         windows[id] = controller
+        controller.apply(configurations[index])
         controller.show()
     }
 
@@ -164,7 +177,13 @@ final class MacStickyCoordinator {
         case .combined:
             return taskStore.filteredTasks(tasks, in: .all, now: now)
         case .smart, .selectedTaskIDs:
-            return TaskOrdering.recommended(tasks.filter { !$0.isCompleted }, limit: 8)
+            // 未完成任务按推荐顺序取前 8 条；刚完成且仍在可见期内的任务按同一顺序留在原位，不占用名额。
+            let open = tasks.filter { !$0.isCompleted }
+            let recent = taskStore.filteredTasks(tasks, in: .all, now: now).filter(\.isCompleted)
+            let limitedOpenIDs = Set(TaskOrdering.recommended(open, limit: 8).map(\.id))
+            let recentIDs = Set(recent.map(\.id))
+            let ranked = TaskOrdering.recommended(open + recent, limit: open.count + recent.count)
+            return ranked.filter { recentIDs.contains($0.id) || limitedOpenIDs.contains($0.id) }
         }
     }
 

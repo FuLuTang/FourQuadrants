@@ -15,7 +15,6 @@ struct MacAppearanceSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("外观")
         .frame(maxWidth: 720, alignment: .leading)
         .padding(20)
     }

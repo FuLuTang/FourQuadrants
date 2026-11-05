@@ -133,6 +133,34 @@ struct MacTaskDraftTests {
         #expect(!session.hasExternalUpdate)
     }
 
+    @Test func shouldAutosaveOnlyForDirtyValidDraftWithoutConflict() throws {
+        let (container, store) = try makeStore()
+        #expect(store.addTask(title: "任务", importance: .normal, isUrgent: false, isTop: false))
+        let task = try onlyTask(in: container)
+
+        // 脏且标题有效 -> 自动保存
+        var session = MacTaskDraftSession(task: task)
+        session.draft.title = "待保存"
+        #expect(session.shouldAutosave)
+
+        // 标题为空 -> 不自动保存
+        session = MacTaskDraftSession(task: task)
+        session.draft.title = "   "
+        #expect(!session.shouldAutosave)
+
+        // 有外部更新冲突 -> 不自动保存
+        session = MacTaskDraftSession(task: task)
+        session.draft.title = "我的修改"
+        task.title = "同步改名"
+        session.taskDidChange(task)
+        #expect(session.hasExternalUpdate)
+        #expect(!session.shouldAutosave)
+
+        // 未修改 -> 不自动保存
+        session = MacTaskDraftSession(task: task)
+        #expect(!session.shouldAutosave)
+    }
+
     @Test func successfulSessionSaveBecomesCleanBaseline() throws {
         let (container, store) = try makeStore()
         #expect(store.addTask(title: "任务", importance: .normal, isUrgent: false, isTop: false))

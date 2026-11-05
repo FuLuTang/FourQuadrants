@@ -1,8 +1,10 @@
 import SwiftUI
 
 struct MacDailyHourGrid: View {
-    /// Receives the y offset of a click on empty grid, in grid coordinates.
-    let onEmptyClick: (CGFloat) -> Void
+    /// Receives the y offset of a double-click on empty grid, in grid coordinates.
+    let onEmptyDoubleClick: (CGFloat) -> Void
+    /// Single click on empty grid, used to clear the current selection.
+    let onEmptySingleClick: () -> Void
 
     private typealias Metrics = MacDailyTimelineMetrics
 
@@ -28,7 +30,8 @@ struct MacDailyHourGrid: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: Metrics.timelineHeight, alignment: .top)
         .contentShape(Rectangle())
-        .onTapGesture { point in onEmptyClick(point.y) }
-        .accessibilityHint("单击空白时间段可按 15 分钟间隔新建日程")
+        .onTapGesture(count: 2) { point in onEmptyDoubleClick(point.y) }
+        .simultaneousGesture(TapGesture().onEnded { onEmptySingleClick() })
+        .accessibilityHint("双击空白时间段可按 15 分钟间隔新建日程")
     }
 }

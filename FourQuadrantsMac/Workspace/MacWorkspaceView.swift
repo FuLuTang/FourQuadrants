@@ -61,6 +61,11 @@ struct MacWorkspaceView: View {
                 onPin: pinTask
             )
             .searchable(text: $searchText, placement: .toolbar, prompt: "搜索任务")
+            // 文本框聚焦时 Delete 键由文本框处理，不会走到这里，因此不会误删任务。
+            .onDeleteCommand {
+                guard (selection ?? .quadrants).supportsInspector, let selectedTask else { return }
+                requestDelete(selectedTask)
+            }
             .navigationTitle((selection ?? .quadrants).navigationTitle)
             .toolbar {
                 MacWorkspaceToolbar(
@@ -156,6 +161,6 @@ struct MacWorkspaceView: View {
     }
 
     private func pinTask(_ task: QuadrantTask) {
-        stickyCoordinator.createNote(source: .category(task.category))
+        stickyCoordinator.showOrCreateNote(source: .category(task.category))
     }
 }

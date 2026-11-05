@@ -53,11 +53,10 @@ struct MacStickyConfigurationHeading: View {
     var body: some View {
         if case .category(let category) = configuration.source,
            category != .all,
-           category != .completed,
-           configuration.title == category.displayName {
+           category != .completed {
             MacQuadrantHeading(category: category, font: .body)
         } else {
-            Text(configuration.displayTitle)
+            Text(configuration.source.title)
         }
     }
 }

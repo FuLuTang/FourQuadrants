@@ -128,6 +128,9 @@ struct MacTaskDraftSession: Equatable {
 
     var isDirty: Bool { draft != baseline }
 
+    /// 有未保存修改、标题有效且没有外部更新冲突时，离开检查器前应自动保存。
+    var shouldAutosave: Bool { isDirty && draft.hasValidTitle && !hasExternalUpdate }
+
     /// Discards edits and loads the task's current values.
     mutating func reload(from task: QuadrantTask) {
         let snapshot = MacTaskDraft(task: task)

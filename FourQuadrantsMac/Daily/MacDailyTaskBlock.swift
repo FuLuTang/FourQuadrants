@@ -65,8 +65,9 @@ struct MacDailyTaskBlock: View {
         .overlay(alignment: .top) { resizeGrip.opacity(0.75).padding(.top, Metrics.resizeGripInset) }
         .overlay(alignment: .bottom) { resizeGrip.opacity(0.75).padding(.bottom, Metrics.resizeGripInset) }
         .contentShape(shape)
-        .onTapGesture(count: 1, perform: onSelect)
+        // 单击选中、双击编辑；用 simultaneousGesture 避免单击吞掉双击，且不干扰拖动。
         .onTapGesture(count: 2, perform: onEdit)
+        .simultaneousGesture(TapGesture().onEnded { onSelect() })
         .gesture(moveGesture)
         .overlay(alignment: .topTrailing) {
             Button {

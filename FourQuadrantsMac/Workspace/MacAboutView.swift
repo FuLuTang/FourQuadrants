@@ -47,7 +47,6 @@ struct MacAboutView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("关于")
         .frame(maxWidth: 720, alignment: .leading)
         .padding(20)
     }

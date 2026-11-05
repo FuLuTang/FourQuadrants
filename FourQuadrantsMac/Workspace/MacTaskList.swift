@@ -46,7 +46,8 @@ struct MacTaskList: View {
             } else {
                 List(selection: $selectedTaskID) {
                     ForEach(orderedTasks) { task in
-                        MacTaskRow(task: task, isSelected: selectedTaskID == task.id, taskStore: taskStore, onSelect: { selectedTaskID = task.id }, onEdit: { onEdit(task) }, onDelete: { onDelete(task) }, onPin: { onPin(task) })
+                        // List 自带选中高亮，这里传 false 避免双重高亮。
+                        MacTaskRow(task: task, isSelected: false, taskStore: taskStore, onSelect: { selectedTaskID = task.id }, onEdit: { onEdit(task) }, onDelete: { onDelete(task) }, onPin: { onPin(task) })
                             .tag(task.id)
                             .draggable(TaskTransferItem(task: task))
                     }

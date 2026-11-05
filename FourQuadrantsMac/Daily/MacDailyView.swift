@@ -48,11 +48,14 @@ struct MacDailyView: View {
                 onDelete: { task in
                     if taskStore.removeDailyTask(task), selectedTask?.id == task.id { selectedTask = nil }
                 },
-                onNew: presentNewTask
+                onNew: presentNewTask,
+                onDeselect: { selectedTask = nil }
             )
             .id(Calendar.current.startOfDay(for: selectedDate))
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        // 与头部「删除」按钮行为一致；文本框聚焦时 Delete 键由文本框处理。
+        .onDeleteCommand(perform: deleteSelectedTask)
         // This view lives in the Workspace split-view detail column; keep its
         // sizing flexible and let the window/container own minimum dimensions.
         .frame(maxWidth: .infinity, maxHeight: .infinity)

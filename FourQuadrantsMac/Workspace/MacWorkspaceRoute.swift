@@ -11,6 +11,14 @@ enum MacWorkspaceRoute: Hashable {
         self != .daily
     }
 
+    /// 只有任务列表类路由使用排序；四象限看板与日程不排序。
+    var supportsSorting: Bool {
+        switch self {
+        case .all, .completed, .category: true
+        case .quadrants, .daily: false
+        }
+    }
+
     var navigationTitle: Text {
         switch self {
         case .quadrants: Text("四象限")

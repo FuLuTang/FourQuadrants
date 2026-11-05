@@ -109,6 +109,8 @@ final class MacApplicationRuntime {
         let defaults = isPreview
             ? (UserDefaults(suiteName: "fulu.FourQuadrantsMac.preview") ?? .standard)
             : .standard
+        // 替换前先关闭旧协调器的面板，否则 retry/reconnect 后旧面板会残留在屏幕上。
+        stickies?.closeAllWindows()
         let coordinator = MacStickyCoordinator(container: session.container, taskStore: session.taskStore, defaults: defaults)
         coordinator.onOpenTask = { [weak self] id in self?.requestShowTask(id) }
         stickies = coordinator

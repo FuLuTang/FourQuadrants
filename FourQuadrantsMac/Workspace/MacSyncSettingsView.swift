@@ -96,8 +96,8 @@ struct MacSyncSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("同步")
         .frame(maxWidth: 760, alignment: .leading)
+        .frame(minHeight: 460, alignment: .top)
         .padding(20)
         .sheet(isPresented: $showsInitialMerge) {
             MacInitialMergeView(syncService: syncService)

@@ -541,3 +541,6 @@
 "无法读取便笺配置：%@" = "Unable to read sticky configuration: %@";
 "无法保存便笺配置：%@" = "Unable to save sticky configuration: %@";
 "%lld 小时 %lld 分钟" = "%1$lld hr %2$lld min";
+"双击时间轴空白处，按 15 分钟间隔快速新建。" = "Double-click an empty spot on the timeline to quickly create a schedule in 15-minute increments.";
+"双击空白时间段可按 15 分钟间隔新建日程" = "Double-click an empty time slot to create a schedule in 15-minute increments";
+"创建、显示或隐藏 ToDo便笺浮窗" = "Create, show, or hide ToDo stickies";

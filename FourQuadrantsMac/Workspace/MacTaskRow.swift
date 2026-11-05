@@ -19,36 +19,36 @@ struct MacTaskRow: View {
             .buttonStyle(.plain)
             .help(task.isCompleted ? "标记为未完成" : "标记为已完成")
 
-            Button(action: onSelect) {
-                HStack(spacing: 8) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(task.title)
-                            .lineLimit(1)
-                            .strikethrough(task.isCompleted)
-                            .foregroundStyle(task.isCompleted ? .secondary : .primary)
-                        if let notes = task.notes, !notes.isEmpty {
-                            Text(notes)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                    }
-                    Spacer(minLength: 4)
-                    if task.isTop {
-                        Image(systemName: "pin.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    if let dueDate = task.displayDueDate {
-                        Label(dueDate.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
+            // 单击立即选中，双击打开编辑；不用 Button，避免双击被单击吞掉。
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(task.title)
+                        .lineLimit(1)
+                        .strikethrough(task.isCompleted)
+                        .foregroundStyle(task.isCompleted ? .secondary : .primary)
+                    if let notes = task.notes, !notes.isEmpty {
+                        Text(notes)
                             .font(.caption)
-                            .foregroundStyle(task.isOverdue ? .red : .secondary)
-                            .labelStyle(.titleAndIcon)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
                 }
-                .contentShape(Rectangle())
+                Spacer(minLength: 4)
+                if task.isTop {
+                    Image(systemName: "pin.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                if let dueDate = task.displayDueDate {
+                    Label(dueDate.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
+                        .font(.caption)
+                        .foregroundStyle(task.isOverdue ? .red : .secondary)
+                        .labelStyle(.titleAndIcon)
+                }
             }
-            .buttonStyle(.plain)
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2, perform: onEdit)
+            .simultaneousGesture(TapGesture().onEnded { onSelect() })
 
             Menu {
                 actions

@@ -19,8 +19,6 @@ enum MacStickySource: Codable, Equatable {
         }
     }
 
-    var displayTitle: String { title }
-
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(Kind.self, forKey: .kind) {
@@ -125,6 +123,27 @@ struct MacStickyWindowFrame: Codable, Equatable {
             height: height
         )
     }
+
+    /// 把展开态框架拉回可见屏幕：标题条与任一屏幕没有交集（例如外接屏已拔掉）时，移到第一块屏幕（主屏）的可见区域左上附近。
+    /// 尺寸大于屏幕时缩到屏幕内；标题条仍可见时原样返回。
+    func clamped(toVisible screens: [NSRect]) -> MacStickyWindowFrame {
+        guard let primary = screens.first else { return self }
+        let titleBar = NSRect(x: x, y: y + height - MacStickyLayout.titleBarHeight, width: width, height: MacStickyLayout.titleBarHeight)
+        let isTitleBarVisible = screens.contains { screen in
+            let overlap = screen.intersection(titleBar)
+            return !overlap.isNull && overlap.width > 0 && overlap.height > 0
+        }
+        guard !isTitleBarVisible else { return self }
+
+        let targetWidth = min(width, primary.width)
+        let targetHeight = min(height, primary.height)
+        return MacStickyWindowFrame(
+            x: max(primary.minX, min(primary.minX + 60, primary.maxX - targetWidth)),
+            y: max(primary.minY, primary.maxY - 60 - targetHeight),
+            width: targetWidth,
+            height: targetHeight
+        )
+    }
 }
 
 /// 一张浮窗便笺的持久化配置。旧存档里多余的字段（标题、纸张颜色、透明度）解码时忽略。
@@ -137,10 +156,6 @@ struct MacStickyConfiguration: Codable, Identifiable, Equatable {
     var isVisible: Bool
     var isFloating: Bool
     var showDetails: Bool
-
-    /// 显示名固定取自内容来源，供菜单与列表使用。
-    var title: String { source.title }
-    var displayTitle: String { source.displayTitle }
 
     private enum CodingKeys: String, CodingKey {
         case id, source, frame, isCollapsed, isVisible, isFloating, showDetails

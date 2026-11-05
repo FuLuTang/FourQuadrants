@@ -62,7 +62,7 @@ struct MacStickyConfigurationTests {
             isFloating: false,
             showDetails: false
         )])
-        #expect(decoded.first?.displayTitle == "智能排列")
+        #expect(decoded.first?.source.title == "智能排列")
     }
 
     @Test func minimalLegacyConfigurationFillsMissingFieldsWithDefaults() throws {
@@ -311,6 +311,68 @@ struct MacStickyConfigurationTests {
 
         #expect(defaults.data(forKey: MacStickyCoordinator.persistenceKey) == originalData)
         #expect(coordinator.persistenceError != nil)
+    }
+
+    @Test func frameInsideVisibleScreenIsKept() {
+        let screen = NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let frame = MacStickyWindowFrame(x: 100, y: 200, width: 220, height: 260)
+
+        #expect(frame.clamped(toVisible: [screen]) == frame)
+    }
+
+    @Test func frameOffScreenMovesBackToPrimaryScreenKeepingSize() {
+        let screen = NSRect(x: 0, y: 0, width: 1440, height: 900)
+        // 外接屏已拔掉：存档位置落在已经不存在的屏幕上。
+        let frame = MacStickyWindowFrame(x: 2000, y: 300, width: 220, height: 260)
+
+        let clamped = frame.clamped(toVisible: [screen])
+
+        #expect(clamped.width == 220 && clamped.height == 260)
+        #expect(clamped.x == 60)
+        #expect(clamped.y == 900 - 60 - 260)
+    }
+
+    @Test func frameLargerThanScreenShrinksIntoIt() {
+        let screen = NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let oversized = MacStickyWindowFrame(x: 0, y: 1000, width: 2000, height: 1200)
+
+        let clamped = oversized.clamped(toVisible: [screen])
+
+        #expect(clamped.width == 1440 && clamped.height == 900)
+        #expect(clamped.x == 0 && clamped.y == 0)
+    }
+
+    @Test func pinningATaskReusesTheExistingNoteForItsQuadrant() throws {
+        let container = try PersistenceController.inMemoryContainer()
+        let coordinator = MacStickyCoordinator(container: container, taskStore: TaskStore(modelContext: container.mainContext), defaults: try makeDefaults())
+        let id = coordinator.createNote(source: .category(.importantAndUrgent))
+        coordinator.hideWindow(id: id)
+
+        let reused = coordinator.showOrCreateNote(source: .category(.importantAndUrgent))
+
+        #expect(reused == id)
+        #expect(coordinator.configurations.count == 1)
+        #expect(coordinator.configurations.first?.isVisible == true)
+        coordinator.closeAllWindows()
+    }
+
+    @Test func smartNotesKeepRecentlyCompletedTasksWithoutUsingOpenSlots() throws {
+        let container = try PersistenceController.inMemoryContainer()
+        let coordinator = MacStickyCoordinator(container: container, taskStore: TaskStore(modelContext: container.mainContext), defaults: try makeDefaults())
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let open = (1...9).map { makeTask("待办\($0)", important: false, urgent: false) }
+        let recentlyCompleted = QuadrantTask(title: "刚完成", completedAt: now.addingTimeInterval(-1))
+        let oldCompleted = QuadrantTask(title: "较早完成", completedAt: now.addingTimeInterval(-10))
+        let tasks = open + [recentlyCompleted, oldCompleted]
+        tasks.forEach { container.mainContext.insert($0) }
+
+        let visible = coordinator.visibleTasks(from: .smart, in: tasks, now: now).map(\.id)
+
+        // 未完成任务最多 8 条，刚完成的任务在可见期内额外保留。
+        #expect(visible.count == 9)
+        #expect(visible.contains(recentlyCompleted.id))
+        #expect(!visible.contains(oldCompleted.id))
+        coordinator.closeAllWindows()
     }
 
     private func makeDefaults() throws -> UserDefaults {

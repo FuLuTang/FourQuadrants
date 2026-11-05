@@ -20,6 +20,7 @@ struct MacDailyTaskFormView: View {
     @State private var isShowingDeleteConfirmation = false
     @State private var suggestionIndex = MacDailyTaskSuggestions.Index(tasks: [])
     @State private var suggestions: [MacDailyTaskSuggestions.Suggestion] = []
+    @FocusState private var isTitleFocused: Bool
 
     private static let visibleSuggestionCount = 3
     private static let suggestionDebounce: Duration = .milliseconds(250)
@@ -75,7 +76,7 @@ struct MacDailyTaskFormView: View {
                     .keyboardShortcut(.cancelAction)
                 Button("保存", action: save)
                     .buttonStyle(.borderedProminent)
-                    .keyboardShortcut(.return, modifiers: [.command])
+                    .keyboardShortcut(.defaultAction)
                     .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .padding(22)
@@ -86,6 +87,8 @@ struct MacDailyTaskFormView: View {
                 Section("日程内容") {
                     TextField("例如：完成周报、复习 SwiftData", text: $title)
                         .font(.title3)
+                        .focused($isTitleFocused)
+                        .onSubmit(save)
                     Text("清楚写下要做的事，后续可在时间轴上直接拖动调整。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -188,6 +191,8 @@ struct MacDailyTaskFormView: View {
             .padding(.bottom, 14)
         }
         .frame(minWidth: 520, minHeight: 620)
+        // 新建时直接聚焦标题框，编辑已有日程时不抢焦点。
+        .onAppear { isTitleFocused = task == nil }
         .task(id: suggestionKey) { await refreshSuggestions() }
         .sheet(isPresented: $isShowingQuadrantPicker) {
             MacQuadrantTaskPicker(

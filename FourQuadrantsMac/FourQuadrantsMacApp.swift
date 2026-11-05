@@ -30,13 +30,17 @@ struct FourQuadrantsMacApp: App {
 
 /// The status item label is alive for the whole app lifetime, unlike the main
 /// window, so it hands `openWindow` to the runtime for AppKit-originated routes.
+/// It also restores sticky notes at launch, even when the main window stays closed.
 private struct MacMenuBarLabel: View {
     let runtime: MacApplicationRuntime
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Label("FourQuadrants", systemImage: "square.grid.2x2.fill")
-            .task { registerOpener(runtime: runtime, openWindow: openWindow) }
+            .task {
+                registerOpener(runtime: runtime, openWindow: openWindow)
+                runtime.restoreWindowsIfNeeded()
+            }
     }
 }
 
@@ -44,7 +48,7 @@ private struct MacMenuBarLabel: View {
 private func registerOpener(runtime: MacApplicationRuntime, openWindow: OpenWindowAction) {
     runtime.registerMainWindowOpener {
         openWindow(id: "main")
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
     }
 }
 
@@ -54,14 +58,13 @@ private struct MacMenuBarContent: View {
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
+        // requestNewTask 会通过已注册的 opener 打开主窗口并激活应用。
         Button("新建任务", systemImage: "plus") {
             runtime.requestNewTask()
-            openWindow(id: "main")
-            NSApp.activate(ignoringOtherApps: true)
         }
         Button("打开四象限", systemImage: "macwindow") {
             openWindow(id: "main")
-            NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate()
         }
         Divider()
         Menu("添加ToDo便笺浮窗", systemImage: "note.text.badge.plus") {
@@ -71,21 +74,7 @@ private struct MacMenuBarContent: View {
 
         if let stickies = runtime.stickies, !stickies.configurations.isEmpty {
             Menu("已有ToDo便笺", systemImage: "square.on.square") {
-                ForEach(stickies.configurations) { configuration in
-                    Button {
-                        if configuration.isVisible {
-                            stickies.hideWindow(id: configuration.id)
-                        } else {
-                            stickies.showWindow(for: configuration.id)
-                        }
-                    } label: {
-                        Label {
-                            MacStickyConfigurationHeading(configuration: configuration)
-                        } icon: {
-                            Image(systemName: configuration.isVisible ? "checkmark" : "eye.slash")
-                        }
-                    }
-                }
+                MacStickyExistingMenuItems(stickies: stickies)
             }
         }
         Divider()

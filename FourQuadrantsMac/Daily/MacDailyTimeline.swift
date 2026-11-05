@@ -11,19 +11,22 @@ struct MacDailyTimeline: View {
     let onEdit: (DailyTask) -> Void
     let onDelete: (DailyTask) -> Void
     let onNew: (Date) -> Void
+    /// 单击时间轴空白处时调用，用于取消选中。
+    let onDeselect: () -> Void
 
     /// View-local drag state. Models stay untouched until the gesture ends.
     @State private var dragPreview: MacDailyDragPreview?
 
     private typealias Metrics = MacDailyTimelineMetrics
 
-    init(date: Date, selectedTaskID: UUID?, onSelect: @escaping (DailyTask) -> Void, onEdit: @escaping (DailyTask) -> Void, onDelete: @escaping (DailyTask) -> Void, onNew: @escaping (Date) -> Void) {
+    init(date: Date, selectedTaskID: UUID?, onSelect: @escaping (DailyTask) -> Void, onEdit: @escaping (DailyTask) -> Void, onDelete: @escaping (DailyTask) -> Void, onNew: @escaping (Date) -> Void, onDeselect: @escaping () -> Void) {
         self.date = date
         self.selectedTaskID = selectedTaskID
         self.onSelect = onSelect
         self.onEdit = onEdit
         self.onDelete = onDelete
         self.onNew = onNew
+        self.onDeselect = onDeselect
 
         let calendar = Calendar.current
         let start = calendar.startOfDay(for: date)
@@ -47,10 +50,13 @@ struct MacDailyTimeline: View {
                     let blocksWidth = max(contentWidth - Metrics.timeColumnWidth - Metrics.blocksTrailingInset, Metrics.minBlocksWidth)
 
                     ZStack(alignment: .topLeading) {
-                        MacDailyHourGrid(onEmptyClick: { y in
-                            let minute = MacDailyTimeMath.snapped(Int((y / Metrics.hourHeight * 60).rounded()))
-                            onNew(MacDailyTimeMath.date(on: dayStart, minute: min(minute, MacDailyTimeMath.latestNewTaskMinute)))
-                        })
+                        MacDailyHourGrid(
+                            onEmptyDoubleClick: { y in
+                                let minute = MacDailyTimeMath.snapped(Int((y / Metrics.hourHeight * 60).rounded()))
+                                onNew(MacDailyTimeMath.date(on: dayStart, minute: min(minute, MacDailyTimeMath.latestNewTaskMinute)))
+                            },
+                            onEmptySingleClick: onDeselect
+                        )
 
                         if visibleTasks.isEmpty {
                             emptyState
@@ -82,7 +88,7 @@ struct MacDailyTimeline: View {
                 .foregroundStyle(.tint)
             Text("这一天还没有日程")
                 .font(.headline)
-            Text("单击时间轴空白处，按 15 分钟间隔快速新建。")
+            Text("双击时间轴空白处，按 15 分钟间隔快速新建。")
                 .font(.callout)
                 .foregroundStyle(.secondary)
             Text("示例：周会、专注工作、午休、接孩子")
