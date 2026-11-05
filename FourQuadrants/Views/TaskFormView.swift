@@ -151,6 +151,8 @@ struct TaskFormView: View {
         let finalTargetDate = hasTargetDate ? dueAt : nil
         let finalUrgentThreshold = (hasTargetDate && hasUrgentThreshold) ? urgentThresholdDays : nil
         if let task = existingTask {
+            // 只有用户实际改动的重要性或阈值才更新原始值，其余保持任务原有值。
+            let original = TaskOriginalValues.resolve(task: task, newImportance: importance, newThreshold: finalUrgentThreshold)
             return taskStore.updateTask(
                 task,
                 title: title,
@@ -160,8 +162,8 @@ struct TaskFormView: View {
                 isTop: isTop,
                 dueAt: finalTargetDate,
                 urgentThresholdDays: finalUrgentThreshold,
-                originalUrgentThresholdDays: finalUrgentThreshold,
-                originalImportance: importance
+                originalUrgentThresholdDays: original.urgentThresholdDays,
+                originalImportance: original.importance
             )
         } else {
             return taskStore.addTask(

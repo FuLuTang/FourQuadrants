@@ -173,4 +173,117 @@ struct MacTaskDraftTests {
         #expect(!session.isDirty)
         #expect(session.draft.title == "保存后")
     }
+
+    @Test func changingImportanceUpdatesOriginalImportance() throws {
+        let (container, store) = try makeStore()
+        #expect(store.addTask(title: "任务", importance: .normal, isUrgent: false, isTop: false, originalImportance: .normal))
+        let task = try onlyTask(in: container)
+
+        var draft = MacTaskDraft(task: task)
+        draft.importance = .low
+        #expect(draft.save(to: task, using: store))
+        #expect(task.importance == .low)
+        #expect(task.originalImportance == .low)
+    }
+
+    @Test func titleOnlyEditKeepsOriginalValues() throws {
+        let (container, store) = try makeStore()
+        #expect(store.addTask(
+            title: "任务",
+            importance: .normal,
+            isUrgent: false,
+            isTop: false,
+            dueAt: .now,
+            urgentThresholdDays: 2,
+            originalUrgentThresholdDays: 4,
+            originalImportance: .high
+        ))
+        let task = try onlyTask(in: container)
+
+        var draft = MacTaskDraft(task: task)
+        draft.title = "只改标题"
+        #expect(draft.save(to: task, using: store))
+        #expect(task.title == "只改标题")
+        #expect(task.originalImportance == .high)
+        #expect(task.originalUrgentThresholdDays == 4)
+    }
+
+    @Test func quadrantMoveDoesNotChangeOriginalImportanceOnLaterTitleEdit() throws {
+        let (container, store) = try makeStore()
+        #expect(store.addTask(title: "任务", importance: .normal, isUrgent: false, isTop: false, originalImportance: .normal))
+        let task = try onlyTask(in: container)
+
+        // 拖动移动到重要象限会把重要性改为高，但不算手动设置。
+        #expect(store.moveTask(task, to: .importantButNotUrgent))
+        #expect(task.importance == .high)
+        #expect(task.originalImportance == .normal)
+
+        var draft = MacTaskDraft(task: task)
+        draft.title = "移动后只改标题"
+        #expect(draft.save(to: task, using: store))
+        #expect(task.originalImportance == .normal)
+    }
+
+    @Test func changingThresholdDaysUpdatesOriginalThreshold() throws {
+        let (container, store) = try makeStore()
+        #expect(store.addTask(
+            title: "有期限",
+            importance: .normal,
+            isUrgent: false,
+            isTop: false,
+            dueAt: .now,
+            urgentThresholdDays: 3,
+            originalUrgentThresholdDays: 3
+        ))
+        let task = try onlyTask(in: container)
+
+        var draft = MacTaskDraft(task: task)
+        draft.urgentThresholdDays = 5
+        #expect(draft.save(to: task, using: store))
+        #expect(task.urgentThresholdDays == 5)
+        #expect(task.originalUrgentThresholdDays == 5)
+    }
+
+    @Test func turningOffAutomaticUrgencyClearsOriginalThreshold() throws {
+        let (container, store) = try makeStore()
+        #expect(store.addTask(
+            title: "有期限",
+            importance: .normal,
+            isUrgent: false,
+            isTop: false,
+            dueAt: .now,
+            urgentThresholdDays: 3,
+            originalUrgentThresholdDays: 3
+        ))
+        let task = try onlyTask(in: container)
+
+        var draft = MacTaskDraft(task: task)
+        draft.hasUrgentThreshold = false
+        #expect(draft.save(to: task, using: store))
+        #expect(task.urgentThresholdDays == nil)
+        #expect(task.originalUrgentThresholdDays == nil)
+    }
+
+    @Test func originalValueResolutionOnlyTakesManualChanges() throws {
+        let (container, store) = try makeStore()
+        #expect(store.addTask(
+            title: "任务",
+            importance: .normal,
+            isUrgent: false,
+            isTop: false,
+            dueAt: .now,
+            urgentThresholdDays: 3,
+            originalUrgentThresholdDays: 4,
+            originalImportance: .low
+        ))
+        let task = try onlyTask(in: container)
+
+        let unchanged = TaskOriginalValues.resolve(task: task, newImportance: .normal, newThreshold: 3)
+        #expect(unchanged.importance == .low)
+        #expect(unchanged.urgentThresholdDays == 4)
+
+        let changed = TaskOriginalValues.resolve(task: task, newImportance: .high, newThreshold: nil)
+        #expect(changed.importance == .high)
+        #expect(changed.urgentThresholdDays == nil)
+    }
 }

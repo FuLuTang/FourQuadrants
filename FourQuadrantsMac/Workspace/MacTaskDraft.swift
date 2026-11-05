@@ -15,8 +15,6 @@ struct MacTaskDraft: Equatable {
     var dueDate: Date = .now
     var hasUrgentThreshold = false
     var urgentThresholdDays = MacTaskDraft.defaultUrgentThresholdDays
-    var originalUrgentThresholdDays: Int?
-    var originalImportance: ImportanceLevel?
 
     /// An empty draft for a new task.
     init() {}
@@ -35,8 +33,6 @@ struct MacTaskDraft: Equatable {
         urgentThresholdDays = task.urgentThresholdDays
             ?? task.originalUrgentThresholdDays
             ?? Self.defaultUrgentThresholdDays
-        originalUrgentThresholdDays = task.originalUrgentThresholdDays
-        originalImportance = task.originalImportance
     }
 
     var cleanTitle: String { title.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -65,9 +61,7 @@ struct MacTaskDraft: Equatable {
               lhs.isTop == rhs.isTop,
               lhs.isCompleted == rhs.isCompleted,
               lhs.hasDueDate == rhs.hasDueDate,
-              lhs.hasUrgentThreshold == rhs.hasUrgentThreshold,
-              lhs.originalUrgentThresholdDays == rhs.originalUrgentThresholdDays,
-              lhs.originalImportance == rhs.originalImportance else { return false }
+              lhs.hasUrgentThreshold == rhs.hasUrgentThreshold else { return false }
         if lhs.hasDueDate, !Calendar.current.isDate(lhs.dueDate, inSameDayAs: rhs.dueDate) { return false }
         if lhs.hasUrgentThreshold, lhs.urgentThresholdDays != rhs.urgentThresholdDays { return false }
         return true
@@ -90,11 +84,13 @@ struct MacTaskDraft: Equatable {
                 isTop: isTop,
                 dueAt: dueAt,
                 urgentThresholdDays: threshold,
-                originalUrgentThresholdDays: originalUrgentThresholdDays ?? threshold,
-                originalImportance: originalImportance ?? importance
+                originalUrgentThresholdDays: threshold,
+                originalImportance: importance
             )
         }
 
+        // 只有用户实际改动的重要性或阈值才更新原始值，其余保持任务原有值。
+        let original = TaskOriginalValues.resolve(task: task, newImportance: importance, newThreshold: threshold)
         guard store.updateTask(
             task,
             title: cleanTitle,
@@ -104,8 +100,8 @@ struct MacTaskDraft: Equatable {
             isTop: isTop,
             dueAt: dueAt,
             urgentThresholdDays: threshold,
-            originalUrgentThresholdDays: originalUrgentThresholdDays,
-            originalImportance: originalImportance
+            originalUrgentThresholdDays: original.urgentThresholdDays,
+            originalImportance: original.importance
         ) else { return false }
         if task.isCompleted != isCompleted { return store.toggleTask(task) }
         return true

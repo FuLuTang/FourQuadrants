@@ -50,28 +50,6 @@ struct MacTaskFormView: View {
                         }
                     }
                 }
-
-                Section("原始值") {
-                    Picker("原始重要性", selection: $draft.originalImportance) {
-                        Text("未记录").tag(ImportanceLevel?.none)
-                        Text("低").tag(ImportanceLevel?.some(.low))
-                        Text("普通").tag(ImportanceLevel?.some(.normal))
-                        Text("高").tag(ImportanceLevel?.some(.high))
-                    }
-                    Toggle("记录原始紧急阈值", isOn: Binding(
-                        get: { draft.originalUrgentThresholdDays != nil },
-                        set: { draft.originalUrgentThresholdDays = $0 ? (draft.originalUrgentThresholdDays ?? draft.urgentThresholdDays) : nil }
-                    ))
-                    if let original = draft.originalUrgentThresholdDays {
-                        Stepper("原始阈值：提前 \(original) 天", value: Binding(
-                            get: { draft.originalUrgentThresholdDays ?? MacTaskDraft.defaultUrgentThresholdDays },
-                            set: { draft.originalUrgentThresholdDays = $0 }
-                        ), in: 1...30)
-                    }
-                    Text("原始值用于象限调整时恢复重要性和紧急阈值。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
             .formStyle(.grouped)
             .padding(.horizontal, 12)
