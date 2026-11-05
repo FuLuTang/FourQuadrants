@@ -7,13 +7,11 @@ struct OverviewView: View {
     let color: Color
     let category: TaskCategory
     let taskStore: TaskStore
-    @Query(
-        filter: #Predicate<QuadrantTask> { task in task.completedAt == nil },
-        sort: \QuadrantTask.updatedAt,
-        order: .reverse
-    ) private var tasks: [QuadrantTask]
+    // 不再排除已完成任务：最近完成的任务需在原位保留 3 秒，由 filteredTasks 统一过滤
+    @Query(sort: \QuadrantTask.updatedAt, order: .reverse) private var tasks: [QuadrantTask]
     var onZoom: ((TaskCategory) -> Void)? = nil
     @State private var isTargeted: Bool = false
+    @State private var refreshDate = Date()
     @State private var selectedTaskForEditing: QuadrantTask? = nil
     @State private var showingEditTaskView: Bool = false
 
@@ -109,10 +107,11 @@ struct OverviewView: View {
         .sheet(item: $selectedTaskForEditing) { task in
             TaskFormView(taskStore: taskStore, existingTask: task)
         }
+        .refreshingAtCompletionExpiry(of: tasks, refreshDate: $refreshDate)
     }
-    
+
     var filteredTasks: [QuadrantTask] {
-        taskStore.filteredTasks(tasks, in: category)
+        taskStore.filteredTasks(tasks, in: category, now: refreshDate)
     }
 
     private var styledTitle: Text {

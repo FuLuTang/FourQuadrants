@@ -72,12 +72,14 @@ struct TaskListView: View {
     @State private var selectedTaskForEditing: QuadrantTask?
     @State private var sortMethod: TaskStore.TaskSortMethod = .intelligence
     @State private var sortDirection: TaskStore.TaskSortDirection = .ascending
+    @State private var refreshDate = Date()
 
     var body: some View {
         List {
             ForEach(taskStore.filteredTasks(
                 tasks,
                 in: category,
+                now: refreshDate,
                 sortBy: sortMethod,
                 direction: sortDirection
             )) { task in
@@ -142,6 +144,7 @@ struct TaskListView: View {
         .sheet(isPresented: $showingTaskFormView) {
             TaskFormView(taskStore: taskStore)
         }
+        .refreshingAtCompletionExpiry(of: tasks, refreshDate: $refreshDate)
     }
 
     private func createTask() {

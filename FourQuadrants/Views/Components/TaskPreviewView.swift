@@ -187,7 +187,8 @@ struct QuadrantPreviewView: View {
                 
                 Spacer()
                 
-                Text(String(format: String(localized: "preview_task_count"), tasks.count))
+                // 数量只统计未完成任务；最近完成、仍在保留期内的任务照常列出但不计入
+                Text(String(format: String(localized: "preview_task_count"), tasks.filter { !$0.isCompleted }.count))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
